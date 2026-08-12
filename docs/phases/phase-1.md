@@ -49,7 +49,7 @@ See the checkpoint report in the Phase 1 implementation summary:
 - Persistence does not survive restarts
 - `npm run dev` in a browser cannot call Rust IPC
 - Android project is not initialized
-- App icons are still the Tauri template icons
+- App icons use `assets/tonic_icon.png` (regenerate with `npm run icons`)
 - `tauri-plugin-opener` is unused
 - No CI workflow yet
 - No custom license/branding beyond the name Tonic

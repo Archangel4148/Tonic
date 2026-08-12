@@ -8,6 +8,7 @@
     "build": "tsc && vite build",
     "preview": "vite preview",
     "tauri": "tauri",
+    "icons": "tauri icon assets/tonic_icon.png --ios-color \"#0B0B0B\"",
     "package:desktop": "tauri build",
     "package:desktop:windows": "tauri build --bundles nsis",
     "android:init": "tauri android init --ci",

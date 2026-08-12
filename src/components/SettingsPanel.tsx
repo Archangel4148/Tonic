@@ -238,6 +238,20 @@ export function SettingsPanel({
 
         <section className="settings-section">
           <h3 className="settings-section__title">About</h3>
+          <div className="settings-about-brand">
+            <img
+              className="settings-about-mark"
+              src="/tonic-icon.png"
+              alt=""
+              width={48}
+              height={48}
+              decoding="async"
+            />
+            <div>
+              <p className="settings-about-name">Tonic</p>
+              <p className="settings-hint">A musician&apos;s local songbook</p>
+            </div>
+          </div>
           <dl className="settings-stats">
             <div>
               <dt>Application</dt>
