@@ -4,7 +4,7 @@ The first usable reading experience: import a chart, view aligned chords and lyr
 
 ## Session ownership
 
-`AppServices` holds the current `Song` in memory (not the library). IPC:
+`AppServices` holds the open session song (now also a library entry). Viewer IPC:
 
 | Command                 | Purpose                                     |
 | ----------------------- | ------------------------------------------- |
@@ -14,7 +14,7 @@ The first usable reading experience: import a chart, view aligned chords and lyr
 | `transpose_song`        | ±N semitones on performance key             |
 | `set_performance_key`   | Jump to a named key                         |
 | `reset_performance_key` | Performance key = original key              |
-| `clear_song`            | Drop the in-memory song                     |
+| `clear_song`            | Close the viewer session (library unchanged) |
 
 `SongSessionView` includes display chord symbols already spelled for the performance key, plus written symbols, lyric indices, warnings, and semitone offset.
 
@@ -35,7 +35,7 @@ Unrecognized / partial chords are underlined and keep their original text.
 
 ## Display preferences (UI-only)
 
-Theme (dark / light / system) and independent lyric / chord / section sizes live in `localStorage`. They are not song data and are not persisted by Rust yet (Phase 6).
+Theme (dark / light / system) and independent lyric / chord / section sizes live in `localStorage`. They are not song data.
 
 Dark is the default (live-performance first). System follows `prefers-color-scheme` unless Dark or Light is pinned.
 

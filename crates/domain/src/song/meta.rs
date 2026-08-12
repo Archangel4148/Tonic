@@ -61,6 +61,15 @@ pub struct Timestamp(i64);
 
 impl Timestamp {
     #[must_use]
+    pub fn now() -> Self {
+        let secs = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|duration| duration.as_secs() as i64)
+            .unwrap_or(0);
+        Self(secs)
+    }
+
+    #[must_use]
     pub fn from_secs(secs: i64) -> Self {
         Self(secs)
     }

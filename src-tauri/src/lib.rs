@@ -4,7 +4,10 @@
 //! algorithms or become the owner of song data.
 
 use serde::Serialize;
-use tonic_app::{performance_key_choices, AppServices, ImportMode, SongSessionView};
+use tonic_app::{
+    performance_key_choices, AppServices, ImportMode, LibraryListView, LibraryQuery,
+    MetadataUpdate, SongSessionView,
+};
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -39,7 +42,7 @@ fn import_song(
     format: Option<String>,
 ) -> Result<SongSessionView, String> {
     let mode = ImportMode::parse(format.as_deref().unwrap_or("auto"))?;
-    Ok(services.import_text(&text, mode))
+    services.import_text(&text, mode)
 }
 
 #[tauri::command]
@@ -72,14 +75,67 @@ fn reset_performance_key(
 
 #[tauri::command]
 fn clear_song(services: tauri::State<'_, AppServices>) {
-    services.clear_song();
+    services.close_song();
+}
+
+#[tauri::command]
+fn library_list(
+    services: tauri::State<'_, AppServices>,
+    query: Option<LibraryQuery>,
+) -> LibraryListView {
+    services.list_library(query.unwrap_or_default())
+}
+
+#[tauri::command]
+fn library_open(
+    services: tauri::State<'_, AppServices>,
+    id: String,
+) -> Result<SongSessionView, String> {
+    services.open_song(&id)
+}
+
+#[tauri::command]
+fn library_delete(
+    services: tauri::State<'_, AppServices>,
+    id: String,
+) -> Result<Option<SongSessionView>, String> {
+    services.delete_song(&id)
+}
+
+#[tauri::command]
+fn library_duplicate(
+    services: tauri::State<'_, AppServices>,
+    id: String,
+) -> Result<SongSessionView, String> {
+    services.duplicate_song(&id)
+}
+
+#[tauri::command]
+fn library_toggle_favorite(
+    services: tauri::State<'_, AppServices>,
+    id: String,
+) -> Result<Option<SongSessionView>, String> {
+    services.toggle_favorite(&id)
+}
+
+#[tauri::command]
+fn library_update_metadata(
+    services: tauri::State<'_, AppServices>,
+    update: MetadataUpdate,
+) -> Result<SongSessionView, String> {
+    services.update_open_metadata(update)
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
-        .manage(AppServices::new())
+        .setup(|app| {
+            use tauri::Manager;
+            let root = app.path().app_data_dir()?.join("library");
+            app.manage(AppServices::open(&root)?);
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             app_info,
             import_song,
@@ -88,6 +144,12 @@ pub fn run() {
             set_performance_key,
             reset_performance_key,
             clear_song,
+            library_list,
+            library_open,
+            library_delete,
+            library_duplicate,
+            library_toggle_favorite,
+            library_update_metadata,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

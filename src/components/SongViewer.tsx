@@ -6,13 +6,26 @@ type Props = {
 };
 
 export function SongViewer({ session }: Props) {
-  const { song, warnings, summaryMessage, semitoneOffset } = session;
+  const { song, warnings, summaryMessage, semitoneOffset, favorite, tags } =
+    session;
 
   return (
     <article className="song-viewer" aria-labelledby="song-title">
       <header className="song-header">
-        <h2 id="song-title">{song.title}</h2>
+        <h2 id="song-title">
+          {favorite ? "★ " : ""}
+          {song.title}
+        </h2>
         {song.artist && <p className="song-artist">{song.artist}</p>}
+        {tags.length > 0 && (
+          <p className="song-tags">
+            {tags.map((tag) => (
+              <span key={tag} className="tag-chip">
+                {tag}
+              </span>
+            ))}
+          </p>
+        )}
         <p className="song-meta">
           {song.originalKey && (
             <span>

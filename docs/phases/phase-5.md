@@ -1,7 +1,7 @@
 # Phase 5 — Song Viewer
 
-**Status:** Implemented, pending review  
-**Do not start Phase 6 until explicitly instructed.**
+**Status:** Complete  
+**Phase 6 may proceed.**
 
 ## Goal
 

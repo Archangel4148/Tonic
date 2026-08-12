@@ -2,7 +2,7 @@
 
 The in-memory song document lives in `tonic-domain`. Import, editor, renderer, transposition display, library, and setlists must all consume this model. They must not reparse raw source text.
 
-Phase 3 defines the types and JSON round-trip. ChordPro / plain-text import is Phase 4 (`tonic-import`; see [`import.md`](./import.md)). Durable storage is Phase 6.
+Phase 3 defines the types and JSON round-trip. ChordPro / plain-text import is Phase 4 (`tonic-import`; see [`import.md`](./import.md)). Durable library storage is Phase 6 (`tonic-persist`; see [`persist.md`](./persist.md)). Favorite/tags/recents are library fields, not `Song` fields.
 
 ## Document shape
 

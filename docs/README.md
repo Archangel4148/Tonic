@@ -19,11 +19,13 @@ This folder is the project documentation. The product requirements live in [`spe
 | [Song model](./song-model.md)                 | Canonical song, tokens, JSON interchange         |
 | [Import](./import.md)                         | ChordPro and plain-text parsers                  |
 | [Viewer](./viewer.md)                         | Song reading, alignment, transpose UI            |
+| [Persistence](./persist.md)                   | Local JSON library                               |
 | [Phase 1 report](./phases/phase-1.md)         | Foundation checkpoint                            |
 | [Phase 2 report](./phases/phase-2.md)         | Music-engine checkpoint                          |
 | [Phase 3 report](./phases/phase-3.md)         | Song-model checkpoint                            |
 | [Phase 4 report](./phases/phase-4.md)         | Import checkpoint                                |
 | [Phase 5 report](./phases/phase-5.md)         | Viewer checkpoint                                |
+| [Phase 6 report](./phases/phase-6.md)         | Library checkpoint                               |
 
 ## Source of truth
 

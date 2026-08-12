@@ -3922,6 +3922,11 @@ dependencies = [
 [[package]]
 name = "tonic-persist"
 version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "tonic-domain",
+]
 
 [[package]]
 name = "tower"

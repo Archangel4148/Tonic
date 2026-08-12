@@ -21,7 +21,7 @@ Phase 1 splits that work into workspace crates so later phases do not have to in
 | --------------------- | -------------------------------------------------------------------- |
 | `tonic-domain`        | Music theory and canonical song model. Serde JSON only; no UI/Tauri. |
 | `tonic-app`           | Application services and in-memory authoritative state.              |
-| `tonic-persist`       | Persistence boundary. In-memory stub only in Phase 1.                |
+| `tonic-persist`       | Local JSON song library (filesystem + in-memory test double).        |
 | `tonic-import`        | ChordPro and plain-text import into `Song`. No UI/Tauri.             |
 | `tonic` (`src-tauri`) | Windowing, IPC, and OS integration.                                  |
 
@@ -37,9 +37,7 @@ Phase 1 does not add a UI state library, router, or CSS framework. The shell is 
 
 ## Persistence
 
-Phase 1 uses an **in-memory stub** behind a `Store` trait.
-
-Durable storage (likely SQLite via Tauri or a Rust crate) is a Phase 6 decision. The stub exists only to lock the dependency direction: application services depend on a persistence boundary, not the other way around.
+Phase 6 uses **filesystem JSON** under the Tauri app data directory, behind a `SongLibrary` trait (`FileLibrary` / `MemoryLibrary`). SQLite was not required to meet “songs survive restarts offline.” See [`persist.md`](./persist.md).
 
 ## Testing and quality
 

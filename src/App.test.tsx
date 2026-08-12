@@ -9,11 +9,19 @@ const mockedInvoke = vi.mocked(invoke);
 const appInfo = {
   name: "Tonic",
   version: "0.1.0",
-  phase: 5,
+  phase: 6,
   domainEngine: "tonic-domain",
   domainVersion: "0.1.0",
   persistenceHealthy: true,
   performanceKeys: ["C", "G", "A", "Am"],
+};
+
+const emptyLibrary = {
+  songs: [],
+  recents: [],
+  artists: [],
+  keys: [],
+  tags: [],
 };
 
 const demoSession: SongSession = {
@@ -59,6 +67,8 @@ const demoSession: SongSession = {
   warnings: [],
   summaryMessage: null,
   semitoneOffset: 0,
+  favorite: false,
+  tags: ["hymn"],
 };
 
 const transposedSession: SongSession = {
@@ -122,6 +132,7 @@ describe("App", () => {
     mockIpc({
       app_info: appInfo,
       current_song: null,
+      library_list: emptyLibrary,
     });
 
     render(<App />);
@@ -130,15 +141,17 @@ describe("App", () => {
       await screen.findByRole("heading", { name: "Tonic" }),
     ).toBeInTheDocument();
     expect(screen.getByLabelText(/chart text/i)).toBeInTheDocument();
+    expect(screen.getByRole("searchbox")).toBeInTheDocument();
     fireEvent.click(screen.getByText("Engine"));
     expect(screen.getByText(/tonic-domain v0\.1\.0/i)).toBeInTheDocument();
-    expect(screen.getByText(/in-memory stub healthy/i)).toBeInTheDocument();
+    expect(screen.getByText(/local library healthy/i)).toBeInTheDocument();
   });
 
   it("imports a pasted chart and shows aligned chords", async () => {
     mockIpc({
       app_info: appInfo,
       current_song: null,
+      library_list: emptyLibrary,
       import_song: demoSession,
     });
 
@@ -167,6 +180,27 @@ describe("App", () => {
     mockIpc({
       app_info: appInfo,
       current_song: demoSession,
+      library_list: {
+        ...emptyLibrary,
+        songs: [
+          {
+            id: demoSession.song.id,
+            title: demoSession.song.title,
+            artist: demoSession.song.artist,
+            album: demoSession.song.album,
+            originalKey: demoSession.song.originalKey,
+            performanceKey: demoSession.song.performanceKey,
+            favorite: false,
+            tags: ["hymn"],
+            lastOpenedAt: 1,
+            lastModifiedAt: 1,
+          },
+        ],
+        recents: [],
+        artists: ["Traditional"],
+        keys: ["G"],
+        tags: ["hymn"],
+      },
       transpose_song: transposedSession,
     });
 
@@ -190,6 +224,45 @@ describe("App", () => {
     ).toBeInTheDocument();
     expect(mockedInvoke).toHaveBeenCalledWith("transpose_song", {
       semitones: 1,
+    });
+  });
+
+  it("opens a library song from the sidebar", async () => {
+    mockIpc({
+      app_info: appInfo,
+      current_song: null,
+      library_list: {
+        ...emptyLibrary,
+        songs: [
+          {
+            id: demoSession.song.id,
+            title: demoSession.song.title,
+            artist: demoSession.song.artist,
+            album: demoSession.song.album,
+            originalKey: demoSession.song.originalKey,
+            performanceKey: demoSession.song.performanceKey,
+            favorite: false,
+            tags: ["hymn"],
+            lastOpenedAt: 1,
+            lastModifiedAt: 1,
+          },
+        ],
+        artists: ["Traditional"],
+        keys: ["G"],
+        tags: ["hymn"],
+      },
+      library_open: demoSession,
+    });
+
+    render(<App />);
+    fireEvent.click(
+      await screen.findByRole("button", { name: /Amazing Grace Traditional/i }),
+    );
+    expect(
+      await screen.findByRole("heading", { name: "Amazing Grace" }),
+    ).toBeInTheDocument();
+    expect(mockedInvoke).toHaveBeenCalledWith("library_open", {
+      id: "session-1",
     });
   });
 

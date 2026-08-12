@@ -16,6 +16,8 @@ function phaseLabel(phase: number): string {
       return "Import";
     case 5:
       return "Viewer";
+    case 6:
+      return "Library";
     default:
       return "";
   }
@@ -48,7 +50,7 @@ export function EngineStatus({ info }: Props) {
         <div>
           <dt>Persistence</dt>
           <dd>
-            {info.persistenceHealthy ? "In-memory stub healthy" : "Unavailable"}
+            {info.persistenceHealthy ? "Local library healthy" : "Unavailable"}
           </dd>
         </div>
       </dl>

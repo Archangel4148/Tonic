@@ -1,5 +1,12 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { AppInfo, ImportFormat, SongSession } from "./types";
+import type {
+  AppInfo,
+  ImportFormat,
+  LibraryList,
+  LibraryQuery,
+  MetadataUpdate,
+  SongSession,
+} from "./types";
 
 export async function getAppInfo(): Promise<AppInfo> {
   return invoke<AppInfo>("app_info");
@@ -30,4 +37,36 @@ export async function resetPerformanceKey(): Promise<SongSession> {
 
 export async function clearSong(): Promise<void> {
   return invoke<void>("clear_song");
+}
+
+export async function listLibrary(
+  query: LibraryQuery = {},
+): Promise<LibraryList> {
+  return invoke<LibraryList>("library_list", { query });
+}
+
+export async function openLibrarySong(id: string): Promise<SongSession> {
+  return invoke<SongSession>("library_open", { id });
+}
+
+export async function deleteLibrarySong(
+  id: string,
+): Promise<SongSession | null> {
+  return invoke<SongSession | null>("library_delete", { id });
+}
+
+export async function duplicateLibrarySong(id: string): Promise<SongSession> {
+  return invoke<SongSession>("library_duplicate", { id });
+}
+
+export async function toggleFavorite(
+  id: string,
+): Promise<SongSession | null> {
+  return invoke<SongSession | null>("library_toggle_favorite", { id });
+}
+
+export async function updateMetadata(
+  update: MetadataUpdate,
+): Promise<SongSession> {
+  return invoke<SongSession>("library_update_metadata", { update });
 }

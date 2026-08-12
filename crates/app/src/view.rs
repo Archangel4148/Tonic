@@ -12,6 +12,8 @@ pub struct SongSessionView {
     pub warnings: Vec<WarningView>,
     pub summary_message: Option<String>,
     pub semitone_offset: i32,
+    pub favorite: bool,
+    pub tags: Vec<String>,
 }
 
 /// Render-ready song. Display chord symbols are already transposed.
@@ -68,13 +70,21 @@ pub struct WarningView {
 
 impl SongSessionView {
     #[must_use]
-    pub fn from_parts(song: &Song, warnings: &[ImportWarning], semitone_offset: i32) -> Self {
+    pub fn from_parts(
+        song: &Song,
+        warnings: &[ImportWarning],
+        semitone_offset: i32,
+        favorite: bool,
+        tags: Vec<String>,
+    ) -> Self {
         Self {
             song: SongView::from_song(song),
             warnings: warnings.iter().map(WarningView::from).collect(),
             summary_message: (!warnings.is_empty())
                 .then_some(UNRECOGNIZED_CONTENT_MESSAGE.to_string()),
             semitone_offset,
+            favorite,
+            tags,
         }
     }
 }

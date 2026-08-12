@@ -147,12 +147,20 @@ impl Song {
         self.updated_at
     }
 
+    pub fn set_id(&mut self, id: impl Into<SongId>) {
+        self.id = id.into();
+    }
+
     pub fn set_title(&mut self, title: impl Into<String>) {
         self.title = title.into();
     }
 
     pub fn set_artist(&mut self, artist: Option<String>) {
         self.artist = artist;
+    }
+
+    pub fn set_album(&mut self, album: Option<String>) {
+        self.album = album;
     }
 
     pub fn set_original_key(&mut self, key: Option<Key>) {
@@ -165,6 +173,10 @@ impl Song {
 
     pub fn set_notes(&mut self, notes: Option<String>) {
         self.notes = notes;
+    }
+
+    pub fn set_created_at(&mut self, created_at: Option<Timestamp>) {
+        self.created_at = created_at;
     }
 
     pub fn set_updated_at(&mut self, updated_at: Option<Timestamp>) {

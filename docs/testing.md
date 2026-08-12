@@ -22,7 +22,7 @@ Each workspace crate has unit tests next to the code.
 Phase 1 coverage:
 
 - `tonic-domain` can run without UI/Tauri dependencies
-- `tonic-persist` memory stub is healthy and preserves error messages
+- `tonic-persist` error messages are preserved
 - `tonic-app` wires domain + persist and reports application identity
 
 Phase 2 coverage (`cargo test -p tonic-domain`):
@@ -71,11 +71,17 @@ Tauri `invoke` is mocked in `src/test/setup.ts` so UI tests do not require a run
 - Chart-line syllable splitting
 - Viewer warnings and unrecognized chords
 
+Phase 6 coverage:
+
+- `tonic-persist` file library round-trip + delete
+- `tonic-app` import persists; reopen after `AppServices::open`
+- Search, favorite, tags, duplicate, delete
+- UI library list + open against mocked IPC
+
 ## What is not tested yet
 
 - End-to-end Tauri window launch (manual: `npm run tauri dev`)
 - Android
-- Durable persistence round-trips (Phase 6)
 - End-to-end transpose in a real Tauri window (manual: `npm run tauri dev`)
 
 Those arrive with the phases that implement them.

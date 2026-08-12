@@ -19,7 +19,7 @@ The spec's layer diagram is interpreted as layering, not as domain depending on 
 
 ## Persistence technology
 
-Not chosen yet. Phase 1 only has an in-memory `Store` stub. SQLite vs filesystem vs another local store is a Phase 6 decision and will be documented then.
+Filesystem JSON under the Tauri app data directory (`library/index.json` + `library/songs/{id}.json`). SQLite was deferred: serde `Song` already round-trips, files are inspectable, and a `SongLibrary` trait keeps a later swap possible. Favorite, tags, and recents are stored beside `Song`, not on the domain document.
 
 ## Import crate layout
 
@@ -44,7 +44,7 @@ ChordPro and plain-text parsers live in a dedicated `tonic-import` crate. They a
 
 ## Themes
 
-Dark is the default (stage-friendly). The user can pin Dark, Light, or System. System follows `prefers-color-scheme`. Stored in `localStorage` until Phase 6.
+Dark is the default (stage-friendly). The user can pin Dark, Light, or System. System follows `prefers-color-scheme`. Theme and type scale stay in `localStorage` (presentation only, not song data).
 
 ## Viewer / transpose (Phase 5)
 
@@ -52,7 +52,7 @@ Dark is the default (stage-friendly). The user can pin Dark, Light, or System. S
 - `−`/`+` accumulate a semitone offset from the original key (`Key::transpose_semitones` preferred spellings: `G+1 → Ab`).
 - Missing original key is inferred on first transpose from the first fully recognized chord (minor → minor key), else `C`.
 - Theme and type scale are presentation state, not song data.
-- Session song is discarded when the process exits.
+- Session song is discarded when the process exits. (Superseded in Phase 6: import saves to the library; closing the viewer does not delete the song.)
 
 ## Android
 
@@ -88,5 +88,5 @@ Workspace crates declare MIT for now. This can change if the product owner picks
 - `SongId` is an opaque string assigned outside the domain crate.
 - `lyric_index` counts Unicode scalars in concatenated lyric tokens.
 - Time-signature denominators must be powers of two; tempo is 1–400 BPM.
-- JSON is the Phase 3 interchange format, not the library database.
+- JSON is the Phase 3 interchange format and, as of Phase 6, also the on-disk library format.
 - MusicXML is not a `SourceFormat` variant yet (use `other` if needed until Phase 10).

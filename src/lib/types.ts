@@ -57,6 +57,52 @@ export type SongSession = {
   warnings: WarningView[];
   summaryMessage: string | null;
   semitoneOffset: number;
+  favorite: boolean;
+  tags: string[];
+};
+
+export type LibrarySort =
+  | "title"
+  | "artist"
+  | "recentOpened"
+  | "recentModified";
+
+export type LibraryQuery = {
+  search?: string | null;
+  artist?: string | null;
+  key?: string | null;
+  favoritesOnly?: boolean | null;
+  tag?: string | null;
+  sort?: LibrarySort | string | null;
+};
+
+export type LibrarySongSummary = {
+  id: string;
+  title: string;
+  artist: string | null;
+  album: string | null;
+  originalKey: string | null;
+  performanceKey: string | null;
+  favorite: boolean;
+  tags: string[];
+  lastOpenedAt: number | null;
+  lastModifiedAt: number | null;
+};
+
+export type LibraryList = {
+  songs: LibrarySongSummary[];
+  recents: LibrarySongSummary[];
+  artists: string[];
+  keys: string[];
+  tags: string[];
+};
+
+export type MetadataUpdate = {
+  title: string;
+  artist: string | null;
+  album: string | null;
+  notes: string | null;
+  tags: string[];
 };
 
 export type ThemePreference = "dark" | "light" | "system";

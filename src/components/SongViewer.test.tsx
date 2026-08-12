@@ -52,6 +52,8 @@ const session: SongSession = {
   ],
   summaryMessage: "Some content could not be recognized.",
   semitoneOffset: 2,
+  favorite: false,
+  tags: ["demo"],
 };
 
 describe("SongViewer", () => {
