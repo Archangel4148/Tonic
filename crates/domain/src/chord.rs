@@ -2,10 +2,13 @@
 
 use std::fmt;
 
+use serde::{Deserialize, Serialize};
+
 use crate::note::Note;
 
 /// How completely a chord symbol was recognized.
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub enum ParseStatus {
     FullyRecognized,
     PartiallyRecognized,
@@ -13,7 +16,8 @@ pub enum ParseStatus {
 }
 
 /// Triad quality. Suspensions are stored separately and replace the third when present.
-#[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Hash)]
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub enum Quality {
     #[default]
     Major,
@@ -23,7 +27,8 @@ pub enum Quality {
 }
 
 /// Seventh quality. Dominant means a minor seventh (`b7`).
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub enum Seventh {
     Dominant,
     Major,
@@ -31,7 +36,8 @@ pub enum Seventh {
 }
 
 /// Upper extension implied or written in the symbol.
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub enum Extension {
     Sixth,
     Ninth,
@@ -40,7 +46,8 @@ pub enum Extension {
 }
 
 /// Alteration of a chord tone, e.g. `b5` or `#11`.
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Alteration {
     degree: u8,
     semitone_delta: i8,
@@ -91,7 +98,8 @@ impl Alteration {
 }
 
 /// Suspended second or fourth, replacing the triad third.
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub enum Suspension {
     Sus2,
     Sus4,
@@ -108,7 +116,8 @@ impl Suspension {
 }
 
 /// Explicit added tone that does not imply a seventh (`add9`, `add4`, …).
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub enum AddedTone {
     Add2,
     Add4,
@@ -133,7 +142,8 @@ impl AddedTone {
 }
 
 /// A parsed chord with independent musical components.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Chord {
     root: Option<Note>,
     quality: Quality,

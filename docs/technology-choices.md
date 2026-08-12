@@ -17,12 +17,12 @@ These choices follow the spec's required stack and keep Phase 1 small enough to 
 
 Phase 1 splits that work into workspace crates so later phases do not have to invent boundaries:
 
-| Crate                 | Responsibility                                                      |
-| --------------------- | ------------------------------------------------------------------- |
-| `tonic-domain`        | Music theory and canonical song model. No UI or Tauri dependencies. |
-| `tonic-app`           | Application services and in-memory authoritative state.             |
-| `tonic-persist`       | Persistence boundary. In-memory stub only in Phase 1.               |
-| `tonic` (`src-tauri`) | Windowing, IPC, and OS integration.                                 |
+| Crate                 | Responsibility                                                       |
+| --------------------- | -------------------------------------------------------------------- |
+| `tonic-domain`        | Music theory and canonical song model. Serde JSON only; no UI/Tauri. |
+| `tonic-app`           | Application services and in-memory authoritative state.              |
+| `tonic-persist`       | Persistence boundary. In-memory stub only in Phase 1.                |
+| `tonic` (`src-tauri`) | Windowing, IPC, and OS integration.                                  |
 
 The popular gRPC crate also named `tonic` is not a dependency. Our crates use the `tonic-*` prefix to stay distinct.
 

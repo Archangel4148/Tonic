@@ -15,7 +15,7 @@ React + TypeScript is the frontend. The spec allowed React, Svelte, Vue, or vani
 
 ## Domain vs persistence dependency
 
-The spec's layer diagram is interpreted as layering, not as domain depending on persistence. `tonic-domain` has zero dependencies. `tonic-app` depends on domain and persist. Persistence will depend on domain types once those types exist.
+The spec's layer diagram is interpreted as layering, not as domain depending on persistence. `tonic-domain` depends only on `serde` / `serde_json` (song interchange). It has no Tauri or UI dependencies. `tonic-app` depends on domain and persist. Persistence will depend on domain `Song` types in Phase 6.
 
 ## Persistence technology
 
@@ -60,3 +60,12 @@ Workspace crates declare MIT for now. This can change if the product owner picks
 - Minor keys use the natural minor scale for diatonic spelling.
 - Capo frets are `0..=12`.
 - Phase 2 does not expose transposition over IPC or in the UI.
+
+## Song model (Phase 3)
+
+- Written chord tokens are authoritative; performance-key display is derived.
+- `SongId` is an opaque string assigned outside the domain crate.
+- `lyric_index` counts Unicode scalars in concatenated lyric tokens.
+- Time-signature denominators must be powers of two; tempo is 1–400 BPM.
+- JSON is the Phase 3 interchange format, not the library database.
+- MusicXML is not a `SourceFormat` variant yet (use `other` if needed until Phase 10).

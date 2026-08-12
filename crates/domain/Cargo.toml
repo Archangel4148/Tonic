@@ -6,6 +6,8 @@ description = "UI-independent music-theory and song-domain layer for Tonic"
 license.workspace = true
 
 [dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
 
 [lints]
 workspace = true

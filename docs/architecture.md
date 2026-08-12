@@ -27,7 +27,7 @@ Domain code must stay independently unit-testable. Persistence will depend on do
 1. UI components must not contain music-theory algorithms.
 2. Chord parsing and transposition must not depend on UI components.
 3. Persistence is not the authoritative representation of active application state.
-4. There is one canonical in-memory song representation (introduced in Phase 3).
+4. There is one canonical in-memory song representation (`Song` in `tonic-domain`).
 5. The renderer consumes the canonical model rather than reparsing raw text.
 6. Setlists reference songs; they do not copy song documents.
 7. There is one transposition implementation, living in `tonic-domain`.
@@ -37,7 +37,7 @@ Domain code must stay independently unit-testable. Persistence will depend on do
 
 ### `tonic-domain`
 
-Pure domain logic. Phase 2 implements notes, keys, chord parsing, transposition, and capo math. See [`music-theory.md`](./music-theory.md). The canonical song model arrives in Phase 3.
+Pure domain logic: music engine plus the canonical `Song` model. See [`music-theory.md`](./music-theory.md) and [`song-model.md`](./song-model.md).
 
 ### `tonic-app`
 
@@ -65,10 +65,10 @@ JSON uses camelCase to match TypeScript.
 
 ## What later phases still do not include
 
-- Canonical song/setlist types (Phase 3)
 - Import/export (Phase 4+)
 - Transpose UI / viewer (Phase 5)
 - Durable storage (Phase 6)
 - Library, editor, or performance UI
+- Setlists (Phase 8)
 - Android project generation
 - Cloud, accounts, or telemetry

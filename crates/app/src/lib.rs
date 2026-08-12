@@ -19,9 +19,8 @@ pub struct AppInfo {
 
 /// In-process application services.
 ///
-/// Phase 2 still only exposes health and identity over IPC. Song library,
-/// setlists, and preferences will live here in later phases. The music
-/// engine lives in `tonic-domain` and is not wrapped by UI yet.
+/// Phase 3 still only exposes health and identity over IPC. The canonical
+/// song model lives in `tonic-domain`. Library persistence is Phase 6.
 #[derive(Debug)]
 pub struct AppServices {
     store: MemoryStore,
@@ -40,7 +39,7 @@ impl AppServices {
         AppInfo {
             name: "Tonic",
             version: env!("CARGO_PKG_VERSION"),
-            phase: 2,
+            phase: 3,
             domain_engine: engine_name(),
             domain_version: engine_version(),
         }
@@ -68,7 +67,7 @@ mod tests {
         let info = services.info();
 
         assert_eq!(info.name, "Tonic");
-        assert_eq!(info.phase, 2);
+        assert_eq!(info.phase, 3);
         assert_eq!(info.domain_engine, "tonic-domain");
         assert!(!info.version.is_empty());
         assert!(!info.domain_version.is_empty());

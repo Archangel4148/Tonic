@@ -11,7 +11,7 @@ Tonic/
 │   ├── spec.md                Authoritative product spec
 │   └── phases/                Per-phase review notes
 ├── crates/
-│   ├── domain/                tonic-domain (music engine)
+│   ├── domain/                tonic-domain (music engine + Song model)
 │   ├── app/                   tonic-app
 │   └── persist/               tonic-persist
 ├── src/                       React + TypeScript UI

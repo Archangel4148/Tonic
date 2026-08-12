@@ -11,9 +11,13 @@ Phase 1 authoritative state:
 - Application identity (`AppInfo`)
 - Persistence health, derived from the `Store` boundary
 
-Later authoritative state will include:
+Domain authoritative song data (Phase 3, in `tonic-domain`):
 
-- Song documents
+- `Song` documents: written chord tokens, original/performance keys, source text
+- Display chords after a key change are **derived** (`Song::display_chord`)
+
+Later authoritative application state will include:
+
 - Library entries
 - Setlists and setlist-entry overrides
 - User display and transposition preferences
@@ -26,7 +30,7 @@ Recalculated from authoritative state. Do not store it as a second source of tru
 
 Examples for later phases:
 
-- Transposed chords
+- Transposed/display chords (`Song::display_chord`)
 - Search results
 - Setlist progress
 - Rendered chord/lyric layout

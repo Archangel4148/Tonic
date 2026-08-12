@@ -16,8 +16,10 @@ This folder is the project documentation. The product requirements live in [`spe
 | [Testing](./testing.md)                       | Rust and UI test setup                           |
 | [Assumptions](./assumptions.md)               | Decisions made where the spec was open           |
 | [Music theory](./music-theory.md)             | Notes, keys, parser, transposition, spelling     |
+| [Song model](./song-model.md)                 | Canonical song, tokens, JSON interchange         |
 | [Phase 1 report](./phases/phase-1.md)         | Foundation checkpoint                            |
 | [Phase 2 report](./phases/phase-2.md)         | Music-engine checkpoint                          |
+| [Phase 3 report](./phases/phase-3.md)         | Song-model checkpoint                            |
 
 ## Source of truth
 

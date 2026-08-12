@@ -34,6 +34,13 @@ Phase 2 coverage (`cargo test -p tonic-domain`):
 - Key-to-key transpose spelling
 - Capo sounding vs played shapes
 
+Phase 3 coverage:
+
+- Song without raw source text
+- Inline and chord-over-lyric position recovery
+- JSON round-trip equality
+- Performance-key display does not mutate written chords or source
+
 ## Frontend
 
 Vitest uses jsdom and Testing Library.
@@ -47,7 +54,7 @@ Tauri `invoke` is mocked in `src/test/setup.ts` so UI tests do not require a run
 
 - End-to-end Tauri window launch (manual: `npm run tauri dev`)
 - Android
-- Import, song rendering, persistence round-trips
+- Import, song rendering, durable persistence round-trips
 - UI-level transposition (engine is tested in Rust only)
 
 Those arrive with the phases that implement them.

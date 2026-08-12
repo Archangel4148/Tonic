@@ -9,6 +9,8 @@ function phaseLabel(phase: number): string {
       return " — Foundation";
     case 2:
       return " — Music engine";
+    case 3:
+      return " — Song model";
     default:
       return "";
   }

@@ -2,6 +2,8 @@
 
 use std::fmt;
 
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
+
 use crate::pitch::{PitchClass, Semitones};
 
 /// Diatonic letter name.
@@ -270,6 +272,20 @@ impl Note {
 impl fmt::Display for Note {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(&self.symbol())
+    }
+}
+
+impl Serialize for Note {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(&self.symbol())
+    }
+}
+
+impl<'de> Deserialize<'de> for Note {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let symbol = String::deserialize(deserializer)?;
+        Self::parse(&symbol)
+            .ok_or_else(|| serde::de::Error::custom(format!("invalid note: {symbol}")))
     }
 }
 
