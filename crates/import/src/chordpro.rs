@@ -5,6 +5,9 @@ use tonic_domain::{
     Section, SectionLabel, Song, SongId, SongSource, Tempo, TimeSignature,
 };
 
+use crate::section::{
+    extract_capo_directive, is_layout_marker, is_prose_annotation, split_leading_section_header,
+};
 use crate::warning::{ImportWarning, WarningKind};
 use crate::ImportResult;
 
@@ -36,9 +39,7 @@ pub fn import_chordpro(input: &str, id: impl Into<SongId>) -> ImportResult {
         }
 
         if trimmed.starts_with('#') {
-            current_lines.push(Line::new(vec![LineToken::Annotation(
-                AnnotationToken::new(trimmed.trim_start_matches('#').trim()),
-            )]));
+            // ChordPro `#` comments are not part of the performed song.
             continue;
         }
 
@@ -105,6 +106,37 @@ pub fn import_chordpro(input: &str, id: impl Into<SongId>) -> ImportResult {
             continue;
         }
 
+        if let Some(capo) = extract_capo_directive(trimmed) {
+            current_lines.push(Line::new(vec![LineToken::Annotation(
+                AnnotationToken::new(capo),
+            )]));
+            continue;
+        }
+
+        if is_prose_annotation(trimmed) {
+            current_lines.push(Line::new(vec![LineToken::Annotation(
+                AnnotationToken::new(trimmed),
+            )]));
+            continue;
+        }
+
+        if let Some((label, rest)) = split_leading_section_header(trimmed) {
+            flush_section(
+                &mut sections,
+                &mut current_label,
+                &mut current_lines,
+                section_explicit,
+            );
+            current_label = label;
+            section_explicit = true;
+            if !rest.is_empty() {
+                let (line, line_warnings) = parse_chordpro_line(rest, line_no);
+                warnings.extend(line_warnings);
+                current_lines.push(line);
+            }
+            continue;
+        }
+
         let (line, line_warnings) = parse_chordpro_line(raw_line, line_no);
         warnings.extend(line_warnings);
         current_lines.push(line);
@@ -152,6 +184,16 @@ pub fn import_chordpro(input: &str, id: impl Into<SongId>) -> ImportResult {
         song: builder.build(),
         warnings,
     }
+}
+
+fn has_song_body(title: &Option<String>, sections: &[Section], lines: &[Line]) -> bool {
+    title.is_some()
+        || !sections.is_empty()
+        || lines.iter().any(|line| {
+            line.tokens()
+                .iter()
+                .any(|token| matches!(token, LineToken::Chord(_) | LineToken::Lyric(_)))
+        })
 }
 
 fn parse_directive(line: &str) -> Option<(String, String, bool)> {
@@ -224,18 +266,27 @@ fn apply_directive(
     let name = alias_name(name);
     match name {
         "title" => {
-            if title.is_none() && !value.is_empty() {
-                *title = Some(value.to_string());
+            if !value.is_empty() {
+                if title.is_none() {
+                    *title = Some(value.to_string());
+                } else if artist.is_none() {
+                    *artist = Some(value.to_string());
+                }
             }
         }
-        "artist" | "composer" => {
-            if artist.is_none() && !value.is_empty() {
+        "artist" => {
+            if !value.is_empty() {
                 *artist = Some(value.to_string());
             }
         }
-        "subtitle" => {
+        "composer" | "subtitle" => {
             if artist.is_none() && !value.is_empty() {
-                *artist = Some(value.to_string());
+                *artist = Some(
+                    value
+                        .trim_matches(|c: char| matches!(c, '(' | ')'))
+                        .trim()
+                        .to_string(),
+                );
             }
         }
         "album" => {
@@ -278,7 +329,11 @@ fn apply_directive(
         }
         "capo" => {
             if !value.is_empty() {
-                note_lines.push(format!("Capo: {value}"));
+                let text = format!("Capo {value}");
+                note_lines.push(text.clone());
+                current_lines.push(Line::new(vec![LineToken::Annotation(
+                    AnnotationToken::new(text),
+                )]));
             }
         }
         "comment" => {
@@ -289,12 +344,16 @@ fn apply_directive(
             }
         }
         "new_song" => {
-            *skip_remaining = true;
-            warnings.push(ImportWarning::new(
-                WarningKind::SkippedContent,
-                "Additional songs in this file were skipped.",
-                Some(line_no),
-            ));
+            // Many real .pro dumps start with `{ns}`. Only skip if a song body
+            // has already been collected.
+            if has_song_body(title, sections, current_lines) {
+                *skip_remaining = true;
+                warnings.push(ImportWarning::new(
+                    WarningKind::SkippedContent,
+                    "Additional songs in this file were skipped.",
+                    Some(line_no),
+                ));
+            }
         }
         "define" | "chord" => {}
         name if name.starts_with("start_of_") => {
@@ -411,12 +470,8 @@ fn parse_chordpro_line(line: &str, line_no: u32) -> (Line, Vec<ImportWarning>) {
                 }
                 Some(end) => {
                     let chord_text = stripped[..end].trim();
-                    if chord_text.is_empty() {
-                        warnings.push(ImportWarning::new(
-                            WarningKind::MalformedInput,
-                            "Empty chord brackets [].",
-                            Some(line_no),
-                        ));
+                    if is_layout_marker(chord_text) {
+                        // Bar lines, N.C., empty `[]` — keep lyrics flowing.
                     } else {
                         let chord = parse_chord(chord_text);
                         match chord.status() {

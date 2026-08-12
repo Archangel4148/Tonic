@@ -1,16 +1,17 @@
 # State management
 
-Application state has a single ownership model. Phase 1 only implements enough of that model to prove the boundary.
+Application state has a single ownership model. Phase 5 owns the current song in Rust and presentation prefs in the UI.
 
 ## Authoritative state
 
 Owned by Rust application services (`tonic-app`), not by React and not by the persistence crate.
 
-Phase 1–4 authoritative state owned by `AppServices`:
+Phase 5 authoritative state owned by `AppServices`:
 
 - Application identity (`AppInfo`)
 - Persistence health, derived from the `Store` boundary
-- Import orchestration (`import_song` → `tonic-import` → `Song`); results are not stored in the library yet
+- Current session `Song` (import + performance key / transpose steps)
+- Import warnings for that session
 
 Domain authoritative song data (Phase 3, in `tonic-domain`):
 
@@ -29,16 +30,16 @@ Persistence stores a durable copy of authoritative documents. It does not become
 
 Recalculated from authoritative state. Do not store it as a second source of truth.
 
-Examples for later phases:
+Derived (recalculated, not stored as truth):
 
-- Transposed/display chords (`Song::display_chord`)
-- Search results
-- Setlist progress
-- Rendered chord/lyric layout
+- Transposed/display chords (`Song::display_chord` → `SongSessionView`)
+- Rendered chord/lyric layout in React
 
-Phase 1 derived/presentation state in the UI:
+Presentation state in the UI:
 
-- Loading / error / ready status for the `app_info` request
+- Loading / error / ready status
+- Import textarea draft
+- Theme and type scale (`localStorage`)
 
 That UI status is not domain data. It only describes whether IPC succeeded.
 
@@ -62,7 +63,7 @@ That UI status is not domain data. It only describes whether IPC succeeded.
 │  presentation state only                     │
 │  (loading, layout, unsaved editor drafts)    │
 └──────────────────────┬───────────────────────┘
-                       │ invoke("app_info")
+                       │ invoke (app_info, import, transpose, …)
                        ▼
 ┌──────────────────────────────────────────────┐
 │ Tauri shell                                  │

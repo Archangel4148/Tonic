@@ -87,6 +87,25 @@ impl Key {
         self.pitch_class().ascending_to(other.pitch_class())
     }
 
+    /// Move this key by `semitones`, keeping major/minor and using common tonic spellings.
+    ///
+    /// `G + 1 → Ab`, `Am + 2 → Bm`. Display chords still use [`crate::transpose::transpose_to_key`].
+    #[must_use]
+    pub fn transpose_semitones(self, semitones: i32) -> Self {
+        let pc = self.pitch_class().wrapping_add(Semitones::new(semitones));
+        Self::from_pitch_class(pc, self.mode)
+    }
+
+    /// Preferred concert-key spelling for a tonic pitch class.
+    #[must_use]
+    pub fn from_pitch_class(pc: PitchClass, mode: Mode) -> Self {
+        let tonic = preferred_tonic(pc, mode);
+        match mode {
+            Mode::Major => Self::major(tonic),
+            Mode::Minor => Self::minor(tonic),
+        }
+    }
+
     /// Preferred accidental family for chromatic (non-diatonic) notes.
     #[must_use]
     pub fn accidental_preference(self) -> AccidentalPreference {
@@ -150,6 +169,18 @@ impl Key {
 pub enum AccidentalPreference {
     Sharps,
     Flats,
+}
+
+fn preferred_tonic(pc: PitchClass, mode: Mode) -> Note {
+    let symbols: [&str; 12] = match mode {
+        Mode::Major => [
+            "C", "Db", "D", "Eb", "E", "F", "F#", "G", "Ab", "A", "Bb", "B",
+        ],
+        Mode::Minor => [
+            "C", "C#", "D", "Eb", "E", "F", "F#", "G", "G#", "A", "Bb", "B",
+        ],
+    };
+    Note::parse(symbols[pc.value() as usize]).expect("preferred tonic symbols are valid")
 }
 
 fn signed_pc_delta(from: i32, to: i32) -> i32 {
@@ -267,5 +298,33 @@ mod tests {
         assert!(Key::parse("H").is_none());
         assert!(Key::parse("C dorian").is_none());
         assert!(Key::parse("major").is_none());
+    }
+
+    #[test]
+    fn transpose_semitones_uses_common_spellings() {
+        assert_eq!(
+            Key::parse("G").unwrap().transpose_semitones(2).symbol(),
+            "A"
+        );
+        assert_eq!(
+            Key::parse("G").unwrap().transpose_semitones(1).symbol(),
+            "Ab"
+        );
+        assert_eq!(
+            Key::parse("Am").unwrap().transpose_semitones(2).symbol(),
+            "Bm"
+        );
+        assert_eq!(
+            Key::parse("C").unwrap().transpose_semitones(-1).symbol(),
+            "B"
+        );
+        assert_eq!(
+            Key::parse("F#").unwrap().transpose_semitones(1).symbol(),
+            "G"
+        );
+        assert_eq!(
+            Key::parse("Db").unwrap().transpose_semitones(2).symbol(),
+            "Eb"
+        );
     }
 }

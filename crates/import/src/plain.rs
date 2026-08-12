@@ -5,6 +5,7 @@ use tonic_domain::{
     SectionLabel, Song, SongId, SongSource, Tempo, TimeSignature,
 };
 
+use crate::section::{is_no_chord_mark, parse_section_header};
 use crate::warning::{ImportWarning, WarningKind};
 use crate::ImportResult;
 
@@ -226,42 +227,6 @@ fn apply_metadata(
         "capo" => note_lines.push(format!("Capo: {value}")),
         _ => {}
     }
-}
-
-fn parse_section_header(line: &str) -> Option<SectionLabel> {
-    let stripped = line
-        .trim()
-        .trim_matches(|c: char| matches!(c, '[' | ']' | '*' | '#' | ':'))
-        .trim();
-    if stripped.is_empty() {
-        return None;
-    }
-    let lower = stripped.to_ascii_lowercase();
-    let mut parts = lower.split_whitespace();
-    let word = parts.next()?;
-    let number = parts.find_map(|p| p.parse::<u16>().ok());
-    match word {
-        "verse" => Some(SectionLabel::Verse { number }),
-        "chorus" => Some(SectionLabel::Chorus { number }),
-        "bridge" => Some(SectionLabel::Bridge),
-        "intro" => Some(SectionLabel::Intro),
-        "outro" => Some(SectionLabel::Outro),
-        "solo" => Some(SectionLabel::Solo),
-        "instrumental" | "interlude" => Some(SectionLabel::Instrumental),
-        "pre-chorus" | "prechorus" => Some(SectionLabel::PreChorus),
-        "pre" if lower.contains("chorus") => Some(SectionLabel::PreChorus),
-        "tag" | "breakdown" => Some(SectionLabel::Custom {
-            name: stripped.to_string(),
-        }),
-        _ => None,
-    }
-}
-
-fn is_no_chord_mark(line: &str) -> bool {
-    matches!(
-        line.to_ascii_lowercase().as_str(),
-        "n.c." | "nc" | "n/c" | "%"
-    )
 }
 
 fn is_chord_line(line: &str) -> bool {

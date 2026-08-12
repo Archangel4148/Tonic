@@ -6,9 +6,9 @@ Tonic is built with **Tauri 2**, a **Rust** domain layer, and a **React + TypeSc
 
 ## Current phase
 
-**Phase 4 — ChordPro & Plain Text Import**
+**Phase 5 — Song Viewer**
 
-Songs import from ChordPro and chord-over-lyrics text into the canonical Rust model. Viewer, library, editor, and live mode are not implemented yet.
+Import a ChordPro or plain-text chart, read aligned chords and lyrics, and change key. Library save, editor, and live mode are not implemented yet.
 
 ## Quick start
 
@@ -32,10 +32,12 @@ All project documentation lives in [`docs/`](./docs/README.md).
 - [Music theory](./docs/music-theory.md)
 - [Song model](./docs/song-model.md)
 - [Import](./docs/import.md)
+- [Viewer](./docs/viewer.md)
 - [Phase 1 report](./docs/phases/phase-1.md)
 - [Phase 2 report](./docs/phases/phase-2.md)
 - [Phase 3 report](./docs/phases/phase-3.md)
 - [Phase 4 report](./docs/phases/phase-4.md)
+- [Phase 5 report](./docs/phases/phase-5.md)
 
 ## License
 

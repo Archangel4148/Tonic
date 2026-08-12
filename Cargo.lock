@@ -3898,6 +3898,7 @@ dependencies = [
 name = "tonic-app"
 version = "0.1.0"
 dependencies = [
+ "serde",
  "tonic-domain",
  "tonic-import",
  "tonic-persist",

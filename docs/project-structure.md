@@ -20,7 +20,8 @@ Tonic/
 │       └── tests/
 ├── src/                       React + TypeScript UI
 │   ├── App.tsx                Application shell
-│   ├── lib/                   IPC wrappers and shared UI types
+│   ├── components/            Import panel, viewer, transpose, theme
+│   ├── lib/                   IPC wrappers, types, samples, chart split
 │   └── test/                  Test setup
 └── src-tauri/                 Tauri shell crate (`tonic` / `tonic_lib`)
     ├── tauri.conf.json
@@ -44,7 +45,7 @@ Tonic/
 
 ## Frontend layout rule
 
-Keep `src/` flat until a later phase needs more structure. Do not add routers, stores, or feature folders ahead of the UI that would use them.
+Phase 5 added `src/components/` for the viewer. Do not add a router, client store, or library screens ahead of Phase 6+.
 
 ## Generated / ignored output
 

@@ -23,7 +23,7 @@ Not chosen yet. Phase 1 only has an in-memory `Store` stub. SQLite vs filesystem
 
 ## Import crate layout
 
-ChordPro and plain-text parsers live in a dedicated `tonic-import` crate. They are not part of `tonic-domain` (no parsing of source formats in the music engine) and not part of `tonic-persist` (import is not storage). `tonic-app` orchestrates import; IPC/UI arrives in Phase 5.
+ChordPro and plain-text parsers live in a dedicated `tonic-import` crate. They are not part of `tonic-domain` (no parsing of source formats in the music engine) and not part of `tonic-persist` (import is not storage). `tonic-app` orchestrates import and owns the current session song. IPC/UI arrived in Phase 5.
 
 ## Import behavior (Phase 4)
 
@@ -32,8 +32,9 @@ ChordPro and plain-text parsers live in a dedicated `tonic-import` crate. They a
 - Unknown chords are preserved with `ParseStatus::Unrecognized`.
 - Chord-line detection requires a majority of **fully** recognized tokens (partial words such as `Amazing` do not count).
 - Plain `[Chorus]` is a section header, not ChordPro.
-- `{capo}` / `Capo:` become song notes, not a domain capo field.
-- `{new_song}` skips remaining content rather than splitting files into multiple songs.
+- `{capo}` and dump markers like `[(capo][+1)]` stay in-line as annotations (`Capo 1` / `Capo +1`), not a domain capo field. `{capo}` also copies into song notes.
+- ChordPro `#` lines are ignored. `{artist}` wins over `{composer}` / `{subtitle}`.
+- `{new_song}` / `{ns}` only skips remaining content if a song body was already parsed. Leading `{ns}` in `.pro` dumps is ignored.
 - Default section is Verse when none is declared.
 - `SongId` is still assigned by the caller.
 
@@ -43,7 +44,15 @@ ChordPro and plain-text parsers live in a dedicated `tonic-import` crate. They a
 
 ## Themes
 
-The Phase 1 shell is dark-first and still follows `prefers-color-scheme` for light mode. Dedicated theme settings and live-performance dark mode arrive later.
+Dark is the default (stage-friendly). The user can pin Dark, Light, or System. System follows `prefers-color-scheme`. Stored in `localStorage` until Phase 6.
+
+## Viewer / transpose (Phase 5)
+
+- The UI renders `SongSessionView`; it does not reparse chart text.
+- `−`/`+` accumulate a semitone offset from the original key (`Key::transpose_semitones` preferred spellings: `G+1 → Ab`).
+- Missing original key is inferred on first transpose from the first fully recognized chord (minor → minor key), else `C`.
+- Theme and type scale are presentation state, not song data.
+- Session song is discarded when the process exits.
 
 ## Android
 
@@ -71,7 +80,7 @@ Workspace crates declare MIT for now. This can change if the product owner picks
 - Keyless transpose preserves accidental family; natural notes use the sharp chromatic (`C+1 → C#`, `B+2 → C#`).
 - Minor keys use the natural minor scale for diatonic spelling.
 - Capo frets are `0..=12`.
-- Phase 2 does not expose transposition over IPC or in the UI.
+- Phase 5 exposes transposition over IPC; the UI never transposes locally.
 
 ## Song model (Phase 3)
 

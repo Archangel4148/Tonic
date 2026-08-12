@@ -11,6 +11,7 @@ Phase 2 covers notes, keys, chord parsing, transposition, and a small capo helpe
 | `Note::parse` / `Note::consume`           | Spelled notes (`C`, `F#`, `Bb`, `E#`, `Cb`, …)       |
 | `PitchClass` / `Semitones`                | Pitch class `0..12` and signed intervals             |
 | `Key::parse`                              | Major/minor keys (`C`, `Am`, `F# minor`, `Bb major`) |
+| `Key::transpose_semitones`                | Move a key by ±N using common tonic spellings        |
 | `Key::spell`                              | Enharmonic spelling in a key                         |
 | `parse_chord`                             | Structured chord parse; never discards text          |
 | `transpose_semitones`                     | Offset transpose, keep accidental family             |
@@ -89,5 +90,5 @@ concert_pitch(G, capo 2) = A
 ## Out of scope here
 
 - Song / line / section model (Phase 3)
-- Transpose UI or Tauri commands (Phase 5)
+- Transpose UI or Tauri commands (see Phase 5 viewer)
 - Changing chord quality when moving between major and minor keys — only pitch-bearing notes change

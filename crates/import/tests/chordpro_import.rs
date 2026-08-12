@@ -4,6 +4,8 @@ use tonic_import::{import, import_auto, ImportFormat, WarningKind, UNRECOGNIZED_
 const AMAZING: &str = include_str!("../fixtures/chordpro/amazing_grace.cho");
 const UNKNOWN: &str = include_str!("../fixtures/chordpro/unknown_chords.cho");
 const MALFORMED: &str = include_str!("../fixtures/chordpro/malformed.cho");
+const LEADING_NS: &str = include_str!("../fixtures/chordpro/leading_ns.cho");
+const REAL_WORLD: &str = include_str!("../fixtures/chordpro/real_world_dump.cho");
 
 #[test]
 fn imports_chordpro_metadata_sections_and_positions() {
@@ -103,6 +105,126 @@ fn malformed_chordpro_keeps_usable_content() {
         .iter()
         .any(|w| w.kind == WarningKind::UnrecognizedDirective
             || w.kind == WarningKind::MalformedInput));
+}
+
+#[test]
+fn leading_new_song_directive_does_not_drop_the_song() {
+    let result = import(LEADING_NS, ImportFormat::ChordPro, "pie");
+    assert_eq!(result.song.title(), "AMERICAN PIE");
+    assert_eq!(result.song.artist(), Some("Don McLean"));
+    assert!(
+        result
+            .warnings
+            .iter()
+            .all(|w| w.kind != WarningKind::SkippedContent),
+        "{:?}",
+        result.warnings
+    );
+
+    let lyrics: String = result
+        .song
+        .sections()
+        .iter()
+        .flat_map(|section| section.lines())
+        .map(tonic_domain::Line::lyric_text)
+        .collect::<Vec<_>>()
+        .join(" ");
+    assert!(lyrics.contains("American Pie"), "{lyrics}");
+    assert!(lyrics.to_lowercase().contains("long"));
+
+    assert!(result
+        .song
+        .sections()
+        .iter()
+        .any(|section| section.label() == &SectionLabel::Intro));
+    let intro_chords: Vec<_> = result
+        .song
+        .sections()
+        .iter()
+        .find(|section| section.label() == &SectionLabel::Intro)
+        .unwrap()
+        .lines()
+        .iter()
+        .flat_map(tonic_domain::Line::chord_tokens)
+        .map(|token| token.chord().symbol())
+        .collect();
+    assert!(intro_chords.iter().any(|s| s == "D"), "{intro_chords:?}");
+    assert!(intro_chords.iter().any(|s| s == "G"), "{intro_chords:?}");
+
+    let symbols: Vec<String> = result
+        .song
+        .sections()
+        .iter()
+        .flat_map(|section| section.lines())
+        .flat_map(tonic_domain::Line::chord_tokens)
+        .map(|token| token.chord().symbol())
+        .collect();
+    assert!(symbols.iter().any(|s| s == "G"));
+    assert!(symbols.iter().any(|s| s == "D"));
+    assert!(!symbols.iter().any(|s| s == "|"), "{symbols:?}");
+}
+
+#[test]
+fn real_world_dump_keeps_chart_and_drops_noise() {
+    let result = import(REAL_WORLD, ImportFormat::ChordPro, "gambler");
+    let song = &result.song;
+    assert_eq!(song.title(), "GAMBLER (The) - Kenny Rogers");
+    assert_eq!(song.artist(), Some("Kenny Rogers"));
+
+    let lyrics: String = song
+        .sections()
+        .iter()
+        .flat_map(|section| section.lines())
+        .map(tonic_domain::Line::lyric_text)
+        .collect::<Vec<_>>()
+        .join("\n");
+    assert!(lyrics.contains("warm summers evenin"));
+    assert!(!lyrics.to_lowercase().contains("capo"), "{lyrics}");
+    assert!(!lyrics.contains("---"), "{lyrics}");
+
+    let annotations: Vec<String> = song
+        .sections()
+        .iter()
+        .flat_map(|section| section.lines())
+        .flat_map(|line| line.tokens())
+        .filter_map(|token| match token {
+            tonic_domain::LineToken::Annotation(annotation) => Some(annotation.text().to_string()),
+            _ => None,
+        })
+        .collect();
+    assert!(
+        annotations.iter().any(|text| text == "Capo +1"),
+        "{annotations:?}"
+    );
+    assert!(
+        annotations
+            .iter()
+            .any(|text| text.to_ascii_lowercase().starts_with("tip:")),
+        "{annotations:?}"
+    );
+    assert!(
+        annotations.iter().any(|text| text.contains("youtube")),
+        "{annotations:?}"
+    );
+
+    let symbols: Vec<String> = song
+        .sections()
+        .iter()
+        .flat_map(|section| section.lines())
+        .flat_map(tonic_domain::Line::chord_tokens)
+        .map(|token| token.chord().symbol())
+        .collect();
+    assert!(
+        !symbols
+            .iter()
+            .any(|s| s.contains("capo") || s.contains("+1")),
+        "{symbols:?}"
+    );
+    assert!(result
+        .warnings
+        .iter()
+        .all(|w| w.kind != WarningKind::UnrecognizedChord
+            || !w.message.to_ascii_lowercase().contains("capo")));
 }
 
 #[test]

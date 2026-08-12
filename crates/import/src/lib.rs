@@ -6,6 +6,7 @@
 mod chordpro;
 mod detect;
 mod plain;
+mod section;
 mod warning;
 
 pub use detect::{detect_format, format_from_extension};

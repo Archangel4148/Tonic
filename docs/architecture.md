@@ -42,7 +42,7 @@ Pure domain logic: music engine plus the canonical `Song` model. See [`music-the
 
 ### `tonic-app`
 
-Owns running-process authoritative state. Reports identity and persistence health, and orchestrates import via `AppServices::import_song`. Song library, setlists, and preferences will be added here rather than in React or the Tauri crate.
+Owns running-process authoritative state: identity, persistence health, the current in-memory `Song`, and import/transpose orchestration. Returns a `SongSessionView` DTO for the UI. Song library, setlists, and durable preferences will be added here rather than in React or the Tauri crate.
 
 ### `tonic-import`
 
@@ -58,19 +58,24 @@ Tauri entrypoint. It manages `AppServices` as Tauri state and exposes IPC comman
 
 ### React UI (`src/`)
 
-Presentation only. It may hold view state such as loading/error flags. It talks to Rust through `src/lib/tauri.ts` and must not reimplement domain behavior.
+Presentation only. It renders `SongSessionView`, holds theme/type-scale prefs, and talks to Rust through `src/lib/tauri.ts`. It must not reimplement domain behavior. See [`viewer.md`](./viewer.md).
 
-## IPC surface (Phase 1)
+## IPC surface (Phase 5)
 
-| Command    | Direction | Purpose                                                                   |
-| ---------- | --------- | ------------------------------------------------------------------------- |
-| `app_info` | UI → Rust | Return application identity, phase, domain engine, and persistence health |
+| Command                 | Direction | Purpose                                        |
+| ----------------------- | --------- | ---------------------------------------------- |
+| `app_info`              | UI → Rust | Identity, phase, engine, persistence, key list |
+| `import_song`           | UI → Rust | Import chart text into the session             |
+| `current_song`          | UI → Rust | Current session view, or `null`                |
+| `transpose_song`        | UI → Rust | Shift performance key by ±N semitones          |
+| `set_performance_key`   | UI → Rust | Set performance key by symbol                  |
+| `reset_performance_key` | UI → Rust | Restore original key                           |
+| `clear_song`            | UI → Rust | Drop the in-memory song                        |
 
 JSON uses camelCase to match TypeScript.
 
 ## What later phases still do not include
 
-- Import IPC / viewer / transpose UI (Phase 5)
 - Durable storage (Phase 6)
 - Library, editor, or performance UI
 - Setlists (Phase 8)

@@ -2,7 +2,7 @@
 
 ChordPro and plain-text parsers live in `tonic-import`. They produce the canonical [`Song`](./song-model.md) model. They do not own music theory, UI, or persistence.
 
-Application code calls `AppServices::import_song` (or `tonic_import::import` / `import_auto`). Phase 4 does not expose import over IPC or in the React shell.
+Application code calls `AppServices::import_text` (or `tonic_import::import` / `import_auto`). Phase 5 exposes this over IPC (`import_song`) and in the React import panel.
 
 ## API
 
@@ -20,10 +20,10 @@ That string is `UNRECOGNIZED_CONTENT_MESSAGE` (spec §18).
 
 ## Formats
 
-| Format     | Extensions                         | Source tag on `Song` |
-| ---------- | ---------------------------------- | -------------------- |
+| Format     | Extensions                                     | Source tag on `Song` |
+| ---------- | ---------------------------------------------- | -------------------- |
 | ChordPro   | `.cho`, `.crd`, `.chopro`, `.chordpro`, `.pro` | `chordPro`           |
-| Plain text | `.txt`, `.text`                    | `plainText`          |
+| Plain text | `.txt`, `.text`                                | `plainText`          |
 
 Original input is stored on `SongSource.original_content`. Key changes must not destroy it.
 
@@ -39,10 +39,13 @@ Supported metadata / structure (including common aliases such as `{t}`, `{st}`, 
 
 - `{title}`, `{artist}` / `{composer}` / `{subtitle}`, `{album}`
 - `{key}`, `{tempo}` / `{bpm}`, `{time}`
-- `{capo}` → song notes (`Capo: N`), not a domain capo field
-- `{comment}` and `#` lines → annotation tokens
+- `{capo}` / dump markers like `[(capo][+1)]` → inline annotations at that spot (`Capo 1`, `Capo +1`)
+- `{comment}` → annotation tokens; `#` comment lines are ignored
+- `TIP:` / URL lines → annotations
 - `{start_of_verse}` / `chorus` / `bridge` / `prechorus` / `intro` / `outro` / `solo` / `instrumental` / `tab` and matching `end_of_*`
-- `{new_song}` stops further songs in the same file and emits a warning
+- `{new_song}` / `{ns}` stops further songs only after a song body has started (leading `{ns}` in `.pro` dumps is ignored)
+- `[|]`, `[-]`, `[:]`, `[NC]` are layout markers, not chords
+- `[INTRO]` / `[Chorus]` lines become section headers
 - `{define}` / `{chord}` ignored (no fret diagrams yet)
 
 Unclosed `{…` or `[…` keep the usable portion and warn. Unknown directives warn. Unknown chord symbols are preserved as unrecognized tokens.
@@ -78,18 +81,17 @@ A line is a chord line only when a **majority** of whitespace-separated tokens a
 
 ## Warnings
 
-| Kind                     | Typical cause                          |
-| ------------------------ | -------------------------------------- |
-| `UnrecognizedChord`      | Symbol kept as written                 |
-| `PartialChord`           | Parser accepted a prefix only          |
-| `UnrecognizedDirective`  | Unknown `{…}`                          |
-| `MalformedInput`         | Unclosed brackets, bad key/tempo, empty song |
-| `AmbiguousLayout`        | Reserved for later heuristics          |
-| `SkippedContent`         | Extra songs after `{new_song}`         |
+| Kind                    | Typical cause                                |
+| ----------------------- | -------------------------------------------- |
+| `UnrecognizedChord`     | Symbol kept as written                       |
+| `PartialChord`          | Parser accepted a prefix only                |
+| `UnrecognizedDirective` | Unknown `{…}`                                |
+| `MalformedInput`        | Unclosed brackets, bad key/tempo, empty song |
+| `AmbiguousLayout`       | Reserved for later heuristics                |
+| `SkippedContent`        | Extra songs after a mid-file `{new_song}`    |
 
 ## Out of scope
 
-- Import UI / file picker / paste field (Phase 5)
 - Web URL import
 - MusicXML / MXL
 - Durable library save (Phase 6)

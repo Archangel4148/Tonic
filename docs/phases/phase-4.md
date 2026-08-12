@@ -1,7 +1,7 @@
 # Phase 4 — ChordPro & Plain Text Import
 
-**Status:** Implemented, pending review  
-**Do not start Phase 5 until explicitly instructed.**
+**Status:** Complete  
+**Phase 5 may proceed.**
 
 ## Goal
 
@@ -23,9 +23,9 @@ No viewer, transpose UI, web URL import, MusicXML, or durable storage.
 
 ## Acceptance criteria
 
-| Criterion                                         | Result                                                                 |
-| ------------------------------------------------- | ---------------------------------------------------------------------- |
-| Imported content is editable/renderable via model | Parsers emit `Song` sections, lines, and tokens                        |
+| Criterion                                         | Result                                                                      |
+| ------------------------------------------------- | --------------------------------------------------------------------------- |
+| Imported content is editable/renderable via model | Parsers emit `Song` sections, lines, and tokens                             |
 | Malformed input does not destroy usable content   | Unclosed `{`/`[`, unknown directives, and unknown chords still yield a song |
 
 ## Review notes

@@ -6,6 +6,7 @@ description = "Application services and authoritative in-memory state for Tonic"
 license.workspace = true
 
 [dependencies]
+serde.workspace = true
 tonic-domain.workspace = true
 tonic-persist.workspace = true
 tonic-import.workspace = true

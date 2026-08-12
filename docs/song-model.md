@@ -62,6 +62,5 @@ This JSON is the interchange form for tests and later persistence. It is not its
 
 ## Out of scope here
 
-- Viewer / transpose UI (Phase 5)
 - Saving to disk (Phase 6)
 - Setlists (Phase 8)

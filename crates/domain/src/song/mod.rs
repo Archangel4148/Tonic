@@ -155,6 +155,10 @@ impl Song {
         self.artist = artist;
     }
 
+    pub fn set_original_key(&mut self, key: Option<Key>) {
+        self.original_key = key;
+    }
+
     pub fn set_performance_key(&mut self, key: Option<Key>) {
         self.performance_key = key;
     }

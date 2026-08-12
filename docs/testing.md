@@ -41,6 +41,13 @@ Phase 3 coverage:
 - JSON round-trip equality
 - Performance-key display does not mutate written chords or source
 
+Phase 5 coverage (`cargo test -p tonic-app` + UI):
+
+- Import stores a session and returns display chords
+- Transpose changes performance key, not written chords or source
+- Missing original key is inferred from the first chord
+- Viewer/import/transpose UI against mocked IPC
+
 Phase 4 coverage (`cargo test -p tonic-import`):
 
 - ChordPro metadata, sections, and inline chord positions (`amazing_grace.cho`)
@@ -58,15 +65,18 @@ Vitest uses jsdom and Testing Library.
 Tauri `invoke` is mocked in `src/test/setup.ts` so UI tests do not require a running webview. Tests cover:
 
 - Shell render after a successful `app_info` response
+- Import → viewer (title, section, lyrics, chords)
+- Transpose IPC (lyrics unchanged, display chords update)
 - Visible error when the engine is unavailable
+- Chart-line syllable splitting
+- Viewer warnings and unrecognized chords
 
 ## What is not tested yet
 
 - End-to-end Tauri window launch (manual: `npm run tauri dev`)
 - Android
-- Song rendering and import UI (Phase 5)
 - Durable persistence round-trips (Phase 6)
-- UI-level transposition (engine is tested in Rust only)
+- End-to-end transpose in a real Tauri window (manual: `npm run tauri dev`)
 
 Those arrive with the phases that implement them.
 
