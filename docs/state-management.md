@@ -1,17 +1,18 @@
 # State management
 
-Application state has a single ownership model. Phase 6 owns the song library in Rust and presentation prefs in the UI.
+Application state has a single ownership model. Phase 7 owns the song library and editor draft in Rust and presentation prefs in the UI.
 
 ## Authoritative state
 
 Owned by Rust application services (`tonic-app`), not by React and not by the persistence crate.
 
-Phase 6 authoritative state owned by `AppServices`:
+Phase 7 authoritative state owned by `AppServices`:
 
 - Application identity (`AppInfo`)
 - Persistence health, derived from the `SongLibrary` boundary
 - In-memory song library (`StoredSong`: domain `Song` + favorite/tags/recents)
 - Current session (open song id + import warnings + transpose steps)
+- Editor draft (`EditorSession`: unsaved `Song` + dirty/new flags)
 
 Domain authoritative song data (Phase 3, in `tonic-domain`):
 
@@ -38,6 +39,7 @@ Presentation state in the UI:
 
 - Loading / error / ready status
 - Import textarea draft
+- Editor lyric/metadata form fields before blur/save
 - Theme and type scale (`localStorage`)
 
 That UI status is not domain data. It only describes whether IPC succeeded.
@@ -50,7 +52,7 @@ That UI status is not domain data. It only describes whether IPC succeeded.
 
 ## Persistence rules
 
-- Phase 6: filesystem JSON round-trips songs across restarts. Write-through after import, transpose, metadata, favorite, duplicate, and delete.
+- Phase 6+: filesystem JSON round-trips songs across restarts. Write-through after import, transpose, metadata, favorite, duplicate, delete, and **editor Save**. Editor Cancel does not write.
 - Persistence is a durable snapshot, not live truth.
 - Setlist entries will reference song IDs. They must not embed a full copy of the song document.
 

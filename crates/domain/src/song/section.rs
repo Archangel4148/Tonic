@@ -47,6 +47,10 @@ impl Section {
     pub fn lines_mut(&mut self) -> &mut Vec<Line> {
         &mut self.lines
     }
+
+    pub fn set_label(&mut self, label: SectionLabel) {
+        self.label = label;
+    }
 }
 
 impl SectionLabel {
@@ -64,6 +68,69 @@ impl SectionLabel {
             Self::Solo => "Solo".to_string(),
             Self::Outro => "Outro".to_string(),
             Self::Custom { name } => name.clone(),
+        }
+    }
+
+    #[must_use]
+    pub fn kind_key(&self) -> &'static str {
+        match self {
+            Self::Intro => "intro",
+            Self::Verse { .. } => "verse",
+            Self::PreChorus => "preChorus",
+            Self::Chorus { .. } => "chorus",
+            Self::Bridge => "bridge",
+            Self::Instrumental => "instrumental",
+            Self::Solo => "solo",
+            Self::Outro => "outro",
+            Self::Custom { .. } => "custom",
+        }
+    }
+
+    #[must_use]
+    pub fn number(&self) -> Option<u16> {
+        match self {
+            Self::Verse { number } | Self::Chorus { number } => *number,
+            _ => None,
+        }
+    }
+
+    #[must_use]
+    pub fn custom_name(&self) -> Option<&str> {
+        match self {
+            Self::Custom { name } => Some(name.as_str()),
+            _ => None,
+        }
+    }
+
+    /// Parse UI/IPC section kinds (`verse`, `preChorus`, `custom`, …).
+    ///
+    /// # Errors
+    ///
+    /// Unknown kind, or custom without a name.
+    pub fn parse(
+        kind: &str,
+        number: Option<u16>,
+        custom_name: Option<&str>,
+    ) -> Result<Self, String> {
+        match kind.trim() {
+            "intro" => Ok(Self::Intro),
+            "verse" => Ok(Self::Verse { number }),
+            "preChorus" | "pre-chorus" | "prechorus" => Ok(Self::PreChorus),
+            "chorus" => Ok(Self::Chorus { number }),
+            "bridge" => Ok(Self::Bridge),
+            "instrumental" => Ok(Self::Instrumental),
+            "solo" => Ok(Self::Solo),
+            "outro" => Ok(Self::Outro),
+            "custom" => {
+                let name = custom_name
+                    .map(str::trim)
+                    .filter(|value| !value.is_empty())
+                    .ok_or_else(|| "Custom section needs a name.".to_string())?;
+                Ok(Self::Custom {
+                    name: name.to_string(),
+                })
+            }
+            other => Err(format!("Unknown section kind '{other}'.")),
         }
     }
 }
@@ -86,5 +153,18 @@ mod tests {
             "Breakdown"
         );
         assert_eq!(SectionLabel::PreChorus.display_name(), "Pre-Chorus");
+        assert_eq!(
+            SectionLabel::parse("verse", Some(2), None)
+                .unwrap()
+                .display_name(),
+            "Verse 2"
+        );
+        assert_eq!(
+            SectionLabel::parse("custom", None, Some("Breakdown"))
+                .unwrap()
+                .display_name(),
+            "Breakdown"
+        );
+        assert!(SectionLabel::parse("custom", None, None).is_err());
     }
 }

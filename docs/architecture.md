@@ -42,7 +42,7 @@ Pure domain logic: music engine plus the canonical `Song` model. See [`music-the
 
 ### `tonic-app`
 
-Owns running-process authoritative state: identity, persistence health, the in-memory song library, the open session, and import/transpose orchestration. Returns `SongSessionView` / `LibraryListView` DTOs for the UI. Setlists and durable display preferences will be added here rather than in React or the Tauri crate.
+Owns running-process authoritative state: identity, persistence health, the in-memory song library, the open session, the editor draft, and import/transpose orchestration. Returns `SongSessionView` / `LibraryListView` / `EditorSessionView` DTOs for the UI. Setlists and durable display preferences will be added here rather than in React or the Tauri crate.
 
 ### `tonic-import`
 
@@ -60,7 +60,7 @@ Tauri entrypoint. It opens `AppServices` on the app data library path and expose
 
 Presentation only. It renders library + `SongSessionView`, holds theme/type-scale prefs, and talks to Rust through `src/lib/tauri.ts`. It must not reimplement domain behavior. See [`viewer.md`](./viewer.md) and [`persist.md`](./persist.md).
 
-## IPC surface (Phase 6)
+## IPC surface (Phase 7)
 
 | Command                     | Direction | Purpose                                        |
 | --------------------------- | --------- | ---------------------------------------------- |
@@ -77,12 +77,12 @@ Presentation only. It renders library + `SongSessionView`, holds theme/type-scal
 | `library_duplicate`         | UI → Rust | Duplicate a song and open the copy             |
 | `library_toggle_favorite`   | UI → Rust | Toggle favorite                                |
 | `library_update_metadata`   | UI → Rust | Edit title/artist/album/notes/tags             |
+| `editor_*`                  | UI → Rust | New/edit draft, save/cancel, sections, tagging |
 
-JSON uses camelCase to match TypeScript.
+JSON uses camelCase to match TypeScript. Full editor command list: [`editor.md`](./editor.md).
 
 ## What later phases still do not include
 
-- Chart editor / new song (Phase 7)
 - Setlists (Phase 8)
 - Web URL import
 - MusicXML (Phase 10)

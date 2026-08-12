@@ -2,14 +2,14 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { invoke } from "@tauri-apps/api/core";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import App from "./App";
-import type { SongSession } from "./lib/types";
+import type { EditorSession, SongSession } from "./lib/types";
 
 const mockedInvoke = vi.mocked(invoke);
 
 const appInfo = {
   name: "Tonic",
   version: "0.1.0",
-  phase: 6,
+  phase: 7,
   domainEngine: "tonic-domain",
   domainVersion: "0.1.0",
   persistenceHealthy: true,
@@ -133,6 +133,7 @@ describe("App", () => {
       app_info: appInfo,
       current_song: null,
       library_list: emptyLibrary,
+      editor_state: null,
     });
 
     render(<App />);
@@ -152,6 +153,7 @@ describe("App", () => {
       app_info: appInfo,
       current_song: null,
       library_list: emptyLibrary,
+      editor_state: null,
       import_song: demoSession,
     });
 
@@ -180,6 +182,7 @@ describe("App", () => {
     mockIpc({
       app_info: appInfo,
       current_song: demoSession,
+      editor_state: null,
       library_list: {
         ...emptyLibrary,
         songs: [
@@ -231,6 +234,7 @@ describe("App", () => {
     mockIpc({
       app_info: appInfo,
       current_song: null,
+      editor_state: null,
       library_list: {
         ...emptyLibrary,
         songs: [
@@ -264,6 +268,50 @@ describe("App", () => {
     expect(mockedInvoke).toHaveBeenCalledWith("library_open", {
       id: "session-1",
     });
+  });
+
+  it("opens the editor for a new song", async () => {
+    const newEditor: EditorSession = {
+      songId: "song-1",
+      dirty: true,
+      isNew: true,
+      title: "Untitled",
+      artist: null,
+      album: null,
+      originalKey: null,
+      tempoBpm: null,
+      timeSignature: null,
+      notes: null,
+      tags: [],
+      warnings: [],
+      summaryMessage: null,
+      sections: [
+        {
+          label: "Verse",
+          kind: "verse",
+          number: null,
+          customName: null,
+          lines: [{ lyrics: "", chords: [], annotation: null }],
+        },
+      ],
+    };
+    mockIpc({
+      app_info: appInfo,
+      current_song: null,
+      editor_state: null,
+      library_list: emptyLibrary,
+      editor_create: newEditor,
+    });
+
+    render(<App />);
+    fireEvent.click(await screen.findByRole("button", { name: "New song" }));
+    expect(
+      await screen.findByRole("heading", { name: "New song" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Tag chord at caret" }),
+    ).toBeInTheDocument();
+    expect(mockedInvoke).toHaveBeenCalledWith("editor_create");
   });
 
   it("surfaces an error when the engine is unavailable", async () => {

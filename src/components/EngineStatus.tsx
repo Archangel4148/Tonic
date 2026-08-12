@@ -18,6 +18,8 @@ function phaseLabel(phase: number): string {
       return "Viewer";
     case 6:
       return "Library";
+    case 7:
+      return "Editor";
     default:
       return "";
   }

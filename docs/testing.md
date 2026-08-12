@@ -71,6 +71,14 @@ Tauri `invoke` is mocked in `src/test/setup.ts` so UI tests do not require a run
 - Chart-line syllable splitting
 - Viewer warnings and unrecognized chords
 
+Phase 7 coverage:
+
+- Domain line tag/untag and lyric clamp
+- Create → tag chords → save → reopen from disk
+- Cancel new song does not persist; cancel edit restores saved lyrics
+- Replace unrecognized chord; parse-body paste
+- UI New song opens editor (mocked IPC)
+
 Phase 6 coverage:
 
 - `tonic-persist` file library round-trip + delete

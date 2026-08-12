@@ -447,8 +447,16 @@ button:disabled {
   padding: 1rem 1.05rem;
 }
 
-.library-sidebar h2 {
+.library-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
   margin-bottom: 0.75rem;
+}
+
+.library-heading h2 {
+  margin: 0;
 }
 
 .library-filters {
@@ -552,8 +560,81 @@ button:disabled {
   align-items: center;
 }
 
-.details-actions .primary-button {
+.details-actions .primary-button,
+.editor-toolbar .primary-button {
   margin-left: 0;
+}
+
+.editor-header h2 {
+  margin-bottom: 0.25rem;
+}
+
+.editor-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  align-items: end;
+  margin: 0.75rem 0;
+}
+
+.editor-section {
+  margin-top: 1.1rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid var(--border);
+}
+
+.editor-section-bar,
+.editor-line-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  align-items: end;
+  margin-bottom: 0.65rem;
+}
+
+.editor-line {
+  display: grid;
+  gap: 0.45rem;
+  margin-bottom: 0.9rem;
+}
+
+.editor-chords {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.chord-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0.15rem 0.35rem 0.15rem 0.45rem;
+}
+
+.chord-tag input {
+  width: 4.2rem;
+  padding: 0.2rem 0.35rem;
+}
+
+.chord-index {
+  font-size: 0.75rem;
+  color: var(--subtle);
+}
+
+.chord-tag--unrecognized,
+.chord-tag--partiallyRecognized {
+  border-color: color-mix(in srgb, var(--warning) 55%, var(--border));
+}
+
+.editor-paste {
+  margin-top: 1rem;
+}
+
+.editor-paste summary {
+  cursor: pointer;
+  font-weight: 600;
 }
 
 @media (max-width: 900px) {

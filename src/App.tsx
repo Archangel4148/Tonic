@@ -3,19 +3,25 @@ import { EngineStatus } from "./components/EngineStatus";
 import { ImportPanel } from "./components/ImportPanel";
 import { LibrarySidebar } from "./components/LibrarySidebar";
 import { SongDetails } from "./components/SongDetails";
+import { SongEditor } from "./components/SongEditor";
 import { SongViewer } from "./components/SongViewer";
 import { TransposeBar } from "./components/TransposeBar";
 import { TypeScaleControls } from "./components/TypeScaleControls";
 import {
+  beginEdit,
+  cancelEdit,
   clearSong,
+  createSong,
   deleteLibrarySong,
   duplicateLibrarySong,
   getAppInfo,
   getCurrentSong,
+  getEditorState,
   importSong,
   listLibrary,
   openLibrarySong,
   resetPerformanceKey,
+  saveEdit,
   setPerformanceKey,
   toggleFavorite,
   transposeSong,
@@ -33,6 +39,7 @@ import type {
   ImportFormat,
   LibraryList,
   LibrarySort,
+  EditorSession,
   SongSession,
   ThemePreference,
   TypeScale,
@@ -47,6 +54,7 @@ type BootState =
 function App() {
   const [boot, setBoot] = useState<BootState>({ status: "loading" });
   const [session, setSession] = useState<SongSession | null>(null);
+  const [editor, setEditor] = useState<EditorSession | null>(null);
   const [library, setLibrary] = useState<LibraryList | null>(null);
   const [search, setSearch] = useState("");
   const [favoritesOnly, setFavoritesOnly] = useState(false);
@@ -92,16 +100,22 @@ function App() {
   useEffect(() => {
     let cancelled = false;
 
-    Promise.all([getAppInfo(), getCurrentSong(), listLibrary({})])
-      .then(([info, current, songs]) => {
+    Promise.all([getAppInfo(), getCurrentSong(), listLibrary({}), getEditorState()])
+      .then(([info, current, songs, openEditor]) => {
         if (cancelled) {
           return;
         }
         setBoot({ status: "ready", info });
         setLibrary(songs);
+        if (openEditor) {
+          setEditor(openEditor);
+          setImportOpen(false);
+        }
         if (current) {
           setSession(current);
-          setImportOpen(false);
+          if (!openEditor) {
+            setImportOpen(false);
+          }
         }
       })
       .catch((error: unknown) => {
@@ -146,6 +160,22 @@ function App() {
     applyTypeScale(typeScale);
     persistTypeScale(typeScale);
   }, [typeScale]);
+
+  async function confirmLeaveEditor(): Promise<boolean> {
+    if (!editor) {
+      return true;
+    }
+    if (
+      editor.dirty &&
+      !window.confirm("Discard unsaved editor changes?")
+    ) {
+      return false;
+    }
+    const remaining = await cancelEdit();
+    setEditor(null);
+    setSession(remaining);
+    return true;
+  }
 
   async function runAction(action: () => Promise<SongSession>): Promise<void> {
     setBusy(true);
@@ -195,7 +225,7 @@ function App() {
         {boot.status === "ready" && (
           <LibrarySidebar
             library={library}
-            activeId={session?.song.id ?? null}
+            activeId={editor?.songId ?? session?.song.id ?? null}
             search={search}
             favoritesOnly={favoritesOnly}
             artist={artistFilter}
@@ -209,12 +239,40 @@ function App() {
             onKeyChange={setKeyFilter}
             onTagChange={setTagFilter}
             onSortChange={setSort}
+            onNewSong={() =>
+              void (async () => {
+                if (!(await confirmLeaveEditor())) {
+                  return;
+                }
+                setBusy(true);
+                setActionError(null);
+                try {
+                  const next = await createSong();
+                  setEditor(next);
+                  setImportOpen(false);
+                } catch (error: unknown) {
+                  setActionError(
+                    error instanceof Error
+                      ? error.message
+                      : "Something went wrong.",
+                  );
+                } finally {
+                  setBusy(false);
+                }
+              })()
+            }
             onOpen={(id) =>
-              void runAction(async () => {
-                const next = await openLibrarySong(id);
-                setImportOpen(false);
-                return next;
-              })
+              void (async () => {
+                if (!(await confirmLeaveEditor())) {
+                  return;
+                }
+                await runAction(async () => {
+                  const next = await openLibrarySong(id);
+                  setEditor(null);
+                  setImportOpen(false);
+                  return next;
+                });
+              })()
             }
             onToggleFavorite={(id) =>
               void (async () => {
@@ -270,13 +328,44 @@ function App() {
                       ? "Import another"
                       : "Import"}
                 </button>
-                {session && (
+                {session && !editor && (
+                  <button
+                    type="button"
+                    className="text-button"
+                    onClick={() =>
+                      void (async () => {
+                        setBusy(true);
+                        setActionError(null);
+                        try {
+                          const next = await beginEdit(session.song.id);
+                          setEditor(next);
+                          setImportOpen(false);
+                        } catch (error: unknown) {
+                          setActionError(
+                            error instanceof Error
+                              ? error.message
+                              : "Something went wrong.",
+                          );
+                        } finally {
+                          setBusy(false);
+                        }
+                      })()
+                    }
+                  >
+                    Edit song
+                  </button>
+                )}
+                {(session || editor) && (
                   <button
                     type="button"
                     className="text-button"
                     onClick={async () => {
+                      if (!(await confirmLeaveEditor())) {
+                        return;
+                      }
                       await clearSong();
                       setSession(null);
+                      setEditor(null);
                       setImportOpen(false);
                       setActionError(null);
                     }}
@@ -284,7 +373,7 @@ function App() {
                     Close song
                   </button>
                 )}
-                {session && (
+                {session && !editor && (
                   <TransposeBar
                     originalKey={session.song.originalKey}
                     performanceKey={session.song.performanceKey}
@@ -309,7 +398,7 @@ function App() {
                 </p>
               )}
 
-              {importOpen && (
+              {importOpen && !editor && (
                 <ImportPanel
                   text={importText}
                   format={importFormat}
@@ -317,18 +406,63 @@ function App() {
                   onTextChange={setImportText}
                   onFormatChange={setImportFormat}
                   onImport={(text, format) =>
-                    void runAction(async () => {
-                      setImportText(text);
-                      setImportFormat(format);
-                      const next = await importSong(text, format);
-                      setImportOpen(false);
-                      return next;
-                    })
+                    void (async () => {
+                      if (!(await confirmLeaveEditor())) {
+                        return;
+                      }
+                      await runAction(async () => {
+                        setImportText(text);
+                        setImportFormat(format);
+                        const next = await importSong(text, format);
+                        setEditor(null);
+                        setImportOpen(false);
+                        return next;
+                      });
+                    })()
                   }
                 />
               )}
 
-              {session ? (
+              {editor ? (
+                <SongEditor
+                  editor={editor}
+                  keys={keys}
+                  disabled={busy}
+                  onChange={setEditor}
+                  onSave={async () => {
+                    setBusy(true);
+                    setActionError(null);
+                    try {
+                      const result = await saveEdit();
+                      setEditor(result.editor);
+                      setSession(result.session);
+                      await refreshLibrary();
+                    } catch (error: unknown) {
+                      setActionError(
+                        error instanceof Error
+                          ? error.message
+                          : "Something went wrong.",
+                      );
+                      throw error;
+                    } finally {
+                      setBusy(false);
+                    }
+                  }}
+                  onCancel={() =>
+                    void (async () => {
+                      if (
+                        editor.dirty &&
+                        !window.confirm("Discard unsaved editor changes?")
+                      ) {
+                        return;
+                      }
+                      const remaining = await cancelEdit();
+                      setEditor(null);
+                      setSession(remaining);
+                    })()
+                  }
+                />
+              ) : session ? (
                 <>
                   <SongViewer session={session} />
                   <SongDetails
@@ -349,9 +483,14 @@ function App() {
                       )
                     }
                     onDuplicate={() =>
-                      void runAction(() =>
-                        duplicateLibrarySong(session.song.id),
-                      )
+                      void (async () => {
+                        if (!(await confirmLeaveEditor())) {
+                          return;
+                        }
+                        await runAction(() =>
+                          duplicateLibrarySong(session.song.id),
+                        );
+                      })()
                     }
                     onDelete={() => {
                       if (

@@ -1,7 +1,7 @@
 # Phase 6 — Library & Persistence
 
-**Status:** Implemented, pending review  
-**Do not start Phase 7 until explicitly instructed.**
+**Status:** Complete  
+**Phase 7 may proceed.**
 
 ## Goal
 

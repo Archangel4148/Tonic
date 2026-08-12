@@ -90,3 +90,10 @@ Workspace crates declare MIT for now. This can change if the product owner picks
 - Time-signature denominators must be powers of two; tempo is 1–400 BPM.
 - JSON is the Phase 3 interchange format and, as of Phase 6, also the on-disk library format.
 - MusicXML is not a `SourceFormat` variant yet (use `other` if needed until Phase 10).
+
+## Editor (Phase 7)
+
+- Editor draft lives only in `AppServices` until Save. Cancel drops it. New unsaved songs never hit disk.
+- Chord tagging sends the symbol to Rust (`parse_chord`). The UI does not parse.
+- “Paste chart to replace body” reuses `tonic-import` and keeps existing metadata when already filled in.
+- Changing original key in the editor also updates performance key when they still matched.

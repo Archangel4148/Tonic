@@ -114,6 +114,113 @@ impl Line {
         })
     }
 
+    /// Replace lyric text. Chord indices are clamped to the new length.
+    pub fn set_lyrics(&mut self, text: impl Into<String>) {
+        let text = text.into();
+        let max = text.chars().count() as u32;
+        let (mut chords, annotations) = self.split_tokens();
+        for chord in &mut chords {
+            if let Some(index) = chord.lyric_index.as_mut() {
+                *index = (*index).min(max);
+            }
+        }
+        self.rebuild(chords, text, annotations);
+    }
+
+    pub fn tag_chord(&mut self, chord: Chord, lyric_index: u32) {
+        let lyrics = self.lyric_text();
+        let max = lyrics.chars().count() as u32;
+        let (mut chords, annotations) = self.split_tokens();
+        chords.push(ChordToken::new(chord).at_lyric_index(lyric_index.min(max)));
+        chords.sort_by_key(|token| token.lyric_index.unwrap_or(0));
+        self.rebuild(chords, lyrics, annotations);
+    }
+
+    /// # Errors
+    ///
+    /// Unknown chord index.
+    pub fn untag_chord(&mut self, index: usize) -> Result<(), String> {
+        let lyrics = self.lyric_text();
+        let (mut chords, annotations) = self.split_tokens();
+        if index >= chords.len() {
+            return Err("That chord tag was not found.".to_string());
+        }
+        chords.remove(index);
+        self.rebuild(chords, lyrics, annotations);
+        Ok(())
+    }
+
+    /// # Errors
+    ///
+    /// Unknown chord index.
+    pub fn replace_chord(&mut self, index: usize, chord: Chord) -> Result<(), String> {
+        let lyrics = self.lyric_text();
+        let (mut chords, annotations) = self.split_tokens();
+        let existing = chords
+            .get_mut(index)
+            .ok_or_else(|| "That chord tag was not found.".to_string())?;
+        let lyric_index = existing.lyric_index;
+        let column = existing.column;
+        let mut next = ChordToken::new(chord);
+        next.lyric_index = lyric_index;
+        next.column = column;
+        *existing = next;
+        self.rebuild(chords, lyrics, annotations);
+        Ok(())
+    }
+
+    /// # Errors
+    ///
+    /// Unknown chord index.
+    pub fn set_chord_lyric_index(&mut self, index: usize, lyric_index: u32) -> Result<(), String> {
+        let lyrics = self.lyric_text();
+        let max = lyrics.chars().count() as u32;
+        let (mut chords, annotations) = self.split_tokens();
+        let existing = chords
+            .get_mut(index)
+            .ok_or_else(|| "That chord tag was not found.".to_string())?;
+        existing.lyric_index = Some(lyric_index.min(max));
+        chords.sort_by_key(|token| token.lyric_index.unwrap_or(0));
+        self.rebuild(chords, lyrics, annotations);
+        Ok(())
+    }
+
+    pub fn set_annotation(&mut self, text: Option<String>) {
+        let lyrics = self.lyric_text();
+        let (chords, _) = self.split_tokens();
+        let annotations = text
+            .map(|value| value.trim().to_string())
+            .filter(|value| !value.is_empty())
+            .map(|value| vec![AnnotationToken::new(value)])
+            .unwrap_or_default();
+        self.rebuild(chords, lyrics, annotations);
+    }
+
+    fn split_tokens(&self) -> (Vec<ChordToken>, Vec<AnnotationToken>) {
+        let mut chords = Vec::new();
+        let mut annotations = Vec::new();
+        for token in &self.tokens {
+            match token {
+                LineToken::Chord(chord) => chords.push(chord.clone()),
+                LineToken::Annotation(annotation) => annotations.push(annotation.clone()),
+                LineToken::Lyric(_) => {}
+            }
+        }
+        (chords, annotations)
+    }
+
+    fn rebuild(
+        &mut self,
+        chords: Vec<ChordToken>,
+        lyrics: String,
+        annotations: Vec<AnnotationToken>,
+    ) {
+        let mut tokens: Vec<LineToken> = chords.into_iter().map(LineToken::Chord).collect();
+        tokens.push(LineToken::Lyric(LyricToken::new(lyrics)));
+        tokens.extend(annotations.into_iter().map(LineToken::Annotation));
+        self.tokens = tokens;
+    }
+
     /// Recover chord placements. Missing `lyric_index` is inferred from inline order.
     #[must_use]
     pub fn chord_lyric_alignments(&self) -> Vec<ChordAlignment> {
@@ -218,6 +325,33 @@ impl AnnotationToken {
 mod tests {
     use super::*;
     use crate::parse::parse_chord;
+
+    #[test]
+    fn set_lyrics_clamps_chord_indices() {
+        let mut line = Line::chord_over_lyrics(
+            "Hello world",
+            [(parse_chord("C"), 0), (parse_chord("G"), 6)],
+        );
+        line.set_lyrics("Hi");
+        assert_eq!(line.lyric_text(), "Hi");
+        let alignments = line.chord_lyric_alignments();
+        assert_eq!(alignments[0].lyric_index, 0);
+        assert_eq!(alignments[1].lyric_index, 2);
+    }
+
+    #[test]
+    fn tag_and_untag_chords() {
+        let mut line = Line::lyrics("Amazing grace");
+        line.tag_chord(parse_chord("G"), 0);
+        line.tag_chord(parse_chord("D"), 8);
+        assert_eq!(line.chord_tokens().count(), 2);
+        line.untag_chord(0).unwrap();
+        assert_eq!(line.chord_tokens().count(), 1);
+        assert_eq!(
+            line.chord_tokens().next().unwrap().chord().source_text(),
+            "D"
+        );
+    }
 
     #[test]
     fn infers_inline_chord_positions() {

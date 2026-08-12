@@ -18,6 +18,7 @@ type Props = {
   onSortChange: (value: LibrarySort) => void;
   onOpen: (id: string) => void;
   onToggleFavorite: (id: string) => void;
+  onNewSong: () => void;
 };
 
 function SongRow({
@@ -83,13 +84,19 @@ export function LibrarySidebar({
   onSortChange,
   onOpen,
   onToggleFavorite,
+  onNewSong,
 }: Props) {
   const songs = library?.songs ?? [];
   const recents = library?.recents ?? [];
 
   return (
     <aside className="library-sidebar" aria-label="Song library">
-      <h2>Library</h2>
+      <div className="library-heading">
+        <h2>Library</h2>
+        <button type="button" className="text-button" onClick={onNewSong}>
+          New song
+        </button>
+      </div>
       <label className="field-label">
         Search
         <input

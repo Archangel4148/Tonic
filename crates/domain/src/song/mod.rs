@@ -171,6 +171,14 @@ impl Song {
         self.performance_key = key;
     }
 
+    pub fn set_tempo(&mut self, tempo: Option<Tempo>) {
+        self.tempo = tempo;
+    }
+
+    pub fn set_time_signature(&mut self, time_signature: Option<TimeSignature>) {
+        self.time_signature = time_signature;
+    }
+
     pub fn set_notes(&mut self, notes: Option<String>) {
         self.notes = notes;
     }

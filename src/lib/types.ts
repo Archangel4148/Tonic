@@ -105,6 +105,65 @@ export type MetadataUpdate = {
   tags: string[];
 };
 
+export type EditorChord = {
+  symbol: string;
+  lyricIndex: number;
+  status: ChordStatus | string;
+};
+
+export type EditorLine = {
+  lyrics: string;
+  chords: EditorChord[];
+  annotation: string | null;
+};
+
+export type EditorSection = {
+  label: string;
+  kind: string;
+  number: number | null;
+  customName: string | null;
+  lines: EditorLine[];
+};
+
+export type EditorSession = {
+  songId: string;
+  dirty: boolean;
+  isNew: boolean;
+  title: string;
+  artist: string | null;
+  album: string | null;
+  originalKey: string | null;
+  tempoBpm: number | null;
+  timeSignature: string | null;
+  notes: string | null;
+  tags: string[];
+  warnings: WarningView[];
+  summaryMessage: string | null;
+  sections: EditorSection[];
+};
+
+export type EditorMetaUpdate = {
+  title: string;
+  artist: string | null;
+  album: string | null;
+  originalKey: string | null;
+  tempoBpm: number | null;
+  timeSignature: string | null;
+  notes: string | null;
+  tags: string[];
+};
+
+export type SectionLabelInput = {
+  kind: string;
+  number: number | null;
+  customName: string | null;
+};
+
+export type EditorSaveResult = {
+  session: SongSession;
+  editor: EditorSession;
+};
+
 export type ThemePreference = "dark" | "light" | "system";
 
 export type TypeScale = {

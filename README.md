@@ -6,9 +6,9 @@ Tonic is built with **Tauri 2**, a **Rust** domain layer, and a **React + TypeSc
 
 ## Current phase
 
-**Phase 6 — Library & Persistence**
+**Phase 7 — Editing & Manual Song Creation**
 
-Import charts into a local songbook, search/favorite/tag them, and keep them after restart. The chart editor and setlists are not implemented yet.
+Import or create songs, edit charts, and keep them in a local library. Setlists are not implemented yet.
 
 ## Quick start
 
@@ -34,12 +34,14 @@ All project documentation lives in [`docs/`](./docs/README.md).
 - [Import](./docs/import.md)
 - [Viewer](./docs/viewer.md)
 - [Persistence](./docs/persist.md)
+- [Editor](./docs/editor.md)
 - [Phase 1 report](./docs/phases/phase-1.md)
 - [Phase 2 report](./docs/phases/phase-2.md)
 - [Phase 3 report](./docs/phases/phase-3.md)
 - [Phase 4 report](./docs/phases/phase-4.md)
 - [Phase 5 report](./docs/phases/phase-5.md)
 - [Phase 6 report](./docs/phases/phase-6.md)
+- [Phase 7 report](./docs/phases/phase-7.md)
 
 ## License
 
