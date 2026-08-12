@@ -1778,6 +1778,62 @@ mod tests {
     }
 
     #[test]
+    fn transpose_updates_bar_progression_intro_chords() {
+        let services = AppServices::new();
+        let html =
+            include_str!("../../import/fixtures/web/ultimate_guitar_bar_progressions.html");
+        let imported = services
+            .import_web_html(
+                "https://tabs.ultimate-guitar.com/tab/example/song-chords-18688",
+                html,
+            )
+            .unwrap();
+        let intro = imported
+            .song
+            .sections
+            .iter()
+            .find(|section| section.label == "Intro")
+            .expect("intro");
+        assert_eq!(
+            intro.lines[0]
+                .chords
+                .iter()
+                .map(|chord| chord.symbol.as_str())
+                .collect::<Vec<_>>(),
+            vec!["Am", "C", "D", "F"]
+        );
+        assert!(intro.lines[0].lyrics.is_empty());
+        assert!(intro.lines[0]
+            .chords
+            .iter()
+            .all(|chord| chord.status == "fullyRecognized"));
+
+        let up = services.transpose_by(2).unwrap();
+        let intro = up
+            .song
+            .sections
+            .iter()
+            .find(|section| section.label == "Intro")
+            .expect("intro");
+        assert_eq!(
+            intro.lines[0]
+                .chords
+                .iter()
+                .map(|chord| chord.symbol.as_str())
+                .collect::<Vec<_>>(),
+            vec!["Bm", "D", "E", "G"]
+        );
+        assert_eq!(
+            intro.lines[0]
+                .chords
+                .iter()
+                .map(|chord| chord.written.as_str())
+                .collect::<Vec<_>>(),
+            vec!["Am", "C", "D", "F"]
+        );
+    }
+
+    #[test]
     fn import_without_key_metadata_exposes_inferred_display_key() {
         let services = AppServices::new();
         let imported = services

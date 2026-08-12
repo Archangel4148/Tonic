@@ -174,6 +174,73 @@ fn parses_intro_progression_and_repeat_markers() {
 }
 
 #[test]
+fn bar_progression_lines_become_recognized_chords() {
+    let html = include_str!("../fixtures/web/ultimate_guitar_bar_progressions.html");
+    let result = import_web_html(
+        "https://tabs.ultimate-guitar.com/tab/example/song-chords-18688",
+        html,
+        SongId::new("song-bars"),
+    )
+    .expect("bar progression fixture should parse");
+
+    let intro = result
+        .song
+        .sections()
+        .iter()
+        .find(|section| matches!(section.label(), SectionLabel::Intro))
+        .expect("intro section");
+    assert!(
+        !intro.lines().is_empty(),
+        "intro lines: {:?}",
+        intro.lines().iter().map(|line| (
+            line.lyric_text(),
+            line.chord_tokens().map(|t| t.chord().source_text().to_string()).collect::<Vec<_>>()
+        )).collect::<Vec<_>>()
+    );
+    let first = &intro.lines()[0];
+    assert!(
+        first.lyric_text().trim().is_empty(),
+        "expected chord-only line, got lyrics {:?}",
+        first.lyric_text()
+    );
+    let chords: Vec<_> = first
+        .chord_tokens()
+        .map(|token| {
+            (
+                token.chord().symbol(),
+                token.chord().status(),
+                token.chord().source_text().to_string(),
+            )
+        })
+        .collect();
+    assert_eq!(
+        chords
+            .iter()
+            .map(|(symbol, _, _)| symbol.as_str())
+            .collect::<Vec<_>>(),
+        vec!["Am", "C", "D", "F"]
+    );
+    assert!(
+        chords
+            .iter()
+            .all(|(_, status, _)| *status == tonic_domain::ParseStatus::FullyRecognized),
+        "{chords:?}"
+    );
+
+    let solo = result
+        .song
+        .sections()
+        .iter()
+        .find(|section| matches!(section.label(), SectionLabel::Solo))
+        .expect("organ solo section");
+    let solo_chords: Vec<_> = solo.lines()[0]
+        .chord_tokens()
+        .map(|token| token.chord().symbol())
+        .collect();
+    assert_eq!(solo_chords, vec!["Am", "C", "D", "F"]);
+}
+
+#[test]
 fn rejects_pages_without_js_store() {
     let err = import_web_html(
         "https://tabs.ultimate-guitar.com/tab/x/y-chords-1",

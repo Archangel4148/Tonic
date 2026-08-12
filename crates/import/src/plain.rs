@@ -5,7 +5,9 @@ use tonic_domain::{
     SectionLabel, Song, SongId, SongSource, Tempo, TimeSignature,
 };
 
-use crate::section::{is_chart_annotation, is_no_chord_mark, is_repeat_marker, parse_section_header};
+use crate::section::{
+    is_chart_annotation, is_layout_marker, is_no_chord_mark, is_repeat_marker, parse_section_header,
+};
 use crate::warning::{ImportWarning, WarningKind};
 use crate::ImportResult;
 
@@ -237,15 +239,37 @@ fn is_chord_line(line: &str) -> bool {
     if tokens.is_empty() {
         return false;
     }
-    let chordish = tokens
+    // Ignore measure bars / layout markers when deciding — `| Am | C |` is a
+    // chord line even though bars outnumber chord tokens.
+    let musical: Vec<&str> = tokens
         .iter()
-        .filter(|token| {
-            is_repeat_marker(token)
-                || parse_chord(token).status() == ParseStatus::FullyRecognized
-                || is_no_chord_mark(token)
-        })
+        .copied()
+        .filter(|token| !is_layout_marker(token))
+        .collect();
+    if musical.is_empty() {
+        return false;
+    }
+    let chordish = musical
+        .iter()
+        .filter(|token| is_musical_chord_token(token))
         .count();
-    chordish * 2 > tokens.len()
+    chordish == musical.len() || chordish * 2 > musical.len()
+}
+
+fn is_musical_chord_token(token: &str) -> bool {
+    let cleaned = trim_layout_edges(token);
+    if cleaned.is_empty() {
+        return false;
+    }
+    is_repeat_marker(token)
+        || is_repeat_marker(cleaned)
+        || is_no_chord_mark(token)
+        || is_no_chord_mark(cleaned)
+        || parse_chord(cleaned).status() == ParseStatus::FullyRecognized
+}
+
+fn trim_layout_edges(token: &str) -> &str {
+    token.trim_matches(|c: char| matches!(c, '|' | '/' | ':' | '.' | '-' | '[' | ']'))
 }
 
 fn looks_like_lyrics(line: &str) -> bool {
@@ -275,21 +299,30 @@ fn parse_chord_positions(
             j += 1;
         }
         let token: String = chars[i..j].iter().collect();
-        if is_no_chord_mark(&token) || is_repeat_marker(&token) {
+        if is_layout_marker(&token) || is_repeat_marker(&token) || is_no_chord_mark(&token) {
             i = j;
             continue;
         }
-        let chord = parse_chord(&token);
+        let cleaned = trim_layout_edges(&token);
+        if cleaned.is_empty()
+            || is_layout_marker(cleaned)
+            || is_repeat_marker(cleaned)
+            || is_no_chord_mark(cleaned)
+        {
+            i = j;
+            continue;
+        }
+        let chord = parse_chord(cleaned);
         match chord.status() {
             ParseStatus::FullyRecognized => {}
             ParseStatus::PartiallyRecognized => warnings.push(ImportWarning::new(
                 WarningKind::PartialChord,
-                format!("Partially recognized chord '{token}'."),
+                format!("Partially recognized chord '{cleaned}'."),
                 Some(line_no),
             )),
             ParseStatus::Unrecognized => warnings.push(ImportWarning::new(
                 WarningKind::UnrecognizedChord,
-                format!("Unrecognized chord '{token}' was preserved."),
+                format!("Unrecognized chord '{cleaned}' was preserved."),
                 Some(line_no),
             )),
         }

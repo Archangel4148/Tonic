@@ -33,11 +33,11 @@ export function ChartLine({ line }: Props) {
 
       {chordOnly ? (
         <p className="chart-chords-only" aria-hidden="true">
-          {line.chords.map((chord) => (
-            <ChordMark
-              key={`${chord.symbol}-${chord.lyricIndex}`}
-              chord={chord}
-            />
+          {line.chords.map((chord, index) => (
+            <span key={`${chord.written}-${chord.lyricIndex}-${index}`} className="chart-chord-slot">
+              {index > 0 && <span className="chart-bar" aria-hidden="true">|</span>}
+              <ChordMark chord={chord} />
+            </span>
           ))}
         </p>
       ) : (

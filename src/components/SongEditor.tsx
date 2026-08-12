@@ -146,8 +146,8 @@ export function SongEditor({
         <div className="import-warning" role="status">
           <p>{editor.summaryMessage}</p>
           <ul>
-            {editor.warnings.map((warning) => (
-              <li key={`${warning.kind}-${warning.line}-${warning.message}`}>
+            {editor.warnings.map((warning, index) => (
+              <li key={`${warning.kind}-${warning.line}-${index}-${warning.message}`}>
                 {warning.message}
               </li>
             ))}

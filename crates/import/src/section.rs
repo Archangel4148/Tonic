@@ -43,6 +43,7 @@ pub fn parse_section_header(line: &str) -> Option<SectionLabel> {
         "tag" | "breakdown" | "harmonies" => Some(SectionLabel::Custom {
             name: stripped.to_string(),
         }),
+        _ if lower.ends_with(" solo") => Some(SectionLabel::Solo),
         _ => None,
     }
 }

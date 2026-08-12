@@ -79,6 +79,60 @@ fn unknown_plain_chords_are_preserved() {
 }
 
 #[test]
+fn bar_heavy_progressions_are_chord_lines_not_lyrics() {
+    // Bars can outnumber chord tokens; this must still be chords (so they transpose).
+    let input = "[Intro]\n| Am | C | D | F |\n| Am | E | Am | E |\n";
+    let result = import(input, ImportFormat::PlainText, "bars-heavy");
+    let intro = result
+        .song
+        .sections()
+        .iter()
+        .find(|section| matches!(section.label(), SectionLabel::Intro))
+        .expect("intro");
+    assert_eq!(intro.lines().len(), 2);
+    for line in intro.lines() {
+        assert!(
+            line.lyric_text().trim().is_empty(),
+            "expected chord-only line, got lyrics {:?}",
+            line.lyric_text()
+        );
+        assert!(
+            line.chord_tokens().count() >= 4,
+            "expected chords, got {}",
+            line.chord_tokens().count()
+        );
+        assert!(line
+            .chord_tokens()
+            .all(|token| token.chord().status() == ParseStatus::FullyRecognized));
+    }
+}
+
+#[test]
+fn bar_lines_in_chord_progressions_are_not_warnings() {
+    let input = "title: Rising\n\n[Intro]\n| Am | C | D | F |\n| Am | E | Am | E |\n";
+    let result = import(input, ImportFormat::PlainText, "bars");
+    assert!(
+        !result
+            .warnings
+            .iter()
+            .any(|warning| warning.kind == WarningKind::UnrecognizedChord),
+        "{:?}",
+        result.warnings
+    );
+    let intro = result
+        .song
+        .sections()
+        .iter()
+        .find(|section| matches!(section.label(), SectionLabel::Intro))
+        .expect("intro");
+    let symbols: Vec<_> = intro.lines()[0]
+        .chord_tokens()
+        .map(|token| token.chord().symbol())
+        .collect();
+    assert_eq!(symbols, vec!["Am", "C", "D", "F"]);
+}
+
+#[test]
 fn auto_detects_plain_text_fixture() {
     let result = import_auto(AMAZING, "auto-txt");
     assert_eq!(result.song.title(), "Amazing Grace");

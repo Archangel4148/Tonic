@@ -120,8 +120,8 @@ export function SongViewer({
         <div className="import-warning" role="status">
           <p>{summaryMessage}</p>
           <ul>
-            {warnings.map((warning) => (
-              <li key={`${warning.kind}-${warning.line}-${warning.message}`}>
+            {warnings.map((warning, index) => (
+              <li key={`${warning.kind}-${warning.line}-${index}-${warning.message}`}>
                 {warning.line != null ? `Line ${warning.line}: ` : ""}
                 {warning.message}
               </li>
