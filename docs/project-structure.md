@@ -21,7 +21,7 @@ Tonic/
 ├── src/                       React + TypeScript UI
 │   ├── App.tsx                Application shell
 │   ├── components/            Import panel, viewer, transpose, theme
-│   ├── lib/                   IPC wrappers, types, samples, chart split
+│   ├── lib/                   IPC wrappers, types, chart split
 │   └── test/                  Test setup
 └── src-tauri/                 Tauri shell crate (`tonic` / `tonic_lib`)
     ├── tauri.conf.json

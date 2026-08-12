@@ -133,7 +133,7 @@ describe("App", () => {
     localStorage.clear();
   });
 
-  it("renders import UI after the engine responds", async () => {
+  it("keeps import closed until requested", async () => {
     mockIpc({
       app_info: appInfo,
       current_song: null,
@@ -146,9 +146,9 @@ describe("App", () => {
     expect(
       await screen.findByRole("heading", { name: "Tonic" }),
     ).toBeInTheDocument();
-    expect(screen.getByLabelText(/chart text/i)).toBeInTheDocument();
+    expect(screen.queryByLabelText(/chart text/i)).not.toBeInTheDocument();
     expect(
-      screen.getByRole("option", { name: "MusicXML" }),
+      screen.getByRole("button", { name: "Import chart" }),
     ).toBeInTheDocument();
     expect(screen.getByRole("searchbox")).toBeInTheDocument();
     expect(
@@ -157,6 +157,12 @@ describe("App", () => {
     fireEvent.click(screen.getByText("Engine"));
     expect(screen.getByText(/tonic-domain v1\.0\.0/i)).toBeInTheDocument();
     expect(screen.getByText(/local library healthy/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Import chart" }));
+    expect(screen.getByLabelText(/chart text/i)).toBeInTheDocument();
+    expect(
+      screen.getByRole("option", { name: "MusicXML" }),
+    ).toBeInTheDocument();
   });
 
   it("imports a pasted chart and shows aligned chords", async () => {
@@ -169,6 +175,7 @@ describe("App", () => {
     });
 
     render(<App />);
+    fireEvent.click(await screen.findByRole("button", { name: "Import chart" }));
     const textarea = await screen.findByLabelText(/chart text/i);
     fireEvent.change(textarea, {
       value: "{title: Amazing Grace}\n[G]Amazing grace",
@@ -544,9 +551,11 @@ describe("App", () => {
     expect(
       await screen.findByRole("link", { name: /skip to content/i }),
     ).toHaveAttribute("href", "#main-content");
-    fireEvent.click(screen.getByRole("button", { name: /hide import/i }));
     expect(
-      screen.getByText(/Open a song, import a chart, or create a setlist/i),
+      screen.getByText(/Open a song from the library, or import a chart/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Import chart" }),
     ).toBeInTheDocument();
   });
 

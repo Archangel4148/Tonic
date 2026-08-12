@@ -92,7 +92,7 @@ function App() {
   const [sort, setSort] = useState<LibrarySort>("title");
   const [importText, setImportText] = useState("");
   const [importFormat, setImportFormat] = useState<ImportFormat>("auto");
-  const [importOpen, setImportOpen] = useState(true);
+  const [importOpen, setImportOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [detailsDirty, setDetailsDirty] = useState(false);
@@ -456,6 +456,10 @@ function App() {
                 }
               })()
             }
+            onImport={() => {
+              setImportOpen(true);
+              setLibraryTab("songs");
+            }}
             onNewSetlist={() =>
               void (async () => {
                 if (!(await confirmLeaveEditor())) {
@@ -569,14 +573,12 @@ function App() {
               <div className="toolbar">
                 <button
                   type="button"
-                  className="text-button"
+                  className={importOpen ? "text-button text-button--active" : "text-button"}
+                  aria-expanded={importOpen}
+                  aria-controls="import-panel"
                   onClick={() => setImportOpen((open) => !open)}
                 >
-                  {importOpen
-                    ? "Hide import"
-                    : session
-                      ? "Import another"
-                      : "Import"}
+                  {importOpen ? "Hide import" : "Import"}
                 </button>
                 {session && !editor && (
                   <button
@@ -840,9 +842,19 @@ function App() {
               ) : (
                 !importOpen &&
                 !openSetlist && (
-                  <p className="hint empty-hint">
-                    Open a song, import a chart, or create a setlist.
-                  </p>
+                  <div className="empty-state">
+                    <p className="hint empty-hint">
+                      Open a song from the library, or import a chart to get
+                      started.
+                    </p>
+                    <button
+                      type="button"
+                      className="primary-button"
+                      onClick={() => setImportOpen(true)}
+                    >
+                      Import chart
+                    </button>
+                  </div>
                 )
               )}
 

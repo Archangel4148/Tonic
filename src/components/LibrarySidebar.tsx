@@ -30,6 +30,7 @@ type Props = {
   onOpen: (id: string) => void;
   onToggleFavorite: (id: string) => void;
   onNewSong: () => void;
+  onImport: () => void;
   onOpenSetlist: (id: string) => void;
   onNewSetlist: () => void;
 };
@@ -106,6 +107,7 @@ export function LibrarySidebar({
   onOpen,
   onToggleFavorite,
   onNewSong,
+  onImport,
   onOpenSetlist,
   onNewSetlist,
 }: Props) {
@@ -117,9 +119,14 @@ export function LibrarySidebar({
       <div className="library-heading">
         <h2>Library</h2>
         {tab === "songs" ? (
-          <button type="button" className="text-button" onClick={onNewSong}>
-            New song
-          </button>
+          <div className="library-heading-actions">
+            <button type="button" className="text-button" onClick={onImport}>
+              Import
+            </button>
+            <button type="button" className="text-button" onClick={onNewSong}>
+              New song
+            </button>
+          </div>
         ) : (
           <button type="button" className="text-button" onClick={onNewSetlist}>
             New setlist
@@ -263,7 +270,7 @@ export function LibrarySidebar({
               <p className="hint">
                 {search || favoritesOnly || artist || songKey || tag
                   ? "No songs match these filters."
-                  : "Import a chart to start your songbook."}
+                  : "No songs yet — use Import to add a chart."}
               </p>
             ) : (
               <ul className="library-list">

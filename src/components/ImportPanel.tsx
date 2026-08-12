@@ -1,5 +1,4 @@
 import { useRef } from "react";
-import { SAMPLES } from "../lib/samples";
 import type { ImportFormat } from "../lib/types";
 
 type Props = {
@@ -26,29 +25,17 @@ export function ImportPanel({
   const fileRef = useRef<HTMLInputElement>(null);
 
   return (
-    <section className="import-panel" aria-labelledby="import-heading">
+    <section
+      id="import-panel"
+      className="import-panel"
+      aria-labelledby="import-heading"
+    >
       <div className="import-panel-header">
         <h2 id="import-heading">Import</h2>
         <p className="hint">
           Paste a ChordPro, chord-over-lyrics, or MusicXML chart. `.mxl` files
           open from disk.
         </p>
-      </div>
-
-      <div className="sample-row">
-        {SAMPLES.map((sample) => (
-          <button
-            key={sample.id}
-            type="button"
-            className="chip"
-            onClick={() => {
-              onTextChange(sample.text);
-              onFormatChange(sample.format);
-            }}
-          >
-            {sample.label}
-          </button>
-        ))}
       </div>
 
       <label className="field-label" htmlFor="chart-text">

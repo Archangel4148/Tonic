@@ -188,7 +188,6 @@ body {
 .transpose-bar,
 .type-scale,
 .theme-toggle,
-.sample-row,
 .song-meta {
   display: flex;
   flex-wrap: wrap;
@@ -363,6 +362,7 @@ textarea {
 }
 
 .chip--active,
+.text-button--active,
 .icon-button:hover,
 .text-button:hover,
 .chip:hover,
@@ -521,6 +521,13 @@ button:disabled {
   margin: 0;
 }
 
+.library-heading-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  align-items: center;
+}
+
 .library-tabs {
   display: flex;
   flex-wrap: wrap;
@@ -603,6 +610,21 @@ button:disabled {
 .empty-hint {
   margin: 1.5rem 0;
   font-size: 1.05rem;
+}
+
+.empty-state {
+  display: grid;
+  gap: 1rem;
+  justify-items: start;
+  margin: 1.25rem 0;
+}
+
+.empty-state .empty-hint {
+  margin: 0;
+}
+
+.empty-state .primary-button {
+  margin-left: 0;
 }
 
 .library-title {
