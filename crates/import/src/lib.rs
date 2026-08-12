@@ -1,7 +1,9 @@
-//! ChordPro, plain-text, and MusicXML import into Tonic's canonical [`Song`] model.
+//! ChordPro, plain-text, MusicXML, and website URL import into Tonic's
+//! canonical [`Song`] model.
 //!
-//! This crate depends on `tonic-domain` only. It does not own music theory
-//! or UI. Malformed input yields warnings and a usable [`Song`].
+//! This crate depends on `tonic-domain` only (plus serde for web page JSON).
+//! It does not own music theory or UI. Malformed input yields warnings and a
+//! usable [`Song`].
 
 mod chordpro;
 mod detect;
@@ -9,11 +11,15 @@ mod musicxml;
 mod plain;
 mod section;
 mod warning;
+mod web;
 
 pub use detect::{detect_format, format_from_extension};
 pub use musicxml::{import_musicxml, import_musicxml_bytes};
 pub use warning::{
     ImportWarning, WarningKind, UNRECOGNIZED_CONTENT_MESSAGE, UNSUPPORTED_MUSICXML_MESSAGE,
+};
+pub use web::{
+    import_web_html, recognize_web_url, supported_web_sites, WebImportError, WebSite,
 };
 
 use tonic_domain::{Song, SongId};

@@ -99,8 +99,27 @@ A line is a chord line only when a **majority** of whitespace-separated tokens a
 
 MusicXML / MXL details: [`musicxml.md`](./musicxml.md).
 
+## Web URL import
+
+Paste a supported website URL in Import. Application services fetch the page, then `tonic-import` runs a **site adapter** that extracts chords/lyrics into the canonical `Song` model.
+
+```text
+URL → recognize host → fetch HTML → site adapter → Song (+ warnings)
+```
+
+| Site | URL shape | Notes |
+| ---- | --------- | ----- |
+| Ultimate Guitar | `tabs.ultimate-guitar.com/tab/…/…-chords-…` | Reads `js-store` JSON; converts `[ch]Am[/ch]` → ChordPro `[Am]` |
+
+Source metadata: `format: web`, `website: ultimate-guitar`, original URL, and raw chart content when available. After import, the song is local/offline like any other library entry.
+
+Adapters live under `crates/import/src/web/` and are isolated so HTML changes on one site do not touch the domain engine or UI. Unsupported hosts fail with a clear message. Network blocks (bot protection) suggest pasting chart text instead.
+
+IPC: `import_url`. Tests use HTML fixtures (`import_web_html`) so parsing does not require live network access.
+
 ## Out of scope
 
-- Web URL import
+- Additional website adapters (add modularly under `web/`)
 - MusicXML authoring
 - Export to ChordPro
+- Scraping search result catalogs (user-pasted song URLs only)

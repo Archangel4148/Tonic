@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import type { ImportFormat } from "../lib/types";
 
 type Props = {
@@ -9,6 +9,7 @@ type Props = {
   onFormatChange: (format: ImportFormat) => void;
   onImport: (text: string, format: ImportFormat) => void;
   onImportBinary: (bytes: Uint8Array, fileName: string) => void;
+  onImportUrl: (url: string) => void;
 };
 
 const CHART_EXTENSIONS = ["cho", "crd", "chopro", "chordpro", "pro"];
@@ -21,8 +22,10 @@ export function ImportPanel({
   onFormatChange,
   onImport,
   onImportBinary,
+  onImportUrl,
 }: Props) {
   const fileRef = useRef<HTMLInputElement>(null);
+  const [url, setUrl] = useState("");
 
   return (
     <section
@@ -33,20 +36,55 @@ export function ImportPanel({
       <div className="import-panel-header">
         <h2 id="import-heading">Import</h2>
         <p className="hint">
-          Paste a ChordPro, chord-over-lyrics, or MusicXML chart. `.mxl` files
-          open from disk.
+          Paste an Ultimate Guitar chords URL, paste chart text, or open a file.
+          Imported songs stay on this device offline.
         </p>
       </div>
 
+      <label className="field-label" htmlFor="import-url">
+        Song URL
+      </label>
+      <div className="import-url-row">
+        <input
+          id="import-url"
+          type="url"
+          inputMode="url"
+          autoCapitalize="off"
+          autoCorrect="off"
+          spellCheck={false}
+          placeholder="https://tabs.ultimate-guitar.com/tab/…/…-chords-…"
+          value={url}
+          disabled={busy}
+          onChange={(event) => setUrl(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" && url.trim() && !busy) {
+              event.preventDefault();
+              onImportUrl(url.trim());
+            }
+          }}
+        />
+        <button
+          type="button"
+          className="primary-button"
+          disabled={busy || url.trim().length === 0}
+          onClick={() => onImportUrl(url.trim())}
+        >
+          {busy ? "Importing…" : "Import URL"}
+        </button>
+      </div>
+      <p className="hint import-url-hint">
+        Supported: Ultimate Guitar chord tabs
+      </p>
+
       <label className="field-label" htmlFor="chart-text">
-        Chart text
+        Or paste chart text
       </label>
       <textarea
         id="chart-text"
         value={text}
         onChange={(event) => onTextChange(event.target.value)}
         spellCheck={false}
-        rows={10}
+        rows={8}
         placeholder="{title: Song}\n[C]Hello [G]world"
       />
 
@@ -109,11 +147,11 @@ export function ImportPanel({
 
         <button
           type="button"
-          className="primary-button"
+          className="text-button"
           onClick={() => onImport(text, format)}
           disabled={busy || text.trim().length === 0}
         >
-          {busy ? "Importing…" : "Import song"}
+          {busy ? "Importing…" : "Import text"}
         </button>
       </div>
     </section>

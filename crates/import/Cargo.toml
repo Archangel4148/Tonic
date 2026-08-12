@@ -7,6 +7,8 @@ license.workspace = true
 
 [dependencies]
 roxmltree = "0.20"
+serde = { workspace = true }
+serde_json = { workspace = true }
 tonic-domain.workspace = true
 zip = { version = "2", default-features = false, features = ["deflate"] }
 

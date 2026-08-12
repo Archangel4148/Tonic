@@ -5,7 +5,7 @@ use tonic_domain::{
     SectionLabel, Song, SongId, SongSource, Tempo, TimeSignature,
 };
 
-use crate::section::{is_no_chord_mark, parse_section_header};
+use crate::section::{is_chart_annotation, is_no_chord_mark, is_repeat_marker, parse_section_header};
 use crate::warning::{ImportWarning, WarningKind};
 use crate::ImportResult;
 
@@ -67,7 +67,7 @@ pub fn import_plain_text(input: &str, id: impl Into<SongId>) -> ImportResult {
             continue;
         }
 
-        if is_no_chord_mark(trimmed) {
+        if is_no_chord_mark(trimmed) || is_chart_annotation(trimmed) {
             current_lines.push(Line::new(vec![LineToken::Annotation(
                 AnnotationToken::new(trimmed),
             )]));
@@ -76,7 +76,10 @@ pub fn import_plain_text(input: &str, id: impl Into<SongId>) -> ImportResult {
         }
 
         let next = lines.get(i + 1).copied().unwrap_or("").trim_end();
-        if is_chord_line(trimmed) && looks_like_lyrics(next) {
+        if is_chord_line(trimmed)
+            && looks_like_lyrics(next)
+            && !is_chart_annotation(next)
+        {
             let chords = parse_chord_positions(raw, line_no, &mut warnings);
             current_lines.push(Line::chord_over_lyrics(next.to_string(), chords));
             i += 2;
@@ -237,7 +240,9 @@ fn is_chord_line(line: &str) -> bool {
     let chordish = tokens
         .iter()
         .filter(|token| {
-            parse_chord(token).status() == ParseStatus::FullyRecognized || is_no_chord_mark(token)
+            is_repeat_marker(token)
+                || parse_chord(token).status() == ParseStatus::FullyRecognized
+                || is_no_chord_mark(token)
         })
         .count();
     chordish * 2 > tokens.len()
@@ -270,7 +275,7 @@ fn parse_chord_positions(
             j += 1;
         }
         let token: String = chars[i..j].iter().collect();
-        if is_no_chord_mark(&token) {
+        if is_no_chord_mark(&token) || is_repeat_marker(&token) {
             i = j;
             continue;
         }

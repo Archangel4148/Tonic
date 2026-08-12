@@ -25,7 +25,7 @@ Filesystem JSON under the Tauri app data directory (`library/index.json` + `libr
 
 ChordPro and plain-text parsers live in a dedicated `tonic-import` crate. They are not part of `tonic-domain` (no parsing of source formats in the music engine) and not part of `tonic-persist` (import is not storage). `tonic-app` orchestrates import and owns the current session song. IPC/UI arrived in Phase 5.
 
-## Import behavior (Phase 4)
+## Import behavior (Phase 4+)
 
 - Import never hard-fails; warnings plus a usable `Song`.
 - User-facing summary for any warning: “Some content could not be recognized.”
@@ -37,6 +37,7 @@ ChordPro and plain-text parsers live in a dedicated `tonic-import` crate. They a
 - `{new_song}` / `{ns}` only skips remaining content if a song body was already parsed. Leading `{ns}` in `.pro` dumps is ignored.
 - Default section is Verse when none is declared.
 - `SongId` is still assigned by the caller.
+- Web URL import: Ultimate Guitar chord tabs only for now. Adapters parse HTML fixtures offline; live fetch uses a browser-like User-Agent and may still be blocked by bot protection — fall back to paste text.
 
 ## Tauri opener plugin
 

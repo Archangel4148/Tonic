@@ -56,6 +56,14 @@ fn import_binary(
 }
 
 #[tauri::command]
+fn import_url(
+    services: tauri::State<'_, AppServices>,
+    url: String,
+) -> Result<SongSessionView, String> {
+    services.import_url(&url)
+}
+
+#[tauri::command]
 fn current_song(services: tauri::State<'_, AppServices>) -> Option<SongSessionView> {
     services.current_session()
 }
@@ -407,6 +415,7 @@ pub fn run() {
             app_info,
             import_song,
             import_binary,
+            import_url,
             current_song,
             transpose_song,
             set_performance_key,

@@ -232,6 +232,28 @@ h2 {
   font-size: clamp(1.35rem, 3vw, 1.8rem);
 }
 
+.import-url-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  align-items: stretch;
+  margin-bottom: 0.35rem;
+}
+
+.import-url-row input {
+  flex: 1 1 12rem;
+  min-width: 0;
+}
+
+.import-url-row .primary-button {
+  margin-left: 0;
+}
+
+.import-url-hint {
+  margin: 0 0 0.85rem;
+  font-size: 0.88rem;
+}
+
 .song-artist {
   margin: 0;
   color: var(--muted);

@@ -181,7 +181,7 @@ describe("App", () => {
       value: "{title: Amazing Grace}\n[G]Amazing grace",
       target: { value: "{title: Amazing Grace}\n[G]Amazing grace" },
     });
-    fireEvent.click(screen.getByRole("button", { name: /import song/i }));
+    fireEvent.click(screen.getByRole("button", { name: /import text/i }));
 
     expect(
       await screen.findByRole("heading", { name: "Amazing Grace" }),

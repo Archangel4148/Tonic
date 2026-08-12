@@ -195,6 +195,10 @@ impl Song {
         self.notes = notes;
     }
 
+    pub fn set_source(&mut self, source: SongSource) {
+        self.source = source;
+    }
+
     pub fn set_created_at(&mut self, created_at: Option<Timestamp>) {
         self.created_at = created_at;
     }

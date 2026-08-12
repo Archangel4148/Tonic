@@ -36,6 +36,10 @@ export async function importBinary(
   });
 }
 
+export async function importUrl(url: string): Promise<SongSession> {
+  return invoke<SongSession>("import_url", { url });
+}
+
 export async function getCurrentSong(): Promise<SongSession | null> {
   return invoke<SongSession | null>("current_song");
 }

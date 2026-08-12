@@ -27,6 +27,7 @@ import {
   getSetlist,
   importBinary,
   importSong,
+  importUrl,
   listLibrary,
   listSetlists,
   moveSetlistEntry,
@@ -688,6 +689,19 @@ function App() {
                       }
                       await runAction(async () => {
                         const next = await importBinary(bytes, fileName);
+                        setEditor(null);
+                        setImportOpen(false);
+                        return next;
+                      });
+                    })()
+                  }
+                  onImportUrl={(url) =>
+                    void (async () => {
+                      if (!(await confirmLeaveEditor())) {
+                        return;
+                      }
+                      await runAction(async () => {
+                        const next = await importUrl(url);
                         setEditor(null);
                         setImportOpen(false);
                         return next;

@@ -16,7 +16,10 @@ use std::sync::Mutex;
 use tonic_domain::{
     engine_name, engine_version, Key, Line, ParseStatus, Quality, Section, Song, SongId, Timestamp,
 };
-use tonic_import::{import, import_auto, import_bytes, ImportFormat, ImportWarning};
+use tonic_import::{
+    import, import_auto, import_bytes, import_web_html, recognize_web_url, supported_web_sites,
+    ImportFormat, ImportWarning, WebImportError,
+};
 use tonic_persist::{
     FileLibrary, MemoryLibrary, SetlistEntry, SongLibrary, StoredSetlist, StoredSong,
 };
@@ -196,26 +199,7 @@ impl AppServices {
             ImportMode::PlainText => import(input, ImportFormat::PlainText, id),
             ImportMode::MusicXml => import(input, ImportFormat::MusicXml, id),
         };
-        let now = Timestamp::now().as_secs();
-        let mut song = result.song;
-        if song.created_at().is_none() {
-            song.set_created_at(Some(Timestamp::now()));
-        }
-        song.set_updated_at(Some(Timestamp::now()));
-        let record = StoredSong {
-            song,
-            favorite: false,
-            tags: Vec::new(),
-            last_opened_at: Some(now),
-            last_modified_at: Some(now),
-        };
-        self.persist_record(&record, Some(state.next_id))?;
-        let song_id = record.song.id().as_str().to_string();
-        state.songs.insert(song_id.clone(), record);
-        state.warnings = result.warnings;
-        state.steps = 0;
-        state.session_id = Some(song_id);
-        Ok(session_view(&state))
+        self.commit_import(&mut state, result)
     }
 
     /// Import UTF-8 chart/MusicXML text or a compressed `.mxl` payload.
@@ -235,6 +219,54 @@ impl AppServices {
         let id = SongId::new(format!("song-{}", state.next_id));
         state.next_id += 1;
         let result = import_bytes(bytes, file_name, id);
+        self.commit_import(&mut state, result)
+    }
+
+    /// Import a song from a supported website URL (currently Ultimate Guitar chords).
+    ///
+    /// # Errors
+    ///
+    /// Unsupported URL, network/fetch failure, unparseable page, or persistence failure.
+    pub fn import_url(&self, url: &str) -> Result<SongSessionView, String> {
+        let trimmed = url.trim();
+        if trimmed.is_empty() {
+            return Err("Paste a song URL to import.".to_string());
+        }
+        if recognize_web_url(trimmed).is_none() {
+            let sites = supported_web_sites().join(", ");
+            return Err(format!(
+                "That URL is not from a supported website yet. Currently supported: {sites}."
+            ));
+        }
+        let html = fetch_web_page(trimmed)?;
+        self.import_web_html(trimmed, &html)
+    }
+
+    /// Import from already-fetched HTML (tests and future share-sheet flows).
+    ///
+    /// # Errors
+    ///
+    /// Adapter parse failure or persistence failure.
+    pub fn import_web_html(&self, url: &str, html: &str) -> Result<SongSessionView, String> {
+        let mut state = self.lock();
+        ensure_no_dirty_editor(&state)?;
+        state.editor = None;
+        clear_setlist_session(&mut state);
+        let id = SongId::new(format!("song-{}", state.next_id));
+        state.next_id += 1;
+        let result = import_web_html(url, html, id).map_err(|error| match error {
+            WebImportError::UnsupportedUrl(message) | WebImportError::ParseFailed(message) => {
+                message
+            }
+        })?;
+        self.commit_import(&mut state, result)
+    }
+
+    fn commit_import(
+        &self,
+        state: &mut AppState,
+        result: tonic_import::ImportResult,
+    ) -> Result<SongSessionView, String> {
         let now = Timestamp::now().as_secs();
         let mut song = result.song;
         if song.created_at().is_none() {
@@ -254,7 +286,7 @@ impl AppServices {
         state.warnings = result.warnings;
         state.steps = 0;
         state.session_id = Some(song_id);
-        Ok(session_view(&state))
+        Ok(session_view(state))
     }
 
     #[must_use]
@@ -1397,6 +1429,38 @@ fn session_view(state: &AppState) -> SongSessionView {
     )
 }
 
+fn fetch_web_page(url: &str) -> Result<String, String> {
+    let client = reqwest::blocking::Client::builder()
+        .user_agent(
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 \
+             (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+        )
+        .timeout(std::time::Duration::from_secs(30))
+        .redirect(reqwest::redirect::Policy::limited(5))
+        .build()
+        .map_err(|error| format!("Could not start network request: {error}"))?;
+
+    let response = client
+        .get(url)
+        .header("Accept", "text/html,application/xhtml+xml;q=0.9,*/*;q=0.8")
+        .header("Accept-Language", "en-US,en;q=0.9")
+        .send()
+        .map_err(|error| {
+            format!("Could not download the page. Check your network connection ({error}).")
+        })?;
+
+    let status = response.status();
+    if !status.is_success() {
+        return Err(format!(
+            "The website returned HTTP {status}. The page may be private, removed, or blocking automated access."
+        ));
+    }
+
+    response
+        .text()
+        .map_err(|error| format!("Could not read the downloaded page ({error})."))
+}
+
 fn clear_setlist_session(state: &mut AppState) {
     state.session_setlist_id = None;
     state.session_entry_id = None;
@@ -1663,6 +1727,34 @@ mod tests {
         assert!(imported.song.original_key.is_none());
         assert!(imported.song.performance_key.is_none());
         assert_eq!(imported.song.display_key.as_deref(), Some("G"));
+    }
+
+    #[test]
+    fn import_ultimate_guitar_html_fixture() {
+        let services = AppServices::new();
+        let html =
+            include_str!("../../import/fixtures/web/ultimate_guitar_amazing_grace.html");
+        let session = services
+            .import_web_html(
+                "https://tabs.ultimate-guitar.com/tab/traditional/amazing-grace-chords-1080922",
+                html,
+            )
+            .unwrap();
+        assert_eq!(session.song.title, "Amazing Grace");
+        assert_eq!(session.song.artist.as_deref(), Some("Traditional"));
+        assert_eq!(session.song.source_format, "web");
+        assert_eq!(session.song.original_key.as_deref(), Some("G"));
+        assert_eq!(session.song.display_key.as_deref(), Some("G"));
+        assert_eq!(services.list_library(LibraryQuery::default()).songs.len(), 1);
+    }
+
+    #[test]
+    fn import_url_rejects_unsupported_host() {
+        let services = AppServices::new();
+        let err = services
+            .import_url("https://example.com/song")
+            .unwrap_err();
+        assert!(err.contains("supported website"));
     }
 
     #[test]

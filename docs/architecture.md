@@ -46,7 +46,7 @@ Owns running-process authoritative state: identity, persistence health, the in-m
 
 ### `tonic-import`
 
-ChordPro, plain-text, and MusicXML/MXL parsers. Depends on `tonic-domain` only. See [`import.md`](./import.md) and [`musicxml.md`](./musicxml.md).
+ChordPro, plain-text, MusicXML/MXL, and website URL adapters (Ultimate Guitar first). Depends on `tonic-domain` only for parsing; network fetch is orchestrated by `tonic-app`. See [`import.md`](./import.md) and [`musicxml.md`](./musicxml.md).
 
 ### `tonic-persist`
 
@@ -67,6 +67,7 @@ Presentation only. It renders library, setlists, live mode, `SongSessionView`, a
 | `app_info`                | UI → Rust | Identity, phase, engine, persistence, key list  |
 | `import_song`             | UI → Rust | Import chart/MusicXML text into the library     |
 | `import_binary`           | UI → Rust | Import `.mxl` (or other) bytes into the library |
+| `import_url`              | UI → Rust | Fetch + import a supported website song URL     |
 | `current_song`            | UI → Rust | Current session view, or `null`                 |
 | `transpose_song`          | UI → Rust | Shift performance key by ±N semitones           |
 | `set_performance_key`     | UI → Rust | Set performance key by symbol                   |
@@ -86,7 +87,7 @@ JSON uses camelCase to match TypeScript. Full editor command list: [`editor.md`]
 
 ## What later phases still do not include
 
-- Web URL import
+- Additional website adapters beyond Ultimate Guitar
 - Notation authoring
 - Cloud, accounts, or telemetry
 - In-app auto-update (reinstall / replace APK; see [`release.md`](./release.md))

@@ -40,11 +40,29 @@ pub fn parse_section_header(line: &str) -> Option<SectionLabel> {
         "instrumental" | "interlude" => Some(SectionLabel::Instrumental),
         "pre-chorus" | "prechorus" => Some(SectionLabel::PreChorus),
         "pre" if lower.contains("chorus") => Some(SectionLabel::PreChorus),
-        "tag" | "breakdown" => Some(SectionLabel::Custom {
+        "tag" | "breakdown" | "harmonies" => Some(SectionLabel::Custom {
             name: stripped.to_string(),
         }),
         _ => None,
     }
+}
+
+/// Ultimate Guitar repeat shorthand: `x2`, `3x`, `(x4)`, …
+#[must_use]
+pub fn is_repeat_marker(token: &str) -> bool {
+    let trimmed = token
+        .trim()
+        .trim_matches(|c: char| matches!(c, '(' | ')' | '[' | ']'));
+    if trimmed.is_empty() {
+        return false;
+    }
+    let lower = trimmed.to_ascii_lowercase();
+    lower
+        .strip_prefix('x')
+        .is_some_and(|digits| !digits.is_empty() && digits.chars().all(|c| c.is_ascii_digit()))
+        || lower
+            .strip_suffix('x')
+            .is_some_and(|digits| !digits.is_empty() && digits.chars().all(|c| c.is_ascii_digit()))
 }
 
 #[must_use]
@@ -61,8 +79,9 @@ pub fn is_layout_marker(inner: &str) -> bool {
     matches!(
         inner.trim(),
         "" | "|" | "-" | "/" | ":" | "." | "||" | "||:" | ":||"
-    ) || is_no_chord_mark(inner)
+    )         || is_no_chord_mark(inner)
         || is_capo_fragment(inner)
+        || is_repeat_marker(inner)
 }
 
 fn is_capo_fragment(inner: &str) -> bool {
@@ -123,4 +142,35 @@ pub fn is_prose_annotation(line: &str) -> bool {
         || lower.starts_with("http://")
         || lower.starts_with("https://")
         || lower.starts_with("www.")
+}
+
+/// Non-lyric chart note: capo hints, repeat counts, transcriber credit, …
+#[must_use]
+pub fn is_chart_annotation(line: &str) -> bool {
+    let trimmed = line.trim();
+    if trimmed.is_empty() {
+        return false;
+    }
+    let lower = trimmed.to_ascii_lowercase();
+    is_prose_annotation(trimmed)
+        || lower.starts_with("tabbed by")
+        || is_inline_capo_line(trimmed)
+        || lower.starts_with("original key")
+        || lower.starts_with("repeat ")
+        || is_repeat_marker(trimmed)
+        || lower.starts_with("(transpose")
+        || lower.starts_with("the first few lines")
+        || lower.starts_with("transpose ")
+}
+
+#[must_use]
+pub fn is_inline_capo_line(line: &str) -> bool {
+    let lower = line.trim().to_ascii_lowercase();
+    if !lower.starts_with("capo") {
+        return false;
+    }
+    lower
+        .chars()
+        .skip(4)
+        .all(|c| c.is_whitespace() || c.is_ascii_digit())
 }
