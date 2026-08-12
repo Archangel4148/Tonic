@@ -6,17 +6,18 @@ The first usable reading experience: import a chart, view aligned chords and lyr
 
 `AppServices` holds the open session song (now also a library entry). Viewer IPC:
 
-| Command                 | Purpose                                     |
-| ----------------------- | ------------------------------------------- |
-| `app_info`              | Identity, phase, persistence, key list      |
-| `import_song`           | Parse text → store song → `SongSessionView` |
-| `current_song`          | Session snapshot, or `null`                 |
-| `transpose_song`        | ±N semitones on performance key             |
-| `set_performance_key`   | Jump to a named key                         |
-| `reset_performance_key` | Performance key = original key              |
+| Command                 | Purpose                                      |
+| ----------------------- | -------------------------------------------- |
+| `app_info`              | Identity, phase, persistence, key list       |
+| `import_song`           | Parse text → store song → `SongSessionView`  |
+| `import_binary`         | Parse `.mxl` / bytes → store song            |
+| `current_song`          | Session snapshot, or `null`                  |
+| `transpose_song`        | ±N semitones on performance key              |
+| `set_performance_key`   | Jump to a named key                          |
+| `reset_performance_key` | Performance key = original key               |
 | `clear_song`            | Close the viewer session (library unchanged) |
 
-`SongSessionView` includes display chord symbols already spelled for the performance key, plus written symbols, lyric indices, warnings, semitone offset, and optional setlist context (Phase 8).
+`SongSessionView` includes display chord symbols already spelled for the performance key, plus written symbols, lyric indices, warnings, semitone offset, optional setlist context (Phase 8), and derived `sheetMusicXml` when a score is present (Phase 10).
 
 Written tokens and `source.originalContent` are unchanged when the key changes (`Song::display_chord`).
 
@@ -39,6 +40,9 @@ Theme (dark / light / system) and independent lyric / chord / section sizes live
 
 Dark is the default (live-performance first). System follows `prefers-color-scheme` unless Dark or Light is pinned.
 
+Sheet music: when `sheetMusicXml` is set, the viewer (and live mode) render it with OpenSheetMusicDisplay. See [`musicxml.md`](./musicxml.md).
+
 ## Out of scope
 
-- Web URL import, MusicXML
+- Web URL import
+- Notation authoring

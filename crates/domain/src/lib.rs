@@ -5,9 +5,11 @@
 mod capo;
 mod chord;
 mod key;
+mod musicxml_text;
 mod note;
 mod parse;
 mod pitch;
+mod score;
 mod song;
 mod transpose;
 
@@ -16,9 +18,14 @@ pub use chord::{
     AddedTone, Alteration, Chord, Extension, ParseStatus, Quality, Seventh, Suspension,
 };
 pub use key::{AccidentalPreference, Key, Mode};
+pub use musicxml_text::transpose_musicxml_text;
 pub use note::{Accidental, Letter, Note, Spelling};
 pub use parse::parse_chord;
 pub use pitch::{PitchClass, Semitones};
+pub use score::{
+    Clef, Measure, MeasureAttributes, MeasureEvent, Score, ScoreHarmony, ScoreNote, ScorePart,
+    ScorePitch, ScoreRest,
+};
 pub use song::{
     AnnotationToken, ChordAlignment, ChordToken, Line, LineToken, LyricToken, Section,
     SectionLabel, Song, SongBuilder, SongId, SongSource, SourceFormat, Tempo, TimeSignature,

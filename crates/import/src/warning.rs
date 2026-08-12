@@ -3,6 +3,9 @@
 /// User-facing summary when any import warning was produced.
 pub const UNRECOGNIZED_CONTENT_MESSAGE: &str = "Some content could not be recognized.";
 
+/// User-facing summary when only unsupported MusicXML features were skipped.
+pub const UNSUPPORTED_MUSICXML_MESSAGE: &str = "Some MusicXML features are not supported.";
+
 /// Kind of recoverable import problem.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum WarningKind {
@@ -12,6 +15,7 @@ pub enum WarningKind {
     MalformedInput,
     AmbiguousLayout,
     SkippedContent,
+    UnsupportedFeature,
 }
 
 /// A non-fatal issue found while importing.

@@ -9,7 +9,7 @@ const mockedInvoke = vi.mocked(invoke);
 const appInfo = {
   name: "Tonic",
   version: "0.1.0",
-  phase: 9,
+  phase: 10,
   domainEngine: "tonic-domain",
   domainVersion: "0.1.0",
   persistenceHealthy: true,
@@ -36,6 +36,7 @@ const demoSession: SongSession = {
     timeSignature: "3/4",
     notes: null,
     sourceFormat: "chordPro",
+    hasScore: false,
     sections: [
       {
         label: "Verse 1",
@@ -70,6 +71,7 @@ const demoSession: SongSession = {
   favorite: false,
   tags: ["hymn"],
   setlist: null,
+  sheetMusicXml: null,
 };
 
 const transposedSession: SongSession = {
@@ -143,6 +145,9 @@ describe("App", () => {
       await screen.findByRole("heading", { name: "Tonic" }),
     ).toBeInTheDocument();
     expect(screen.getByLabelText(/chart text/i)).toBeInTheDocument();
+    expect(
+      screen.getByRole("option", { name: "MusicXML" }),
+    ).toBeInTheDocument();
     expect(screen.getByRole("searchbox")).toBeInTheDocument();
     fireEvent.click(screen.getByText("Engine"));
     expect(screen.getByText(/tonic-domain v0\.1\.0/i)).toBeInTheDocument();

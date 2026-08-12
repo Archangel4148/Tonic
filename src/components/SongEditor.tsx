@@ -14,7 +14,11 @@ import {
   editorUntagChord,
   editorUpdateMeta,
 } from "../lib/tauri";
-import type { EditorMetaUpdate, EditorSession, ImportFormat } from "../lib/types";
+import type {
+  EditorMetaUpdate,
+  EditorSession,
+  ImportFormat,
+} from "../lib/types";
 
 type Props = {
   editor: EditorSession;
@@ -50,7 +54,9 @@ export function SongEditor({
   const [album, setAlbum] = useState(editor.album ?? "");
   const [originalKey, setOriginalKey] = useState(editor.originalKey ?? "");
   const [tempo, setTempo] = useState(editor.tempoBpm?.toString() ?? "");
-  const [timeSignature, setTimeSignature] = useState(editor.timeSignature ?? "");
+  const [timeSignature, setTimeSignature] = useState(
+    editor.timeSignature ?? "",
+  );
   const [notes, setNotes] = useState(editor.notes ?? "");
   const [tags, setTags] = useState(editor.tags.join(", "));
   const [pasteText, setPasteText] = useState("");
@@ -328,7 +334,9 @@ export function SongEditor({
               className="text-button"
               disabled={disabled || sectionIndex === 0}
               onClick={() =>
-                void run(() => editorMoveSection(sectionIndex, sectionIndex - 1))
+                void run(() =>
+                  editorMoveSection(sectionIndex, sectionIndex - 1),
+                )
               }
             >
               Up
@@ -338,7 +346,9 @@ export function SongEditor({
               className="text-button"
               disabled={disabled || sectionIndex === editor.sections.length - 1}
               onClick={() =>
-                void run(() => editorMoveSection(sectionIndex, sectionIndex + 1))
+                void run(() =>
+                  editorMoveSection(sectionIndex, sectionIndex + 1),
+                )
               }
             >
               Down
@@ -390,7 +400,11 @@ export function SongEditor({
                         disabled={disabled}
                         onClick={() =>
                           void run(() =>
-                            editorUntagChord(sectionIndex, lineIndex, chordIndex),
+                            editorUntagChord(
+                              sectionIndex,
+                              lineIndex,
+                              chordIndex,
+                            ),
                           )
                         }
                       >
@@ -487,9 +501,7 @@ export function SongEditor({
                     className="text-button"
                     disabled={disabled || section.lines.length <= 1}
                     onClick={() =>
-                      void run(() =>
-                        editorRemoveLine(sectionIndex, lineIndex),
-                      )
+                      void run(() => editorRemoveLine(sectionIndex, lineIndex))
                     }
                   >
                     Remove line

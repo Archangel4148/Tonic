@@ -46,7 +46,7 @@ Owns running-process authoritative state: identity, persistence health, the in-m
 
 ### `tonic-import`
 
-ChordPro and plain-text parsers. Depends on `tonic-domain` only. See [`import.md`](./import.md).
+ChordPro, plain-text, and MusicXML/MXL parsers. Depends on `tonic-domain` only. See [`import.md`](./import.md) and [`musicxml.md`](./musicxml.md).
 
 ### `tonic-persist`
 
@@ -58,34 +58,35 @@ Tauri entrypoint. It opens `AppServices` on the app data library path and expose
 
 ### React UI (`src/`)
 
-Presentation only. It renders library, setlists, live mode, and `SongSessionView`, holds theme/type-scale/live prefs, and talks to Rust through `src/lib/tauri.ts`. It must not reimplement domain behavior. See [`viewer.md`](./viewer.md), [`persist.md`](./persist.md), [`setlists.md`](./setlists.md), and [`live-mode.md`](./live-mode.md).
+Presentation only. It renders library, setlists, live mode, `SongSessionView`, and OSMD sheet music, holds theme/type-scale/live prefs, and talks to Rust through `src/lib/tauri.ts`. It must not reimplement domain behavior. See [`viewer.md`](./viewer.md), [`persist.md`](./persist.md), [`setlists.md`](./setlists.md), [`live-mode.md`](./live-mode.md), and [`musicxml.md`](./musicxml.md).
 
-## IPC surface (Phase 9)
+## IPC surface (Phase 10)
 
-| Command                     | Direction | Purpose                                        |
-| --------------------------- | --------- | ---------------------------------------------- |
-| `app_info`                  | UI → Rust | Identity, phase, engine, persistence, key list |
-| `import_song`               | UI → Rust | Import chart text into the library + session   |
-| `current_song`              | UI → Rust | Current session view, or `null`                |
-| `transpose_song`            | UI → Rust | Shift performance key by ±N semitones          |
-| `set_performance_key`       | UI → Rust | Set performance key by symbol                  |
-| `reset_performance_key`     | UI → Rust | Restore original key                           |
-| `clear_song`                | UI → Rust | Close the viewer session (library unchanged)   |
-| `library_list`              | UI → Rust | Search/filter/sort library summaries           |
-| `library_open`              | UI → Rust | Open a library song                            |
-| `library_delete`            | UI → Rust | Delete a library song                          |
-| `library_duplicate`         | UI → Rust | Duplicate a song and open the copy             |
-| `library_toggle_favorite`   | UI → Rust | Toggle favorite                                |
-| `library_update_metadata`   | UI → Rust | Edit title/artist/album/notes/tags             |
-| `editor_*`                  | UI → Rust | New/edit draft, save/cancel, sections, tagging |
-| `setlist_*`                 | UI → Rust | Setlist CRUD, reorder, entry overrides, open   |
-| `setlist_open_neighbor`     | UI → Rust | Next/previous playable setlist entry           |
+| Command                   | Direction | Purpose                                         |
+| ------------------------- | --------- | ----------------------------------------------- |
+| `app_info`                | UI → Rust | Identity, phase, engine, persistence, key list  |
+| `import_song`             | UI → Rust | Import chart/MusicXML text into the library     |
+| `import_binary`           | UI → Rust | Import `.mxl` (or other) bytes into the library |
+| `current_song`            | UI → Rust | Current session view, or `null`                 |
+| `transpose_song`          | UI → Rust | Shift performance key by ±N semitones           |
+| `set_performance_key`     | UI → Rust | Set performance key by symbol                   |
+| `reset_performance_key`   | UI → Rust | Restore original key                            |
+| `clear_song`              | UI → Rust | Close the viewer session (library unchanged)    |
+| `library_list`            | UI → Rust | Search/filter/sort library summaries            |
+| `library_open`            | UI → Rust | Open a library song                             |
+| `library_delete`          | UI → Rust | Delete a library song                           |
+| `library_duplicate`       | UI → Rust | Duplicate a song and open the copy              |
+| `library_toggle_favorite` | UI → Rust | Toggle favorite                                 |
+| `library_update_metadata` | UI → Rust | Edit title/artist/album/notes/tags              |
+| `editor_*`                | UI → Rust | New/edit draft, save/cancel, sections, tagging  |
+| `setlist_*`               | UI → Rust | Setlist CRUD, reorder, entry overrides, open    |
+| `setlist_open_neighbor`   | UI → Rust | Next/previous playable setlist entry            |
 
 JSON uses camelCase to match TypeScript. Full editor command list: [`editor.md`](./editor.md). Setlists: [`setlists.md`](./setlists.md). Live mode: [`live-mode.md`](./live-mode.md).
 
 ## What later phases still do not include
 
 - Web URL import
-- MusicXML (Phase 10)
+- Notation authoring
 - Android project generation
 - Cloud, accounts, or telemetry

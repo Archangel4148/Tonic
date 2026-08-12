@@ -13,6 +13,7 @@ Song
  ├── tempo, time_signature
  ├── notes, created_at, updated_at
  ├── source (format + originalContent + optional url/website)
+ ├── score? (MusicXML-derived parts / measures / notes)
  └── sections[]
       └── lines[]
            └── tokens[]: Chord | Lyric | Annotation
@@ -20,14 +21,15 @@ Song
 
 ## Authoritative vs derived
 
-| Authoritative             | Derived                           |
-| ------------------------- | --------------------------------- |
-| Written chord tokens      | Display chords after a key change |
-| `original_key`            | Semitone offset between keys      |
-| `performance_key`         |                                   |
-| `source.original_content` |                                   |
+| Authoritative             | Derived                             |
+| ------------------------- | ----------------------------------- |
+| Written chord tokens      | Display chords after a key change   |
+| Written score pitches     | Display MusicXML after a key change |
+| `original_key`            | Semitone offset between keys        |
+| `performance_key`         |                                     |
+| `source.original_content` |                                     |
 
-Changing performance key **does not** rewrite chord tokens or destroy import source. Call `Song::display_chord` (which uses the Phase 2 engine) for the spelled chord to show.
+Changing performance key **does not** rewrite chord tokens, score pitches, or destroy import source. Call `Song::display_chord` (which uses the Phase 2 engine) for the spelled chord to show. Display MusicXML comes from `Score::transpose_semitones` + `to_musicxml`.
 
 If either key is missing, display uses the written chord as-is.
 
@@ -44,7 +46,7 @@ Each line is an ordered token list.
 
 `SongSource` preserves the import when practical:
 
-- `chordPro` / `plainText` / `web` / `manual` / `other`
+- `chordPro` / `plainText` / `musicXml` / `web` / `manual` / `other`
 - `originalContent` optional
 - `url` / `website` for web imports
 

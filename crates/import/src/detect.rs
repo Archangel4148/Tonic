@@ -13,6 +13,7 @@ pub fn format_from_extension(ext: &str) -> Option<ImportFormat> {
     {
         "cho" | "crd" | "chopro" | "chordpro" | "pro" => Some(ImportFormat::ChordPro),
         "txt" | "text" => Some(ImportFormat::PlainText),
+        "musicxml" | "mxl" | "xml" => Some(ImportFormat::MusicXml),
         _ => None,
     }
 }
@@ -20,7 +21,9 @@ pub fn format_from_extension(ext: &str) -> Option<ImportFormat> {
 /// Heuristic detection. Bracketed section headers like `[Chorus]` are not ChordPro.
 #[must_use]
 pub fn detect_format(input: &str) -> ImportFormat {
-    if looks_like_chordpro(input) {
+    if crate::musicxml::looks_like_musicxml(input) {
+        ImportFormat::MusicXml
+    } else if looks_like_chordpro(input) {
         ImportFormat::ChordPro
     } else {
         ImportFormat::PlainText
@@ -87,11 +90,20 @@ mod tests {
         assert_eq!(format_from_extension("cho"), Some(ImportFormat::ChordPro));
         assert_eq!(format_from_extension(".CRD"), Some(ImportFormat::ChordPro));
         assert_eq!(format_from_extension("txt"), Some(ImportFormat::PlainText));
+        assert_eq!(
+            format_from_extension("musicxml"),
+            Some(ImportFormat::MusicXml)
+        );
+        assert_eq!(format_from_extension(".mxl"), Some(ImportFormat::MusicXml));
         assert_eq!(format_from_extension("pdf"), None);
     }
 
     #[test]
     fn detects_chordpro_vs_plain() {
+        assert_eq!(
+            detect_format("<score-partwise version=\"4.0\"></score-partwise>"),
+            ImportFormat::MusicXml
+        );
         assert_eq!(detect_format("{title: X}\n[C]Hi"), ImportFormat::ChordPro);
         assert_eq!(detect_format("[C]Hello [G]world"), ImportFormat::ChordPro);
         assert_eq!(

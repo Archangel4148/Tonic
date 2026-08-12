@@ -8,7 +8,7 @@ export type AppInfo = {
   performanceKeys: string[];
 };
 
-export type ImportFormat = "auto" | "chordPro" | "plainText";
+export type ImportFormat = "auto" | "chordPro" | "plainText" | "musicXml";
 
 export type ChordStatus =
   "fullyRecognized" | "partiallyRecognized" | "unrecognized";
@@ -43,6 +43,7 @@ export type SongView = {
   timeSignature: string | null;
   notes: string | null;
   sourceFormat: string;
+  hasScore: boolean;
   sections: SectionView[];
 };
 
@@ -60,6 +61,7 @@ export type SongSession = {
   favorite: boolean;
   tags: string[];
   setlist: SetlistContext | null;
+  sheetMusicXml: string | null;
 };
 
 export type SetlistContext = {

@@ -89,7 +89,7 @@ Workspace crates declare MIT for now. This can change if the product owner picks
 - `lyric_index` counts Unicode scalars in concatenated lyric tokens.
 - Time-signature denominators must be powers of two; tempo is 1–400 BPM.
 - JSON is the Phase 3 interchange format and, as of Phase 6, also the on-disk library format.
-- MusicXML is not a `SourceFormat` variant yet (use `other` if needed until Phase 10).
+- MusicXML uses `SourceFormat::MusicXml`. The canonical body is `Song.score`, not chart tokens.
 
 ## Editor (Phase 7)
 
@@ -116,3 +116,13 @@ Workspace crates declare MIT for now. This can change if the product owner picks
 - Keep-awake uses the Screen Wake Lock API when available; otherwise live mode still runs.
 - A single song can enter live mode; previous/next stay disabled without a setlist.
 - Live **Lock** (`L`) hides on-screen chrome but leaves hotkeys active.
+
+## MusicXML (Phase 10)
+
+- Scores are a separate model (`Score`). Optional lyric/harmony companion lines exist only for search and a simple chart readout.
+- Sheet display uses the original MusicXML/MXL document. `Score` is for search/theory; transpose rewrites pitches in the original XML rather than rebuilding a simplified score.
+- MXL is unzipped in Rust. The UI only sends bytes / text.
+- OpenSheetMusicDisplay engraves only; it is not a music-theory engine.
+- Unsupported MusicXML features warn and still show the supported notes.
+- No notation authoring. Editor keeps the score when editing metadata or the companion chart.
+- Pitch-class key jumps use the nearest signed interval (−6..=6) so sheet transpose does not leap an octave.

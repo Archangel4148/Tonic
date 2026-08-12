@@ -763,11 +763,33 @@ button:disabled {
   -webkit-overflow-scrolling: touch;
 }
 
+.sheet-music {
+  margin: 0 0 1.25rem;
+  padding: 0.85rem;
+  border-radius: 12px;
+  background: #fff;
+  color: #111;
+  overflow-x: auto;
+}
+
+.sheet-music-host {
+  min-height: 4rem;
+}
+
+.sheet-music-error {
+  margin: 0 0 0.5rem;
+  color: #8f2f2f;
+}
+
+.song-viewer--live .sheet-music {
+  margin-top: 0.5rem;
+}
+
 .song-viewer--live {
   background: transparent;
   border: 0;
   padding: 0;
-  max-width: 58rem;
+  max-width: 72rem;
   margin: 0 auto;
 }
 

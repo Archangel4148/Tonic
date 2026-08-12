@@ -15,6 +15,7 @@ const session: SongSession = {
     timeSignature: null,
     notes: null,
     sourceFormat: "chordPro",
+    hasScore: false,
     sections: [
       {
         label: "Chorus",
@@ -55,6 +56,7 @@ const session: SongSession = {
   favorite: false,
   tags: ["demo"],
   setlist: null,
+  sheetMusicXml: null,
 };
 
 describe("SongViewer", () => {
@@ -72,5 +74,19 @@ describe("SongViewer", () => {
     expect(
       screen.getByText("Some content could not be recognized."),
     ).toBeInTheDocument();
+  });
+
+  it("renders sheet music when derived MusicXML is present", () => {
+    render(
+      <SongViewer
+        session={{
+          ...session,
+          song: { ...session.song, hasScore: true, sourceFormat: "musicXml" },
+          sheetMusicXml: '<score-partwise version="4.0"></score-partwise>',
+        }}
+      />,
+    );
+
+    expect(screen.getByRole("img", { name: "Demo score" })).toBeInTheDocument();
   });
 });

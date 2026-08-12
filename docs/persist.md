@@ -24,11 +24,11 @@ Each song file is a `StoredSong`:
 
 ## Ownership
 
-| Layer            | Role                                              |
-| ---------------- | ------------------------------------------------- |
-| `tonic-persist`  | Read/write files. Not the live source of truth.   |
-| `tonic-app`      | In-memory library + open session. Authoritative.  |
-| React            | Renders list/session DTOs. Does not parse songs.  |
+| Layer           | Role                                             |
+| --------------- | ------------------------------------------------ |
+| `tonic-persist` | Read/write files. Not the live source of truth.  |
+| `tonic-app`     | In-memory library + open session. Authoritative. |
+| React           | Renders list/session DTOs. Does not parse songs. |
 
 On startup, `AppServices::open` loads every song and setlist into memory. While running, memory wins until a successful save. Import, transpose, metadata, favorite, duplicate, delete, and setlist edits all persist immediately.
 

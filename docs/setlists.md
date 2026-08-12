@@ -40,19 +40,19 @@ Missing songs stay as entries and show `(missing song)`.
 
 ## IPC
 
-| Command                 | Purpose                                      |
-| ----------------------- | -------------------------------------------- |
-| `setlist_list`          | Summaries, sorted by name                    |
-| `setlist_get`           | Full setlist with resolved entry titles      |
-| `setlist_create`        | New empty setlist (`Untitled setlist`)       |
-| `setlist_update_meta`   | Name / notes / event date                    |
-| `setlist_delete`        | Remove setlist; songs stay in the library    |
-| `setlist_duplicate`     | Copy with new setlist + entry ids            |
-| `setlist_add_song`      | Append a song reference                      |
-| `setlist_remove_entry`  | Drop one slot                                |
-| `setlist_move_entry`    | Reorder by index                             |
-| `setlist_update_entry`  | Per-entry key, capo, notes                   |
-| `setlist_open_entry`    | Open viewer with setlist context             |
+| Command                | Purpose                                   |
+| ---------------------- | ----------------------------------------- |
+| `setlist_list`         | Summaries, sorted by name                 |
+| `setlist_get`          | Full setlist with resolved entry titles   |
+| `setlist_create`       | New empty setlist (`Untitled setlist`)    |
+| `setlist_update_meta`  | Name / notes / event date                 |
+| `setlist_delete`       | Remove setlist; songs stay in the library |
+| `setlist_duplicate`    | Copy with new setlist + entry ids         |
+| `setlist_add_song`     | Append a song reference                   |
+| `setlist_remove_entry` | Drop one slot                             |
+| `setlist_move_entry`   | Reorder by index                          |
+| `setlist_update_entry` | Per-entry key, capo, notes                |
+| `setlist_open_entry`   | Open viewer with setlist context          |
 
 `SongSessionView.setlist` is `SetlistContextView` when opened from a setlist (name, index/total, capo, entry notes, played key).
 

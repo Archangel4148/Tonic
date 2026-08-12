@@ -17,6 +17,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::chord::Chord;
 use crate::key::Key;
+use crate::score::Score;
 use crate::transpose::transpose_to_key;
 
 /// Stable opaque song identifier. Generation is an application concern.
@@ -62,6 +63,8 @@ pub struct Song {
     time_signature: Option<TimeSignature>,
     #[serde(default)]
     sections: Vec<Section>,
+    #[serde(default)]
+    score: Option<Score>,
     #[serde(default)]
     source: SongSource,
     #[serde(default)]
@@ -125,6 +128,15 @@ impl Song {
 
     pub fn sections_mut(&mut self) -> &mut Vec<Section> {
         &mut self.sections
+    }
+
+    #[must_use]
+    pub fn score(&self) -> Option<&Score> {
+        self.score.as_ref()
+    }
+
+    pub fn set_score(&mut self, score: Option<Score>) {
+        self.score = score;
     }
 
     #[must_use]
@@ -231,6 +243,7 @@ pub struct SongBuilder {
     tempo: Option<Tempo>,
     time_signature: Option<TimeSignature>,
     sections: Vec<Section>,
+    score: Option<Score>,
     source: SongSource,
     notes: Option<String>,
     created_at: Option<Timestamp>,
@@ -249,6 +262,7 @@ impl SongBuilder {
             tempo: None,
             time_signature: None,
             sections: Vec::new(),
+            score: None,
             source: SongSource::manual(),
             notes: None,
             created_at: None,
@@ -305,6 +319,12 @@ impl SongBuilder {
     }
 
     #[must_use]
+    pub fn score(mut self, score: Score) -> Self {
+        self.score = Some(score);
+        self
+    }
+
+    #[must_use]
     pub fn source(mut self, source: SongSource) -> Self {
         self.source = source;
         self
@@ -340,6 +360,7 @@ impl SongBuilder {
             tempo: self.tempo,
             time_signature: self.time_signature,
             sections: self.sections,
+            score: self.score,
             source: self.source,
             notes: self.notes,
             created_at: self.created_at,

@@ -49,7 +49,9 @@ describe("SongEditor", () => {
       />,
     );
 
-    expect(screen.getByRole("heading", { name: "New song" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "New song" }),
+    ).toBeInTheDocument();
     expect(screen.getByDisplayValue("Hello world")).toBeInTheDocument();
     expect(screen.getByDisplayValue("C")).toBeInTheDocument();
     expect(screen.getByDisplayValue("Xyz")).toBeInTheDocument();

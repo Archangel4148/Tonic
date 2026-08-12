@@ -1,22 +1,27 @@
 # Import
 
-ChordPro and plain-text parsers live in `tonic-import`. They produce the canonical [`Song`](./song-model.md) model. They do not own music theory, UI, or persistence.
+ChordPro, plain-text, and MusicXML parsers live in `tonic-import`. They produce the canonical [`Song`](./song-model.md) model. They do not own music theory, UI, or persistence.
 
-Application code calls `AppServices::import_text` (or `tonic_import::import` / `import_auto`). Phase 5 exposes this over IPC (`import_song`) and in the React import panel.
+Application code calls `AppServices::import_text` / `import_bytes` (or `tonic_import::import` / `import_auto` / `import_bytes`). Phase 5 exposes text import over IPC (`import_song`); Phase 10 adds `import_binary` for `.mxl`.
 
 ## API
 
 ```text
 import(input, ImportFormat, id) → ImportResult { song, warnings }
 import_auto(input, id)          → same, after detect_format(input)
+import_bytes(bytes, name, id)   → same, MusicXML/MXL or chart text
 format_from_extension(ext)      → Option<ImportFormat>
 ```
 
-`ImportResult` never hard-fails. Usable chords, lyrics, and metadata are always kept. If any warning was produced, `summary_message()` is:
+`ImportResult` never hard-fails. Usable chords, lyrics, metadata, and score notes are always kept. If any warning was produced, `summary_message()` is:
 
 > Some content could not be recognized.
 
-That string is `UNRECOGNIZED_CONTENT_MESSAGE` (spec §18).
+except when every warning is `UnsupportedFeature`, in which case it is:
+
+> Some MusicXML features are not supported.
+
+Those strings are `UNRECOGNIZED_CONTENT_MESSAGE` / `UNSUPPORTED_MUSICXML_MESSAGE` (spec §18).
 
 ## Formats
 
@@ -24,6 +29,7 @@ That string is `UNRECOGNIZED_CONTENT_MESSAGE` (spec §18).
 | ---------- | ---------------------------------------------- | -------------------- |
 | ChordPro   | `.cho`, `.crd`, `.chopro`, `.chordpro`, `.pro` | `chordPro`           |
 | Plain text | `.txt`, `.text`                                | `plainText`          |
+| MusicXML   | `.musicxml`, `.xml`, `.mxl`                    | `musicXml`           |
 
 Original input is stored on `SongSource.original_content`. Key changes must not destroy it.
 
@@ -77,7 +83,7 @@ A line is a chord line only when a **majority** of whitespace-separated tokens a
 
 ## Detection
 
-`detect_format` treats input as ChordPro when any line starts with `{` or contains an inline `[Chord]` immediately followed by non-whitespace (not a section name like `[Chorus]`). Otherwise it is plain text.
+`detect_format` treats input as MusicXML when it contains `<score-partwise` / `<score-timewise`, else ChordPro when any line starts with `{` or contains an inline `[Chord]` immediately followed by non-whitespace (not a section name like `[Chorus]`). Otherwise it is plain text.
 
 ## Warnings
 
@@ -89,10 +95,12 @@ A line is a chord line only when a **majority** of whitespace-separated tokens a
 | `MalformedInput`        | Unclosed brackets, bad key/tempo, empty song |
 | `AmbiguousLayout`       | Reserved for later heuristics                |
 | `SkippedContent`        | Extra songs after a mid-file `{new_song}`    |
+| `UnsupportedFeature`    | MusicXML construct skipped; notes still kept |
+
+MusicXML / MXL details: [`musicxml.md`](./musicxml.md).
 
 ## Out of scope
 
 - Web URL import
-- MusicXML / MXL
-- Durable library save (Phase 6)
+- MusicXML authoring
 - Export to ChordPro

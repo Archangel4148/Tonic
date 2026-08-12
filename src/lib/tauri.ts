@@ -26,6 +26,16 @@ export async function importSong(
   return invoke<SongSession>("import_song", { text, format });
 }
 
+export async function importBinary(
+  bytes: Uint8Array,
+  fileName?: string,
+): Promise<SongSession> {
+  return invoke<SongSession>("import_binary", {
+    bytes: Array.from(bytes),
+    fileName: fileName ?? null,
+  });
+}
+
 export async function getCurrentSong(): Promise<SongSession | null> {
   return invoke<SongSession | null>("current_song");
 }

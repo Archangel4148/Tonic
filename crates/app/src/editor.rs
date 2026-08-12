@@ -7,9 +7,10 @@ use tonic_domain::{
     parse_chord, Key, Line, ParseStatus, Section, SectionLabel, Song, SongId, SongSource, Tempo,
     TimeSignature,
 };
-use tonic_import::{ImportWarning, WarningKind, UNRECOGNIZED_CONTENT_MESSAGE};
+use tonic_import::{ImportWarning, WarningKind};
 
 use crate::library;
+use crate::view::summary_from_warnings;
 use crate::SongSessionView;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -124,8 +125,7 @@ impl EditorSession {
 #[must_use]
 pub(crate) fn editor_view(session: &EditorSession) -> EditorSessionView {
     let warnings: Vec<crate::WarningView> = session.warnings.iter().map(Into::into).collect();
-    let summary =
-        (!session.warnings.is_empty()).then_some(UNRECOGNIZED_CONTENT_MESSAGE.to_string());
+    let summary = summary_from_warnings(&session.warnings);
     EditorSessionView {
         song_id: session.draft.id().as_str().to_string(),
         dirty: session.dirty,

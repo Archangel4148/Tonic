@@ -96,6 +96,32 @@ impl Key {
         Self::from_pitch_class(pc, self.mode)
     }
 
+    /// MusicXML `fifths` + major/minor. `None` when fifths is outside `-7..=7`.
+    #[must_use]
+    pub fn from_fifths(fifths: i32, minor: bool) -> Option<Self> {
+        let index = usize::try_from(fifths + 7).ok()?;
+        let symbol = if minor {
+            MINOR_FIFTHS.get(index)?
+        } else {
+            MAJOR_FIFTHS.get(index)?
+        };
+        Self::parse(symbol)
+    }
+
+    /// Inverse of [`Self::from_fifths`] for common keys.
+    #[must_use]
+    pub fn fifths(self) -> Option<i32> {
+        let symbol = self.symbol();
+        let table = match self.mode {
+            Mode::Minor => &MINOR_FIFTHS,
+            Mode::Major => &MAJOR_FIFTHS,
+        };
+        table
+            .iter()
+            .position(|candidate| *candidate == symbol)
+            .map(|index| index as i32 - 7)
+    }
+
     /// Preferred concert-key spelling for a tonic pitch class.
     #[must_use]
     pub fn from_pitch_class(pc: PitchClass, mode: Mode) -> Self {
@@ -182,6 +208,14 @@ fn preferred_tonic(pc: PitchClass, mode: Mode) -> Note {
     };
     Note::parse(symbols[pc.value() as usize]).expect("preferred tonic symbols are valid")
 }
+
+const MAJOR_FIFTHS: [&str; 15] = [
+    "Cb", "Gb", "Db", "Ab", "Eb", "Bb", "F", "C", "G", "D", "A", "E", "B", "F#", "C#",
+];
+const MINOR_FIFTHS: [&str; 15] = [
+    "Abm", "Ebm", "Bbm", "Fm", "Cm", "Gm", "Dm", "Am", "Em", "Bm", "F#m", "C#m", "G#m", "D#m",
+    "A#m",
+];
 
 fn signed_pc_delta(from: i32, to: i32) -> i32 {
     let raw = (to - from).rem_euclid(12);
@@ -298,6 +332,18 @@ mod tests {
         assert!(Key::parse("H").is_none());
         assert!(Key::parse("C dorian").is_none());
         assert!(Key::parse("major").is_none());
+    }
+
+    #[test]
+    fn fifths_round_trip_common_keys() {
+        assert_eq!(Key::from_fifths(0, false).unwrap().symbol(), "C");
+        assert_eq!(Key::from_fifths(2, false).unwrap().symbol(), "D");
+        assert_eq!(Key::from_fifths(-1, false).unwrap().symbol(), "F");
+        assert_eq!(Key::from_fifths(0, true).unwrap().symbol(), "Am");
+        assert_eq!(Key::parse("G").unwrap().fifths(), Some(1));
+        assert_eq!(Key::parse("Bb").unwrap().fifths(), Some(-2));
+        assert_eq!(Key::parse("Em").unwrap().fifths(), Some(1));
+        assert!(Key::from_fifths(8, false).is_none());
     }
 
     #[test]

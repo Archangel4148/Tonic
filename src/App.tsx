@@ -24,6 +24,7 @@ import {
   getCurrentSong,
   getEditorState,
   getSetlist,
+  importBinary,
   importSong,
   listLibrary,
   listSetlists,
@@ -561,6 +562,19 @@ function App() {
                         setImportText(text);
                         setImportFormat(format);
                         const next = await importSong(text, format);
+                        setEditor(null);
+                        setImportOpen(false);
+                        return next;
+                      });
+                    })()
+                  }
+                  onImportBinary={(bytes, fileName) =>
+                    void (async () => {
+                      if (!(await confirmLeaveEditor())) {
+                        return;
+                      }
+                      await runAction(async () => {
+                        const next = await importBinary(bytes, fileName);
                         setEditor(null);
                         setImportOpen(false);
                         return next;

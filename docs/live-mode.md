@@ -19,17 +19,17 @@ Live mode is **presentation state**. Song documents, setlist entries, and transp
 
 ## Navigation
 
-| Input | Action |
-| ----- | ------ |
+| Input                             | Action                                                    |
+| --------------------------------- | --------------------------------------------------------- |
 | Previous / Next, swipe left/right | Adjacent playable setlist entry (`setlist_open_neighbor`) |
-| `←` / `PageUp`, `→` / `PageDown` | Previous / next |
-| `Space` | Start/stop auto-scroll |
-| `Home` | Scroll to top |
-| `−` / `+` | Transpose one semitone (Rust) |
-| `[` / `]` | Slower / faster auto-scroll |
-| `M` | Toggle extra metadata |
-| `L` | Lock / unlock on-screen controls |
-| `Escape` | Exit live |
+| `←` / `PageUp`, `→` / `PageDown`  | Previous / next                                           |
+| `Space`                           | Start/stop auto-scroll                                    |
+| `Home`                            | Scroll to top                                             |
+| `−` / `+`                         | Transpose one semitone (Rust)                             |
+| `[` / `]`                         | Slower / faster auto-scroll                               |
+| `M`                               | Toggle extra metadata                                     |
+| `L`                               | Lock / unlock on-screen controls                          |
+| `Escape`                          | Exit live                                                 |
 
 Missing setlist songs are skipped. At either end, navigation stops (no wrap). A single song (no setlist) can still use live mode; previous/next stay disabled.
 
@@ -45,13 +45,14 @@ Uses the Screen Wake Lock API when present (WebView2 / Chromium). If unavailable
 
 ## IPC
 
-| Command                   | Purpose                                      |
-| ------------------------- | -------------------------------------------- |
-| `setlist_open_neighbor`   | `delta` +1 / −1 from the current setlist entry |
+| Command                 | Purpose                                        |
+| ----------------------- | ---------------------------------------------- |
+| `setlist_open_neighbor` | `delta` +1 / −1 from the current setlist entry |
 
 Transpose, key, and reset use the existing session commands (entry overrides if a setlist is open).
 
+Sheet music imported in Phase 10 renders in live mode through the same `SongViewer` / `sheetMusicXml` path.
+
 ## Out of scope
 
-- MusicXML / sheet music (Phase 10)
 - Android keep-awake / gesture polish beyond this desktop-first pass

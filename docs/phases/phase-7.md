@@ -21,10 +21,10 @@ No setlists, live mode, web import, or MusicXML.
 
 ## Acceptance criteria
 
-| Criterion | Result |
-| --------- | ------ |
+| Criterion                                  | Result                                              |
+| ------------------------------------------ | --------------------------------------------------- |
 | Create a complete chord chart from scratch | New song → lyrics + tagged chords + sections → Save |
-| Reopen it later | Library round-trip after Save |
+| Reopen it later                            | Library round-trip after Save                       |
 
 ## Review notes
 

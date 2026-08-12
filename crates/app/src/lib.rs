@@ -16,7 +16,7 @@ use std::sync::Mutex;
 use tonic_domain::{
     engine_name, engine_version, Key, Line, ParseStatus, Quality, Section, Song, SongId, Timestamp,
 };
-use tonic_import::{import, import_auto, ImportFormat, ImportWarning};
+use tonic_import::{import, import_auto, import_bytes, ImportFormat, ImportWarning};
 use tonic_persist::{
     FileLibrary, MemoryLibrary, SetlistEntry, SongLibrary, StoredSetlist, StoredSong,
 };
@@ -46,10 +46,11 @@ pub enum ImportMode {
     Auto,
     ChordPro,
     PlainText,
+    MusicXml,
 }
 
 impl ImportMode {
-    /// Parse UI/IPC format names (`auto`, `chordPro`, `plainText`).
+    /// Parse UI/IPC format names (`auto`, `chordPro`, `plainText`, `musicXml`).
     ///
     /// # Errors
     ///
@@ -59,6 +60,7 @@ impl ImportMode {
             "" | "auto" | "Auto" => Ok(Self::Auto),
             "chordPro" | "chordpro" | "ChordPro" | "cho" => Ok(Self::ChordPro),
             "plainText" | "plaintext" | "PlainText" | "txt" => Ok(Self::PlainText),
+            "musicXml" | "musicxml" | "MusicXml" | "mxl" => Ok(Self::MusicXml),
             other => Err(format!("Unknown import format '{other}'.")),
         }
     }
@@ -158,7 +160,7 @@ impl AppServices {
         AppInfo {
             name: "Tonic",
             version: env!("CARGO_PKG_VERSION"),
-            phase: 9,
+            phase: 10,
             domain_engine: engine_name(),
             domain_version: engine_version(),
         }
@@ -192,7 +194,47 @@ impl AppServices {
             ImportMode::Auto => import_auto(input, id),
             ImportMode::ChordPro => import(input, ImportFormat::ChordPro, id),
             ImportMode::PlainText => import(input, ImportFormat::PlainText, id),
+            ImportMode::MusicXml => import(input, ImportFormat::MusicXml, id),
         };
+        let now = Timestamp::now().as_secs();
+        let mut song = result.song;
+        if song.created_at().is_none() {
+            song.set_created_at(Some(Timestamp::now()));
+        }
+        song.set_updated_at(Some(Timestamp::now()));
+        let record = StoredSong {
+            song,
+            favorite: false,
+            tags: Vec::new(),
+            last_opened_at: Some(now),
+            last_modified_at: Some(now),
+        };
+        self.persist_record(&record, Some(state.next_id))?;
+        let song_id = record.song.id().as_str().to_string();
+        state.songs.insert(song_id.clone(), record);
+        state.warnings = result.warnings;
+        state.steps = 0;
+        state.session_id = Some(song_id);
+        Ok(session_view(&state))
+    }
+
+    /// Import UTF-8 chart/MusicXML text or a compressed `.mxl` payload.
+    ///
+    /// # Errors
+    ///
+    /// Persistence write failure.
+    pub fn import_bytes(
+        &self,
+        bytes: &[u8],
+        file_name: Option<&str>,
+    ) -> Result<SongSessionView, String> {
+        let mut state = self.lock();
+        ensure_no_dirty_editor(&state)?;
+        state.editor = None;
+        clear_setlist_session(&mut state);
+        let id = SongId::new(format!("song-{}", state.next_id));
+        state.next_id += 1;
+        let result = import_bytes(bytes, file_name, id);
         let now = Timestamp::now().as_secs();
         let mut song = result.song;
         if song.created_at().is_none() {
@@ -292,9 +334,7 @@ impl AppServices {
                 ensure_original_key(song)
             }
         };
-        let diff =
-            i32::from(target.pitch_class().value()) - i32::from(original.pitch_class().value());
-        state.steps = diff.rem_euclid(12);
+        state.steps = signed_pitch_delta(original, target);
         if setlist_session {
             self.persist_song_document(&state)?;
             set_open_entry_key(&mut state, Some(target.symbol()))?;
@@ -1196,6 +1236,7 @@ impl AppServices {
             ImportMode::Auto => import_auto(text, id),
             ImportMode::ChordPro => import(text, ImportFormat::ChordPro, id),
             ImportMode::PlainText => import(text, ImportFormat::PlainText, id),
+            ImportMode::MusicXml => import(text, ImportFormat::MusicXml, id),
         };
         if editor.draft.title() == "Untitled" && parsed.song.title() != "Untitled" {
             editor.draft.set_title(parsed.song.title());
@@ -1227,6 +1268,9 @@ impl AppServices {
             }
         }
         *editor.draft.sections_mut() = parsed.song.sections().to_vec();
+        if let Some(score) = parsed.song.score().cloned() {
+            editor.draft.set_score(Some(score));
+        }
         if editor.draft.sections().is_empty() {
             editor.draft.sections_mut().push(Section::new(
                 tonic_domain::SectionLabel::Verse { number: None },
@@ -1402,9 +1446,7 @@ fn entry_steps(song: &Song, setlist: &StoredSetlist, entry_id: &str) -> i32 {
             .and_then(Key::parse)
             .or_else(|| song.performance_key()),
     ) {
-        (Some(original), Some(performance)) => (i32::from(performance.pitch_class().value())
-            - i32::from(original.pitch_class().value()))
-        .rem_euclid(12),
+        (Some(original), Some(performance)) => signed_pitch_delta(original, performance),
         _ => 0,
     }
 }
@@ -1471,6 +1513,19 @@ fn ensure_original_key(song: &mut Song) -> Key {
 }
 
 fn infer_key(song: &Song) -> Key {
+    if let Some(score) = song.score() {
+        for part in &score.parts {
+            for measure in &part.measures {
+                if let Some(key) = measure
+                    .attributes
+                    .as_ref()
+                    .and_then(|attributes| attributes.key)
+                {
+                    return key;
+                }
+            }
+        }
+    }
     for section in song.sections() {
         for line in section.lines() {
             for token in line.chord_tokens() {
@@ -1492,10 +1547,18 @@ fn infer_key(song: &Song) -> Key {
 
 fn steps_from_song(song: &Song) -> i32 {
     match (song.original_key(), song.performance_key()) {
-        (Some(original), Some(performance)) => (i32::from(performance.pitch_class().value())
-            - i32::from(original.pitch_class().value()))
-        .rem_euclid(12),
+        (Some(original), Some(performance)) => signed_pitch_delta(original, performance),
         _ => 0,
+    }
+}
+
+fn signed_pitch_delta(from: Key, to: Key) -> i32 {
+    let diff = i32::from(to.pitch_class().value()) - i32::from(from.pitch_class().value());
+    let wrapped = diff.rem_euclid(12);
+    if wrapped > 6 {
+        wrapped - 12
+    } else {
+        wrapped
     }
 }
 
@@ -1523,7 +1586,7 @@ mod tests {
         let info = services.info();
 
         assert_eq!(info.name, "Tonic");
-        assert_eq!(info.phase, 9);
+        assert_eq!(info.phase, 10);
         assert_eq!(info.domain_engine, "tonic-domain");
         assert!(!info.version.is_empty());
         assert!(!info.domain_version.is_empty());
@@ -1951,5 +2014,30 @@ mod tests {
         assert_eq!(parsed.sections[0].lines[0].lyrics, "Hello world");
         assert_eq!(parsed.sections[0].lines[0].chords[0].symbol, "Am");
         assert_eq!(parsed.title, "Fix");
+    }
+
+    #[test]
+    fn musicxml_import_exposes_sheet_xml_and_survives_transpose() {
+        let xml = include_str!("../../import/fixtures/musicxml/twinkle.musicxml");
+        let services = AppServices::new();
+        let session = services.import_text(xml, ImportMode::MusicXml).unwrap();
+        assert_eq!(session.song.title, "Twinkle");
+        assert_eq!(session.song.source_format, "musicXml");
+        assert!(session.song.has_score);
+        let sheet = session.sheet_music_xml.expect("sheet xml");
+        assert!(sheet.contains("<step>C</step>"), "{sheet}");
+        assert!(sheet.contains("<work-title>Twinkle</work-title>"));
+        assert!(
+            sheet.contains("<clef>"),
+            "display XML should keep original engraving, got {sheet}"
+        );
+
+        let up = services.transpose_by(2).unwrap();
+        assert_eq!(up.song.performance_key.as_deref(), Some("D"));
+        let transposed = up.sheet_music_xml.expect("transposed sheet");
+        assert!(transposed.contains("<step>D</step>"), "{transposed}");
+        assert!(transposed.contains("<clef>"), "{transposed}");
+        assert!(!transposed.contains("<step>C</step>"), "{transposed}");
+        assert_eq!(up.song.original_key.as_deref(), Some("C"));
     }
 }

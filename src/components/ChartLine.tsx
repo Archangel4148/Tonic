@@ -17,7 +17,9 @@ export function ChartLine({ line }: Props) {
 
   return (
     <div
-      className={chordOnly ? "chart-line chart-line--chords-only" : "chart-line"}
+      className={
+        chordOnly ? "chart-line chart-line--chords-only" : "chart-line"
+      }
       aria-label={ariaLabel}
     >
       {line.annotations.map((annotation) => (
@@ -36,7 +38,10 @@ export function ChartLine({ line }: Props) {
       {chordOnly ? (
         <p className="chart-chords-only">
           {line.chords.map((chord) => (
-            <ChordMark key={`${chord.symbol}-${chord.lyricIndex}`} chord={chord} />
+            <ChordMark
+              key={`${chord.symbol}-${chord.lyricIndex}`}
+              chord={chord}
+            />
           ))}
         </p>
       ) : (

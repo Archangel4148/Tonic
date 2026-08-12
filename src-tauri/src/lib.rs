@@ -47,6 +47,15 @@ fn import_song(
 }
 
 #[tauri::command]
+fn import_binary(
+    services: tauri::State<'_, AppServices>,
+    bytes: Vec<u8>,
+    file_name: Option<String>,
+) -> Result<SongSessionView, String> {
+    services.import_bytes(&bytes, file_name.as_deref())
+}
+
+#[tauri::command]
 fn current_song(services: tauri::State<'_, AppServices>) -> Option<SongSessionView> {
     services.current_session()
 }
@@ -397,6 +406,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             app_info,
             import_song,
+            import_binary,
             current_song,
             transpose_song,
             set_performance_key,

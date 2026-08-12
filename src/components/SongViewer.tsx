@@ -1,4 +1,5 @@
 import { ChartLine } from "./ChartLine";
+import { SheetMusic } from "./SheetMusic";
 import type { SongSession } from "../lib/types";
 
 type Props = {
@@ -127,6 +128,10 @@ export function SongViewer({
             ))}
           </ul>
         </div>
+      )}
+
+      {session.sheetMusicXml && (
+        <SheetMusic xml={session.sheetMusicXml} label={`${song.title} score`} />
       )}
 
       <div className="song-body">

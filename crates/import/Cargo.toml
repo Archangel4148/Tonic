@@ -2,11 +2,13 @@
 name = "tonic-import"
 version.workspace = true
 edition.workspace = true
-description = "ChordPro and plain-text import into Tonic's canonical Song model"
+description = "ChordPro, plain-text, and MusicXML import into Tonic's canonical Song model"
 license.workspace = true
 
 [dependencies]
+roxmltree = "0.20"
 tonic-domain.workspace = true
+zip = { version = "2", default-features = false, features = ["deflate"] }
 
 [lints]
 workspace = true

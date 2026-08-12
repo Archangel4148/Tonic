@@ -1,8 +1,12 @@
 //! Display DTO for the song viewer. Derived from the canonical [`Song`].
 
 use serde::Serialize;
-use tonic_domain::{Line, LineToken, ParseStatus, Song, SourceFormat};
-use tonic_import::{ImportWarning, WarningKind, UNRECOGNIZED_CONTENT_MESSAGE};
+use tonic_domain::{
+    transpose_musicxml_text, Line, LineToken, ParseStatus, Song, SourceFormat, Spelling,
+};
+use tonic_import::{
+    ImportWarning, WarningKind, UNRECOGNIZED_CONTENT_MESSAGE, UNSUPPORTED_MUSICXML_MESSAGE,
+};
 
 use crate::setlist::SetlistContextView;
 
@@ -17,6 +21,8 @@ pub struct SongSessionView {
     pub favorite: bool,
     pub tags: Vec<String>,
     pub setlist: Option<SetlistContextView>,
+    /// Derived MusicXML for OSMD. `None` when the song has no score.
+    pub sheet_music_xml: Option<String>,
 }
 
 /// Render-ready song. Display chord symbols are already transposed.
@@ -33,6 +39,7 @@ pub struct SongView {
     pub time_signature: Option<String>,
     pub notes: Option<String>,
     pub source_format: String,
+    pub has_score: bool,
     pub sections: Vec<SectionView>,
 }
 
@@ -84,12 +91,12 @@ impl SongSessionView {
         Self {
             song: SongView::from_song(song),
             warnings: warnings.iter().map(WarningView::from).collect(),
-            summary_message: (!warnings.is_empty())
-                .then_some(UNRECOGNIZED_CONTENT_MESSAGE.to_string()),
+            summary_message: summary_from_warnings(warnings),
             semitone_offset,
             favorite,
             tags,
             setlist,
+            sheet_music_xml: sheet_music_xml(song, semitone_offset),
         }
     }
 }
@@ -108,6 +115,7 @@ impl SongView {
             time_signature: song.time_signature().map(|ts| ts.symbol()),
             notes: song.notes().map(str::to_string),
             source_format: source_format_name(song.source().format()),
+            has_score: song.score().is_some_and(|score| !score.parts.is_empty()),
             sections: song
                 .sections()
                 .iter()
@@ -164,10 +172,48 @@ fn line_view(song: &Song, line: &Line) -> LineView {
     }
 }
 
+fn sheet_music_xml(song: &Song, steps: i32) -> Option<String> {
+    let spelling = match song.performance_key().or(song.original_key()) {
+        Some(key) => Spelling::InKey(key),
+        None => Spelling::PreserveAccidentalFamily,
+    };
+    if matches!(song.source().format(), SourceFormat::MusicXml) {
+        if let Some(original) = song.source().original_content() {
+            if original.contains("<score-partwise") || original.contains("<score-timewise") {
+                return Some(transpose_musicxml_text(original, steps, spelling));
+            }
+        }
+    }
+    let score = song.score()?;
+    if score.parts.is_empty() {
+        return None;
+    }
+    let display = if steps == 0 {
+        score.clone()
+    } else {
+        score.transpose_semitones(steps, spelling)
+    };
+    Some(display.to_musicxml())
+}
+
+pub(crate) fn summary_from_warnings(warnings: &[ImportWarning]) -> Option<String> {
+    if warnings.is_empty() {
+        None
+    } else if warnings
+        .iter()
+        .all(|warning| warning.kind == WarningKind::UnsupportedFeature)
+    {
+        Some(UNSUPPORTED_MUSICXML_MESSAGE.to_string())
+    } else {
+        Some(UNRECOGNIZED_CONTENT_MESSAGE.to_string())
+    }
+}
+
 fn source_format_name(format: &SourceFormat) -> String {
     match format {
         SourceFormat::ChordPro => "chordPro".to_string(),
         SourceFormat::PlainText => "plainText".to_string(),
+        SourceFormat::MusicXml => "musicXml".to_string(),
         SourceFormat::Web => "web".to_string(),
         SourceFormat::Manual => "manual".to_string(),
         SourceFormat::Other(name) => name.clone(),
@@ -190,6 +236,7 @@ fn warning_kind_name(kind: WarningKind) -> &'static str {
         WarningKind::MalformedInput => "malformedInput",
         WarningKind::AmbiguousLayout => "ambiguousLayout",
         WarningKind::SkippedContent => "skippedContent",
+        WarningKind::UnsupportedFeature => "unsupportedFeature",
     }
 }
 

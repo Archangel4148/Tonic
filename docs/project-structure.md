@@ -14,7 +14,7 @@ Tonic/
 │   ├── domain/                tonic-domain (music engine + Song model)
 │   ├── app/                   tonic-app
 │   ├── persist/               tonic-persist
-│   └── import/                tonic-import (ChordPro + plain text)
+│   └── import/                tonic-import (ChordPro, plain text, MusicXML)
 │       ├── src/
 │       ├── fixtures/
 │       └── tests/
@@ -40,7 +40,7 @@ Tonic/
 | `tonic-domain`  | Domain crate                                                          |
 | `tonic-app`     | Application crate                                                     |
 | `tonic-persist` | Persistence crate                                                     |
-| `tonic-import`  | ChordPro / plain-text import                                          |
+| `tonic-import`  | ChordPro / plain-text / MusicXML import                               |
 | `com.tonic.app` | Bundle identifier                                                     |
 
 ## Frontend layout rule

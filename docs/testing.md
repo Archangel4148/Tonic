@@ -71,6 +71,15 @@ Tauri `invoke` is mocked in `src/test/setup.ts` so UI tests do not require a run
 - Chart-line syllable splitting
 - Viewer warnings and unrecognized chords
 
+Phase 10 coverage (`cargo test -p tonic-import` / `tonic-app` + UI):
+
+- MusicXML metadata, notes, lyrics, harmony companion chart (`twinkle.musicxml`)
+- Unsupported features warn and keep usable notes
+- Malformed MusicXML still yields a song
+- MXL zip round-trip
+- App session `sheetMusicXml` transposes without rewriting source
+- Viewer sheet region against mocked OSMD
+
 Phase 9 coverage:
 
 - `open_setlist_neighbor` skips missing songs and stops at setlist ends

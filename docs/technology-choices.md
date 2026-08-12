@@ -22,7 +22,7 @@ Phase 1 splits that work into workspace crates so later phases do not have to in
 | `tonic-domain`        | Music theory and canonical song model. Serde JSON only; no UI/Tauri. |
 | `tonic-app`           | Application services and in-memory authoritative state.              |
 | `tonic-persist`       | Local JSON song library (filesystem + in-memory test double).        |
-| `tonic-import`        | ChordPro and plain-text import into `Song`. No UI/Tauri.             |
+| `tonic-import`        | ChordPro, plain-text, and MusicXML/MXL import into `Song`. No UI.    |
 | `tonic` (`src-tauri`) | Windowing, IPC, and OS integration.                                  |
 
 The popular gRPC crate also named `tonic` is not a dependency. Our crates use the `tonic-*` prefix to stay distinct.
@@ -54,4 +54,4 @@ Phase 6 uses **filesystem JSON** under the Tauri app data directory, behind a `S
 
 `tauri-plugin-opener` ships with the Tauri 2 React template. Phase 1 does not use it. It is retained as a small, official plugin rather than immediately diverging from the template. It can be removed if it stays unused after URL import and desktop integration work.
 
-No other third-party music, database, or UI libraries were added.
+Phase 10 adds **OpenSheetMusicDisplay** in the React UI for engraving only, plus `roxmltree` and `zip` in `tonic-import` for MusicXML / MXL. See [`musicxml.md`](./musicxml.md).

@@ -23,10 +23,10 @@ No chart editor, new-song composer, setlists, live mode, web import, or MusicXML
 
 ## Acceptance criteria
 
-| Criterion                                      | Result                                                                 |
-| ---------------------------------------------- | ---------------------------------------------------------------------- |
-| Songs survive application restarts             | `AppServices::open` reloads JSON files; reopen test covers this        |
-| Remain available offline                       | Local app-data files only; no network                                  |
+| Criterion                          | Result                                                          |
+| ---------------------------------- | --------------------------------------------------------------- |
+| Songs survive application restarts | `AppServices::open` reloads JSON files; reopen test covers this |
+| Remain available offline           | Local app-data files only; no network                           |
 
 ## Review notes
 

@@ -21,10 +21,10 @@ No live/performance mode (fullscreen, next/previous navigation, auto-scroll, kee
 
 ## Acceptance criteria
 
-| Criterion | Result |
-| --------- | ------ |
+| Criterion                                                      | Result                                                                           |
+| -------------------------------------------------------------- | -------------------------------------------------------------------------------- |
 | Same song multiple times without duplicating the song document | Distinct `entry-{n}` ids, shared `songId`; duplicate setlist mints new entry ids |
-| Independent performance settings per entry | Key, capo, and notes stored on the entry; viewer uses a display clone |
+| Independent performance settings per entry                     | Key, capo, and notes stored on the entry; viewer uses a display clone            |
 
 ## Review notes
 

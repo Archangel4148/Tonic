@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 pub enum SourceFormat {
     ChordPro,
     PlainText,
+    MusicXml,
     Web,
     #[default]
     Manual,
@@ -58,6 +59,16 @@ impl SongSource {
     pub fn plain_text(original_content: impl Into<String>) -> Self {
         Self {
             format: SourceFormat::PlainText,
+            original_content: Some(original_content.into()),
+            url: None,
+            website: None,
+        }
+    }
+
+    #[must_use]
+    pub fn music_xml(original_content: impl Into<String>) -> Self {
+        Self {
+            format: SourceFormat::MusicXml,
             original_content: Some(original_content.into()),
             url: None,
             website: None,

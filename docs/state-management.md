@@ -1,12 +1,12 @@
 # State management
 
-Application state has a single ownership model. Phase 9 owns the song library, setlists, and editor draft in Rust. Live mode, theme, and type scale are presentation state in the UI.
+Application state has a single ownership model. Phase 10 owns the song library, setlists, editor draft, and derived sheet MusicXML in Rust. Live mode, theme, type scale, and OSMD rendering are presentation state in the UI.
 
 ## Authoritative state
 
 Owned by Rust application services (`tonic-app`), not by React and not by the persistence crate.
 
-Phase 9 authoritative state owned by `AppServices`:
+Phase 10 authoritative state owned by `AppServices`:
 
 - Application identity (`AppInfo`)
 - Persistence health, derived from the `SongLibrary` boundary
@@ -19,6 +19,7 @@ Domain authoritative song data (Phase 3, in `tonic-domain`):
 
 - `Song` documents: written chord tokens, original/performance keys, source text
 - Display chords after a key change are **derived** (`Song::display_chord`)
+- Display MusicXML after a key change is **derived** (`Score::transpose_semitones` → `to_musicxml`)
 
 Later authoritative application state will include:
 
@@ -33,8 +34,9 @@ Recalculated from authoritative state. Do not store it as a second source of tru
 Derived (recalculated, not stored as truth):
 
 - Transposed/display chords (`Song::display_chord` → `SongSessionView`)
+- Display MusicXML (`sheetMusicXml` on `SongSessionView`)
 - Setlist played key (`played_key` from performance key + capo)
-- Rendered chord/lyric layout in React
+- Rendered chord/lyric layout and OSMD engraving in React
 
 Presentation state in the UI:
 

@@ -1,7 +1,7 @@
 # Phase 9 — Live Performance Mode
 
-**Status:** Implemented, pending review  
-**Do not start Phase 10 until explicitly instructed.**
+**Status:** Complete  
+**Phase 10 may proceed.**
 
 ## Goal
 
@@ -24,8 +24,8 @@ No MusicXML, web URL import, or Android project generation.
 
 ## Acceptance criteria
 
-| Criterion | Result |
-| --------- | ------ |
+| Criterion                                             | Result                                                                       |
+| ----------------------------------------------------- | ---------------------------------------------------------------------------- |
 | Perform an entire set without returning to the editor | Open setlist → Live → next/prev, transpose, auto-scroll, exit only when done |
 
 ## Review notes
