@@ -1,0 +1,11 @@
+dist
+target
+coverage
+src-tauri/icons
+src-tauri/gen
+package-lock.json
+docs/spec.md
+*.png
+*.ico
+*.icns
+*.svg

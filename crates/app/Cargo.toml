@@ -1,0 +1,13 @@
+[package]
+name = "tonic-app"
+version.workspace = true
+edition.workspace = true
+description = "Application services and authoritative in-memory state for Tonic"
+license.workspace = true
+
+[dependencies]
+tonic-domain.workspace = true
+tonic-persist.workspace = true
+
+[lints]
+workspace = true

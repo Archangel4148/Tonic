@@ -1,0 +1,11 @@
+[package]
+name = "tonic-persist"
+version.workspace = true
+edition.workspace = true
+description = "Persistence boundary for Tonic. Phase 1 provides an in-memory stub only."
+license.workspace = true
+
+[dependencies]
+
+[lints]
+workspace = true

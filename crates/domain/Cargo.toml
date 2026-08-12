@@ -1,0 +1,11 @@
+[package]
+name = "tonic-domain"
+version.workspace = true
+edition.workspace = true
+description = "UI-independent music-theory and song-domain layer for Tonic"
+license.workspace = true
+
+[dependencies]
+
+[lints]
+workspace = true

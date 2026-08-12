@@ -1,0 +1,23 @@
+[package]
+name = "tonic"
+version.workspace = true
+description = "Tonic — a musician's songbook"
+authors = ["Tonic contributors"]
+edition.workspace = true
+
+[lib]
+name = "tonic_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-opener = "2"
+serde = { workspace = true }
+serde_json = { workspace = true }
+tonic-app = { workspace = true }
+
+[lints]
+workspace = true
