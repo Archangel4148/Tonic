@@ -22,6 +22,8 @@ Live mode is **presentation state**. Song documents, setlist entries, and transp
 | Input                             | Action                                                    |
 | --------------------------------- | --------------------------------------------------------- |
 | Previous / Next, swipe left/right | Adjacent playable setlist entry (`setlist_open_neighbor`) |
+| Pinch in / out                    | Scale lyrics, chords, section labels, and sheet music     |
+| `Ctrl`+scroll / `Ctrl`+`−`/`+`    | Same text scale (also `Cmd` on macOS)                     |
 | `←` / `PageUp`, `→` / `PageDown`  | Previous / next                                           |
 | `Space`                           | Start/stop auto-scroll                                    |
 | `Home`                            | Scroll to top                                             |
@@ -31,6 +33,8 @@ Live mode is **presentation state**. Song documents, setlist entries, and transp
 | `L`                               | Lock / unlock on-screen controls                          |
 | `F11` / `Alt+Enter`               | Toggle fullscreen                                         |
 | `Escape`                          | Exit live                                                 |
+
+Chrome **−** / **+** text-size buttons bump the same live scale as pinch (persisted separately from the editor scale).
 
 Missing setlist songs are skipped. At either end, navigation stops (no wrap). A single song (no setlist) can still use live mode; previous/next stay disabled.
 
@@ -56,4 +60,4 @@ Sheet music imported in Phase 10 renders in live mode through the same `SongView
 
 ## Out of scope
 
-- Android keep-awake / gesture polish beyond this desktop-first pass
+- Android keep-awake beyond the Screen Wake Lock API when the WebView exposes it

@@ -76,3 +76,28 @@ export function loadLiveScale(): TypeScale {
 export function persistLiveScale(scale: TypeScale): void {
   localStorage.setItem(SCALE_KEY, JSON.stringify(scale));
 }
+
+/** Distance between two touch points (for pinch gestures). */
+export function touchPairDistance(
+  a: { clientX: number; clientY: number },
+  b: { clientX: number; clientY: number },
+): number {
+  return Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+}
+
+/** Scale lyric/chord/section together from a pinch start snapshot. */
+export function pinchScaleFromDistance(
+  base: TypeScale,
+  startDistance: number,
+  currentDistance: number,
+): TypeScale {
+  if (!(startDistance > 0) || !(currentDistance > 0)) {
+    return base;
+  }
+  const factor = currentDistance / startDistance;
+  return {
+    lyric: clampScale(base.lyric * factor),
+    chord: clampScale(base.chord * factor),
+    section: clampScale(base.section * factor),
+  };
+}

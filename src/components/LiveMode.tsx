@@ -3,12 +3,15 @@ import { SongViewer } from "./SongViewer";
 import {
   advanceScroll,
   clampScrollSpeed,
+  DEFAULT_LIVE_SCALE,
   loadHideMeta,
   loadLiveScale,
   loadScrollSpeed,
   persistHideMeta,
   persistLiveScale,
   persistScrollSpeed,
+  pinchScaleFromDistance,
+  touchPairDistance,
 } from "../lib/livePrefs";
 import {
   isFullscreenHotkey,
@@ -55,6 +58,12 @@ export function LiveMode({
 }: Props) {
   const scrollerRef = useRef<HTMLDivElement>(null);
   const swipeStart = useRef<{ x: number; y: number } | null>(null);
+  const pinchRef = useRef<{
+    startDist: number;
+    base: TypeScale;
+  } | null>(null);
+  const pinchActive = useRef(false);
+  const liveScaleRef = useRef<TypeScale>(DEFAULT_LIVE_SCALE);
   const speedRef = useRef(28);
   const [chromeVisible, setChromeVisible] = useState(true);
   const [controlsLocked, setControlsLocked] = useState(false);
@@ -67,9 +76,7 @@ export function LiveMode({
   );
   const [fullscreen, setFullscreen] = useState(true);
   const [liveScale, setLiveScale] = useState<TypeScale>(() =>
-    typeof localStorage === "undefined"
-      ? { lyric: 1.9, chord: 1.65, section: 1.05 }
-      : loadLiveScale(),
+    typeof localStorage === "undefined" ? DEFAULT_LIVE_SCALE : loadLiveScale(),
   );
 
   const setlist = session.setlist;
@@ -79,6 +86,7 @@ export function LiveMode({
     session.song.performanceKey ?? session.song.originalKey ?? "";
 
   speedRef.current = speed;
+  liveScaleRef.current = liveScale;
 
   const showChrome = useCallback(() => {
     if (!controlsLocked) {
@@ -126,7 +134,18 @@ export function LiveMode({
   useEffect(() => {
     applyTypeScale(liveScale);
     persistLiveScale(liveScale);
+    const sheetZoom = liveScale.lyric / DEFAULT_LIVE_SCALE.lyric;
+    document.documentElement.style.setProperty(
+      "--sheet-zoom",
+      String(Math.min(2.2, Math.max(0.55, sheetZoom))),
+    );
   }, [liveScale]);
+
+  useEffect(() => {
+    return () => {
+      document.documentElement.style.removeProperty("--sheet-zoom");
+    };
+  }, []);
 
   useEffect(() => {
     persistScrollSpeed(speed);
@@ -200,6 +219,14 @@ export function LiveMode({
     return () => cancelAnimationFrame(frame);
   }, [playing]);
 
+  const bumpScale = useCallback((delta: number) => {
+    setLiveScale((scale) => ({
+      lyric: clampScale(scale.lyric + delta),
+      chord: clampScale(scale.chord + delta),
+      section: clampScale(scale.section + delta),
+    }));
+  }, []);
+
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
       const target = event.target as HTMLElement | null;
@@ -219,6 +246,19 @@ export function LiveMode({
       if (isFullscreenHotkey(event)) {
         event.preventDefault();
         void toggleStageFullscreen().then(setFullscreen);
+        return;
+      }
+      const zoomMod = event.ctrlKey || event.metaKey;
+      if (
+        zoomMod &&
+        (event.key === "-" ||
+          event.key === "_" ||
+          event.key === "+" ||
+          event.key === "=")
+      ) {
+        event.preventDefault();
+        showChrome();
+        bumpScale(event.key === "-" || event.key === "_" ? -0.1 : 0.1);
         return;
       }
       showChrome();
@@ -276,9 +316,27 @@ export function LiveMode({
         setHideMeta((value) => !value);
       }
     }
+
+    function onWheel(event: WheelEvent) {
+      if (!(event.ctrlKey || event.metaKey)) {
+        return;
+      }
+      event.preventDefault();
+      showChrome();
+      const step = event.deltaY === 0 ? 0 : event.deltaY > 0 ? -0.1 : 0.1;
+      if (step !== 0) {
+        bumpScale(step);
+      }
+    }
+
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    window.addEventListener("wheel", onWheel, { passive: false });
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("wheel", onWheel);
+    };
   }, [
+    bumpScale,
     busy,
     canNext,
     canPrev,
@@ -291,41 +349,100 @@ export function LiveMode({
     toggleLock,
   ]);
 
-  function bumpScale(delta: number): void {
-    setLiveScale((scale) => ({
-      lyric: clampScale(scale.lyric + delta),
-      chord: clampScale(scale.chord + delta),
-      section: clampScale(scale.section + delta),
-    }));
-  }
-
-  function onTouchStart(event: React.TouchEvent<HTMLDivElement>): void {
-    const touch = event.changedTouches[0];
-    if (!touch) {
+  useEffect(() => {
+    const el = scrollerRef.current;
+    if (!el) {
       return;
     }
-    swipeStart.current = { x: touch.clientX, y: touch.clientY };
-  }
 
-  function onTouchEnd(event: React.TouchEvent<HTMLDivElement>): void {
-    const start = swipeStart.current;
-    swipeStart.current = null;
-    const touch = event.changedTouches[0];
-    if (!start || !touch) {
-      return;
-    }
-    const dx = touch.clientX - start.x;
-    const dy = touch.clientY - start.y;
-    if (Math.abs(dx) < SWIPE_MIN || Math.abs(dx) < Math.abs(dy) * 1.4) {
+    const onTouchStart = (event: TouchEvent) => {
+      if (event.touches.length >= 2) {
+        const a = event.touches[0];
+        const b = event.touches[1];
+        if (!a || !b) {
+          return;
+        }
+        pinchActive.current = true;
+        swipeStart.current = null;
+        pinchRef.current = {
+          startDist: touchPairDistance(a, b),
+          base: liveScaleRef.current,
+        };
+        showChrome();
+        return;
+      }
+      const touch = event.touches[0];
+      if (!touch || pinchActive.current) {
+        return;
+      }
+      swipeStart.current = { x: touch.clientX, y: touch.clientY };
+    };
+
+    const onTouchMove = (event: TouchEvent) => {
+      const pinch = pinchRef.current;
+      if (!pinch || event.touches.length < 2) {
+        return;
+      }
+      const a = event.touches[0];
+      const b = event.touches[1];
+      if (!a || !b) {
+        return;
+      }
+      event.preventDefault();
+      setLiveScale(
+        pinchScaleFromDistance(
+          pinch.base,
+          pinch.startDist,
+          touchPairDistance(a, b),
+        ),
+      );
       showChrome();
-      return;
-    }
-    if (dx < 0 && canNext && !busy) {
-      onNext();
-    } else if (dx > 0 && canPrev && !busy) {
-      onPrev();
-    }
-  }
+    };
+
+    const onTouchEnd = (event: TouchEvent) => {
+      if (event.touches.length >= 2) {
+        return;
+      }
+      if (event.touches.length < 2) {
+        pinchRef.current = null;
+      }
+      if (pinchActive.current) {
+        if (event.touches.length === 0) {
+          pinchActive.current = false;
+        }
+        swipeStart.current = null;
+        return;
+      }
+      const start = swipeStart.current;
+      swipeStart.current = null;
+      const touch = event.changedTouches[0];
+      if (!start || !touch) {
+        return;
+      }
+      const dx = touch.clientX - start.x;
+      const dy = touch.clientY - start.y;
+      if (Math.abs(dx) < SWIPE_MIN || Math.abs(dx) < Math.abs(dy) * 1.4) {
+        showChrome();
+        return;
+      }
+      if (dx < 0 && canNext && !busy) {
+        onNext();
+      } else if (dx > 0 && canPrev && !busy) {
+        onPrev();
+      }
+    };
+
+    el.addEventListener("touchstart", onTouchStart, { passive: true });
+    el.addEventListener("touchmove", onTouchMove, { passive: false });
+    el.addEventListener("touchend", onTouchEnd);
+    el.addEventListener("touchcancel", onTouchEnd);
+    return () => {
+      el.removeEventListener("touchstart", onTouchStart);
+      el.removeEventListener("touchmove", onTouchMove);
+      el.removeEventListener("touchend", onTouchEnd);
+      el.removeEventListener("touchcancel", onTouchEnd);
+    };
+  }, [busy, canNext, canPrev, onNext, onPrev, showChrome]);
 
   return (
     <div
@@ -358,8 +475,6 @@ export function LiveMode({
       <div
         ref={scrollerRef}
         className="live-scroller"
-        onTouchStart={onTouchStart}
-        onTouchEnd={onTouchEnd}
         onPointerDown={showChrome}
       >
         <SongViewer session={session} hideMeta={hideMeta} live />

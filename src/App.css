@@ -841,6 +841,7 @@ button:disabled {
   overflow: auto;
   padding: 2.4rem 1.4rem 7.5rem;
   -webkit-overflow-scrolling: touch;
+  touch-action: manipulation;
 }
 
 .sheet-music {
@@ -871,6 +872,7 @@ button:disabled {
 
 .song-viewer--live .sheet-music {
   margin-top: 0.5rem;
+  zoom: var(--sheet-zoom, 1);
 }
 
 .song-viewer--live {
