@@ -71,6 +71,8 @@ rustup target add aarch64-linux-android armv7-linux-androideabi i686-linux-andro
 npm run android:init
 ```
 
+`android:init` also runs `npm run icons` afterward. That matters because `tauri android init` seeds the default Tauri launcher icon into `gen/android`; `tauri icon` only writes into that project once it exists. Without the second step, Settings can show the correct web icon while the home-screen launcher stays the Tauri template.
+
 ### Android signing (one-time setup)
 
 **Why this matters:** Android only allows in-place APK updates when the new build has the **same package id** (`com.tonic.songbook`) and the **same signing certificate**. Debug builds from CI, local dev, or different machines each get their own debug certificate, so Android reports errors like “App not installed”, “incompatible package”, or similar — and you must uninstall first (which wipes app data, including your song library).
