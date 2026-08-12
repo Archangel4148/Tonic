@@ -3,10 +3,11 @@ name: Release Android APK
 # Signed release builds for sideload distribution. Requires Android signing secrets.
 # Use build-android-debug.yml for everyday dev testing without a keystore.
 
-on:  push:
-    tags:
-      - "v*"
-  workflow_dispatch:
+on:
+    push:
+        tags:
+            - "v*"
+    workflow_dispatch:
 
 permissions:
   contents: read
