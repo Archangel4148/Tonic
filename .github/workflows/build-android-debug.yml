@@ -1,0 +1,80 @@
+name: Build Android APK (debug)
+
+# Dev/sideload builds — no keystore, no version tag required.
+# Debug APKs are for testing only; they do not upgrade each other or release builds.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  NDK_VERSION: "27.0.11902837"
+
+jobs:
+  apk:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Install NDK
+        run: sdkmanager "ndk;${{ env.NDK_VERSION }}"
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android,armv7-linux-androideabi,i686-linux-android,x86_64-linux-android
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: "./src-tauri -> target"
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Initialize Android project if missing
+        run: |
+          if [ ! -d src-tauri/gen/android ]; then
+            npx tauri android init --ci --skip-targets-install
+          fi
+        env:
+          ANDROID_HOME: ${{ env.ANDROID_HOME }}
+          NDK_HOME: ${{ env.ANDROID_HOME }}/ndk/${{ env.NDK_VERSION }}
+
+      - name: Build universal debug APK
+        run: npx tauri android build --debug --apk
+        env:
+          ANDROID_HOME: ${{ env.ANDROID_HOME }}
+          NDK_HOME: ${{ env.ANDROID_HOME }}/ndk/${{ env.NDK_VERSION }}
+
+      - name: Collect debug APK
+        run: |
+          VERSION="$(node -p "require('./package.json').version")"
+          mkdir -p release-artifacts
+          APK="$(find src-tauri/gen/android/app/build/outputs/apk -name '*.apk' | head -1)"
+          if [ -z "$APK" ]; then
+            echo "No debug APK found. Outputs:"
+            find src-tauri/gen/android -name "*.apk"
+            exit 1
+          fi
+          cp "$APK" "release-artifacts/Tonic_${VERSION}_debug_${GITHUB_SHA::7}.apk"
+          ls -la release-artifacts
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tonic-android-apk-debug
+          path: release-artifacts/*.apk
+          if-no-files-found: error

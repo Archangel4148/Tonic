@@ -28,6 +28,7 @@ src-tauri/target
 *.jks
 *.keystore
 android-signing.env
+src-tauri/gen/android/keystore.properties
 
 # Test / coverage
 coverage

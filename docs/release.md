@@ -71,6 +71,38 @@ rustup target add aarch64-linux-android armv7-linux-androideabi i686-linux-andro
 npm run android:init
 ```
 
+### Android signing (one-time setup)
+
+**Why this matters:** Android only allows in-place APK updates when the new build has the **same package id** (`com.tonic.songbook`) and the **same signing certificate**. Debug builds from CI, local dev, or different machines each get their own debug certificate, so Android reports errors like “App not installed”, “incompatible package”, or similar — and you must uninstall first (which wipes app data, including your song library).
+
+Use **one release keystore** for every sideload build you distribute.
+
+1. Create a keystore locally (once). Remember the passwords and alias:
+
+```powershell
+keytool -genkey -v -keystore tonic-release.jks -keyalg RSA -keysize 2048 -validity 10000 -alias upload
+```
+
+2. Base64-encode it for GitHub Actions secrets:
+
+```powershell
+[Convert]::ToBase64String([IO.File]::ReadAllBytes("tonic-release.jks"))
+```
+
+3. In the GitHub repo, add **Settings → Secrets and variables → Actions**:
+
+| Secret | Value |
+| ------ | ----- |
+| `ANDROID_KEY_BASE64` | Base64 output from step 2 |
+| `ANDROID_KEY_PASSWORD` | Keystore password |
+| `ANDROID_KEY_ALIAS` | `upload` (or the alias you chose) |
+
+4. **Back up `tonic-release.jks` somewhere safe.** If you lose it, future APKs cannot upgrade existing installs; users would have to uninstall (losing local library data unless exported).
+
+The CI workflow builds a **release** APK and signs it with this keystore. Every release from that workflow can update the previous one without re-importing songs.
+
+**One-time migration:** If you already installed an older debug CI APK, uninstall it once, then install the first release-signed build. After that, future CI APKs should upgrade in place and keep your library.
+
 ### Package the APK
 
 ```bash
@@ -79,22 +111,32 @@ npm run package:android
 
 Look under `src-tauri/gen/android/app/build/outputs/apk/` for a **universal** APK. That single file is what you sideload.
 
-For a quick unsigned/debug installable build during development:
+For a quick unsigned/debug build during local development only:
 
 ```bash
 npx tauri android build --debug --apk
 ```
 
-Release signing: configure a keystore in the generated Android project (or CI secrets). Never commit `.jks` / `.keystore` files.
+Do not distribute debug APKs to users; they will not upgrade each other reliably.
 
 ## CI
 
 GitHub Actions workflows under `.github/workflows/`:
 
 - `release-desktop.yml` — builds Windows NSIS, macOS DMG, Linux AppImage on tag `v*` or manual dispatch
-- `release-android.yml` — initializes Android (if needed), builds a universal APK artifact
+- `build-android-debug.yml` — **manual only**: universal **debug** APK, no keystore or version tag needed (for dev testing on a phone)
+- `release-android.yml` — tag `v*` or manual: universal **release** APK signed with the upload keystore from GitHub secrets (for distribution / in-place updates)
 
-Upload artifacts from the Actions run, or attach them to a GitHub Release.
+Upload artifacts from the Actions run, or attach release artifacts to a GitHub Release.
+
+### Which Android workflow to use
+
+| Goal | Workflow | Notes |
+| ---- | -------- | ----- |
+| Try the app on your phone while developing | **Build Android APK (debug)** | Run manually from Actions. Uninstall old build first if install fails. Debug builds do not upgrade each other reliably. |
+| Ship a version users can update in place | **Release Android APK** | Tag `vX.Y.Z` (bump version first) or manual dispatch after signing secrets are configured. |
+
+Do not mix debug and release installs when testing updates — they use different signing keys. Pick one track per device until you move to release signing for good.
 
 ## Version bump checklist
 
