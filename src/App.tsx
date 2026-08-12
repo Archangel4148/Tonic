@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { EngineStatus } from "./components/EngineStatus";
 import { ImportPanel } from "./components/ImportPanel";
 import { LibrarySidebar, type LibraryTab } from "./components/LibrarySidebar";
+import { LiveMode } from "./components/LiveMode";
 import { SetlistPanel } from "./components/SetlistPanel";
 import { SongDetails } from "./components/SongDetails";
 import { SongEditor } from "./components/SongEditor";
@@ -29,6 +30,7 @@ import {
   moveSetlistEntry,
   openLibrarySong,
   openSetlistEntry,
+  openSetlistNeighbor,
   removeSetlistEntry,
   resetPerformanceKey,
   saveEdit,
@@ -84,6 +86,7 @@ function App() {
   const [importOpen, setImportOpen] = useState(true);
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [live, setLive] = useState(false);
   const [theme, setTheme] = useState<ThemePreference>(() =>
     typeof localStorage === "undefined" ? "dark" : loadTheme(),
   );
@@ -220,6 +223,20 @@ function App() {
     return true;
   }
 
+  async function enterLive(next?: SongSession): Promise<void> {
+    if (!(await confirmLeaveEditor())) {
+      return;
+    }
+    if (next) {
+      setSession(next);
+    } else if (!session) {
+      return;
+    }
+    setImportOpen(false);
+    setActionError(null);
+    setLive(true);
+  }
+
   async function runAction(action: () => Promise<SongSession>): Promise<void> {
     setBusy(true);
     setActionError(null);
@@ -239,6 +256,30 @@ function App() {
     } finally {
       setBusy(false);
     }
+  }
+
+  if (live && session) {
+    return (
+      <LiveMode
+        session={session}
+        keys={keys}
+        busy={busy}
+        error={actionError}
+        restoreTheme={theme}
+        restoreScale={typeScale}
+        onExit={() => {
+          setLive(false);
+          setActionError(null);
+        }}
+        onPrev={() => void runAction(() => openSetlistNeighbor(-1))}
+        onNext={() => void runAction(() => openSetlistNeighbor(1))}
+        onTranspose={(semitones) =>
+          void runAction(() => transposeSong(semitones))
+        }
+        onSelectKey={(key) => void runAction(() => setPerformanceKey(key))}
+        onResetKey={() => void runAction(() => resetPerformanceKey())}
+      />
+    );
   }
 
   return (
@@ -425,6 +466,15 @@ function App() {
                       ? "Import another"
                       : "Import"}
                 </button>
+                {session && !editor && (
+                  <button
+                    type="button"
+                    className="text-button"
+                    onClick={() => void enterLive()}
+                  >
+                    Live
+                  </button>
+                )}
                 {session && !editor && (
                   <button
                     type="button"
@@ -868,6 +918,46 @@ function App() {
                       }
                     })();
                   }}
+                  onPerform={() =>
+                    void (async () => {
+                      if (
+                        session?.setlist?.setlistId === openSetlist.id &&
+                        session
+                      ) {
+                        await enterLive(session);
+                        return;
+                      }
+                      const first = openSetlist.entries.find(
+                        (entry) => !entry.missing,
+                      );
+                      if (!first) {
+                        return;
+                      }
+                      if (!(await confirmLeaveEditor())) {
+                        return;
+                      }
+                      setBusy(true);
+                      setActionError(null);
+                      try {
+                        const next = await openSetlistEntry(
+                          openSetlist.id,
+                          first.id,
+                        );
+                        setEditor(null);
+                        await refreshLibrary();
+                        await refreshSetlists();
+                        await enterLive(next);
+                      } catch (error: unknown) {
+                        setActionError(
+                          error instanceof Error
+                            ? error.message
+                            : "Something went wrong.",
+                        );
+                      } finally {
+                        setBusy(false);
+                      }
+                    })()
+                  }
                 />
               )}
             </>

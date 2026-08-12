@@ -62,6 +62,6 @@ Sidebar **Songs | Setlists**. Setlist panel: rename, event/date, notes, add from
 
 React still does not parse or transpose. Capo math lives in `tonic-domain`.
 
-## Out of scope
+## Live mode
 
-- Live / performance mode (fullscreen, next/previous, auto-scroll, keep-awake) — Phase 9
+Setlist next/previous in performance view uses `setlist_open_neighbor`. See [`live-mode.md`](./live-mode.md).

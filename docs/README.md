@@ -22,6 +22,7 @@ This folder is the project documentation. The product requirements live in [`spe
 | [Persistence](./persist.md)                   | Local JSON library and setlists                  |
 | [Editor](./editor.md)                         | New song, chart editor, save/cancel              |
 | [Setlists](./setlists.md)                     | Ordered song references, per-entry overrides     |
+| [Live mode](./live-mode.md)                   | Stage view, auto-scroll, setlist navigation      |
 | [Phase 1 report](./phases/phase-1.md)         | Foundation checkpoint                            |
 | [Phase 2 report](./phases/phase-2.md)         | Music-engine checkpoint                          |
 | [Phase 3 report](./phases/phase-3.md)         | Song-model checkpoint                            |
@@ -30,6 +31,7 @@ This folder is the project documentation. The product requirements live in [`spe
 | [Phase 6 report](./phases/phase-6.md)         | Library checkpoint                               |
 | [Phase 7 report](./phases/phase-7.md)         | Editor checkpoint                                |
 | [Phase 8 report](./phases/phase-8.md)         | Setlists checkpoint                              |
+| [Phase 9 report](./phases/phase-9.md)         | Live mode checkpoint                             |
 
 ## Source of truth
 

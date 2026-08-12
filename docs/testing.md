@@ -71,6 +71,13 @@ Tauri `invoke` is mocked in `src/test/setup.ts` so UI tests do not require a run
 - Chart-line syllable splitting
 - Viewer warnings and unrecognized chords
 
+Phase 9 coverage:
+
+- `open_setlist_neighbor` skips missing songs and stops at setlist ends
+- Fractional auto-scroll steps (slow speeds still move)
+- UI enter/exit live mode; next calls `setlist_open_neighbor` (mocked IPC)
+- Live lock hides chrome; `L` unlocks
+
 Phase 8 coverage:
 
 - Persist setlist round-trip + delete; index counters survive song `save_next_id`

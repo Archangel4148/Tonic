@@ -4,10 +4,18 @@ import type { SongSession } from "../lib/types";
 type Props = {
   session: SongSession;
   disabled?: boolean;
+  hideMeta?: boolean;
+  live?: boolean;
   onCapoChange?: (fret: number | null) => void;
 };
 
-export function SongViewer({ session, disabled, onCapoChange }: Props) {
+export function SongViewer({
+  session,
+  disabled,
+  hideMeta = false,
+  live = false,
+  onCapoChange,
+}: Props) {
   const {
     song,
     warnings,
@@ -19,8 +27,11 @@ export function SongViewer({ session, disabled, onCapoChange }: Props) {
   } = session;
 
   return (
-    <article className="song-viewer" aria-labelledby="song-title">
-      {setlist && (
+    <article
+      className={live ? "song-viewer song-viewer--live" : "song-viewer"}
+      aria-labelledby="song-title"
+    >
+      {setlist && !live && (
         <aside className="setlist-banner" aria-label="Setlist context">
           <p>
             <strong>{setlist.setlistName}</strong>
@@ -63,11 +74,13 @@ export function SongViewer({ session, disabled, onCapoChange }: Props) {
       )}
       <header className="song-header">
         <h2 id="song-title">
-          {favorite ? "★ " : ""}
+          {favorite && !hideMeta ? "★ " : ""}
           {song.title}
         </h2>
-        {song.artist && <p className="song-artist">{song.artist}</p>}
-        {tags.length > 0 && (
+        {!hideMeta && song.artist && (
+          <p className="song-artist">{song.artist}</p>
+        )}
+        {!hideMeta && tags.length > 0 && (
           <p className="song-tags">
             {tags.map((tag) => (
               <span key={tag} className="tag-chip">
@@ -76,31 +89,33 @@ export function SongViewer({ session, disabled, onCapoChange }: Props) {
             ))}
           </p>
         )}
-        <p className="song-meta">
-          {song.originalKey && (
-            <span>
-              Original <strong>{song.originalKey}</strong>
-            </span>
-          )}
-          {song.performanceKey && (
-            <span>
-              Now <strong>{song.performanceKey}</strong>
-              {semitoneOffset !== 0 && (
-                <>
-                  {" "}
-                  ({semitoneOffset > 0 ? "+" : ""}
-                  {semitoneOffset})
-                </>
-              )}
-            </span>
-          )}
-          {song.timeSignature && <span>{song.timeSignature}</span>}
-          {song.tempoBpm && <span>{song.tempoBpm} BPM</span>}
-        </p>
-        {song.notes && <p className="song-notes">{song.notes}</p>}
+        {!hideMeta && (
+          <p className="song-meta">
+            {song.originalKey && (
+              <span>
+                Original <strong>{song.originalKey}</strong>
+              </span>
+            )}
+            {song.performanceKey && (
+              <span>
+                Now <strong>{song.performanceKey}</strong>
+                {semitoneOffset !== 0 && (
+                  <>
+                    {" "}
+                    ({semitoneOffset > 0 ? "+" : ""}
+                    {semitoneOffset})
+                  </>
+                )}
+              </span>
+            )}
+            {song.timeSignature && <span>{song.timeSignature}</span>}
+            {song.tempoBpm && <span>{song.tempoBpm} BPM</span>}
+          </p>
+        )}
+        {!hideMeta && song.notes && <p className="song-notes">{song.notes}</p>}
       </header>
 
-      {summaryMessage && (
+      {summaryMessage && !live && (
         <div className="import-warning" role="status">
           <p>{summaryMessage}</p>
           <ul>

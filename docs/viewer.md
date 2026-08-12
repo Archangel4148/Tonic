@@ -41,5 +41,4 @@ Dark is the default (live-performance first). System follows `prefers-color-sche
 
 ## Out of scope
 
-- Live mode (Phase 9)
 - Web URL import, MusicXML

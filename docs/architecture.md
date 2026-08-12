@@ -42,7 +42,7 @@ Pure domain logic: music engine plus the canonical `Song` model. See [`music-the
 
 ### `tonic-app`
 
-Owns running-process authoritative state: identity, persistence health, the in-memory song library, setlists, the open session (including optional setlist context), the editor draft, and import/transpose orchestration. Returns `SongSessionView` / `LibraryListView` / `EditorSessionView` / setlist DTOs for the UI. Durable display preferences will be added here rather than in React or the Tauri crate.
+Owns running-process authoritative state: identity, persistence health, the in-memory song library, setlists, the open session (including optional setlist context), the editor draft, and import/transpose orchestration. Returns `SongSessionView` / `LibraryListView` / `EditorSessionView` / setlist DTOs for the UI. Live mode is presentation-only; it does not own songs. Durable display preferences beyond localStorage may move here later.
 
 ### `tonic-import`
 
@@ -58,9 +58,9 @@ Tauri entrypoint. It opens `AppServices` on the app data library path and expose
 
 ### React UI (`src/`)
 
-Presentation only. It renders library, setlists, and `SongSessionView`, holds theme/type-scale prefs, and talks to Rust through `src/lib/tauri.ts`. It must not reimplement domain behavior. See [`viewer.md`](./viewer.md), [`persist.md`](./persist.md), and [`setlists.md`](./setlists.md).
+Presentation only. It renders library, setlists, live mode, and `SongSessionView`, holds theme/type-scale/live prefs, and talks to Rust through `src/lib/tauri.ts`. It must not reimplement domain behavior. See [`viewer.md`](./viewer.md), [`persist.md`](./persist.md), [`setlists.md`](./setlists.md), and [`live-mode.md`](./live-mode.md).
 
-## IPC surface (Phase 8)
+## IPC surface (Phase 9)
 
 | Command                     | Direction | Purpose                                        |
 | --------------------------- | --------- | ---------------------------------------------- |
@@ -79,12 +79,12 @@ Presentation only. It renders library, setlists, and `SongSessionView`, holds th
 | `library_update_metadata`   | UI → Rust | Edit title/artist/album/notes/tags             |
 | `editor_*`                  | UI → Rust | New/edit draft, save/cancel, sections, tagging |
 | `setlist_*`                 | UI → Rust | Setlist CRUD, reorder, entry overrides, open   |
+| `setlist_open_neighbor`     | UI → Rust | Next/previous playable setlist entry           |
 
-JSON uses camelCase to match TypeScript. Full editor command list: [`editor.md`](./editor.md). Setlists: [`setlists.md`](./setlists.md).
+JSON uses camelCase to match TypeScript. Full editor command list: [`editor.md`](./editor.md). Setlists: [`setlists.md`](./setlists.md). Live mode: [`live-mode.md`](./live-mode.md).
 
 ## What later phases still do not include
 
-- Live performance mode (Phase 9)
 - Web URL import
 - MusicXML (Phase 10)
 - Android project generation

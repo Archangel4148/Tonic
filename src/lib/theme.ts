@@ -17,14 +17,16 @@ export function loadTheme(): ThemePreference {
   return "dark";
 }
 
-export function applyTheme(theme: ThemePreference): void {
+export function applyTheme(theme: ThemePreference, persist = true): void {
   const root = document.documentElement;
   if (theme === "system") {
     root.removeAttribute("data-theme");
   } else {
     root.setAttribute("data-theme", theme);
   }
-  localStorage.setItem(THEME_KEY, theme);
+  if (persist) {
+    localStorage.setItem(THEME_KEY, theme);
+  }
 }
 
 export function loadTypeScale(): TypeScale {

@@ -106,4 +106,13 @@ Workspace crates declare MIT for now. This can change if the product owner picks
 - Capo is not a domain `Song` field. Played key is derived (`played_key`) for the viewer banner.
 - Missing referenced songs remain as entries and show `(missing song)`.
 - Duplicate setlist copies entry settings but mints new setlist and entry ids.
-- Live mode (fullscreen, next/previous, auto-scroll) is Phase 9.
+
+## Live mode (Phase 9)
+
+- Live mode is UI-only. It does not copy songs or become a second session owner.
+- Forced dark theme and live type scale do not overwrite the user’s editor theme / type-scale prefs.
+- Auto-scroll speed and hide-info persist in `localStorage`.
+- Setlist next/prev skip missing songs and do not wrap.
+- Keep-awake uses the Screen Wake Lock API when available; otherwise live mode still runs.
+- A single song can enter live mode; previous/next stay disabled without a setlist.
+- Live **Lock** (`L`) hides on-screen chrome but leaves hotkeys active.

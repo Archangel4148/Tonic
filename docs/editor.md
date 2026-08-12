@@ -49,4 +49,4 @@ Written chord tokens stay authoritative. Transpose is disabled while the editor 
 
 ## Out of scope here
 
-- Live/performance mode (Phase 9)
+- MusicXML / sheet music (Phase 10)

@@ -20,6 +20,7 @@ type Props = {
   ) => void;
   onDuplicate: () => void;
   onDelete: () => void;
+  onPerform: () => void;
 };
 
 export function SetlistPanel({
@@ -36,6 +37,7 @@ export function SetlistPanel({
   onUpdateEntry,
   onDuplicate,
   onDelete,
+  onPerform,
 }: Props) {
   const [name, setName] = useState(setlist.name);
   const [notes, setNotes] = useState(setlist.notes ?? "");
@@ -59,6 +61,16 @@ export function SetlistPanel({
       <header className="setlist-header">
         <h2>Setlist</h2>
         <div className="editor-toolbar">
+          <button
+            type="button"
+            className="text-button"
+            disabled={
+              disabled || !setlist.entries.some((entry) => !entry.missing)
+            }
+            onClick={onPerform}
+          >
+            Perform set
+          </button>
           <button
             type="button"
             className="text-button"

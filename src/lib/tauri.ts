@@ -277,3 +277,7 @@ export async function openSetlistEntry(
 ): Promise<SongSession> {
   return invoke<SongSession>("setlist_open_entry", { setlistId, entryId });
 }
+
+export async function openSetlistNeighbor(delta: number): Promise<SongSession> {
+  return invoke<SongSession>("setlist_open_neighbor", { delta });
+}

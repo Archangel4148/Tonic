@@ -158,7 +158,7 @@ impl AppServices {
         AppInfo {
             name: "Tonic",
             version: env!("CARGO_PKG_VERSION"),
-            phase: 8,
+            phase: 9,
             domain_engine: engine_name(),
             domain_version: engine_version(),
         }
@@ -774,6 +774,58 @@ impl AppServices {
         state.session_entry_id = Some(entry_id.to_string());
         state.steps = entry_steps(&persisted.song, &setlist, entry_id);
         Ok(session_view(&state))
+    }
+
+    /// Open the next or previous playable setlist entry (skips missing songs).
+    ///
+    /// # Errors
+    ///
+    /// No setlist session, no remaining song in that direction, dirty editor, or persist failure.
+    pub fn open_setlist_neighbor(&self, delta: i32) -> Result<SongSessionView, String> {
+        let step = if delta < 0 { -1_isize } else { 1_isize };
+        if delta == 0 {
+            return Err("Setlist navigation needs a direction.".to_string());
+        }
+        let (setlist_id, entry_id) = {
+            let state = self.lock();
+            ensure_no_dirty_editor(&state)?;
+            let setlist_id = state
+                .session_setlist_id
+                .clone()
+                .ok_or_else(|| "No setlist is open.".to_string())?;
+            let current_entry = state
+                .session_entry_id
+                .clone()
+                .ok_or_else(|| "No setlist entry is open.".to_string())?;
+            let setlist = state
+                .setlists
+                .get(&setlist_id)
+                .ok_or_else(|| format!("Setlist '{setlist_id}' was not found."))?;
+            let current = setlist
+                .entries
+                .iter()
+                .position(|entry| entry.id == current_entry)
+                .ok_or_else(|| "That setlist entry was not found.".to_string())?;
+            let mut index = current as isize + step;
+            let mut found = None;
+            while index >= 0 && (index as usize) < setlist.entries.len() {
+                let entry = &setlist.entries[index as usize];
+                if state.songs.contains_key(&entry.song_id) {
+                    found = Some(entry.id.clone());
+                    break;
+                }
+                index += step;
+            }
+            let entry_id = found.ok_or_else(|| {
+                if step < 0 {
+                    "This is the first song in the setlist.".to_string()
+                } else {
+                    "This is the last song in the setlist.".to_string()
+                }
+            })?;
+            (setlist_id, entry_id)
+        };
+        self.open_setlist_entry(&setlist_id, &entry_id)
     }
 
     /// Start a new unsaved song in the editor.
@@ -1471,7 +1523,7 @@ mod tests {
         let info = services.info();
 
         assert_eq!(info.name, "Tonic");
-        assert_eq!(info.phase, 8);
+        assert_eq!(info.phase, 9);
         assert_eq!(info.domain_engine, "tonic-domain");
         assert!(!info.version.is_empty());
         assert!(!info.domain_version.is_empty());
@@ -1729,6 +1781,46 @@ mod tests {
         assert_ne!(copy.id, list[0].id);
         assert_ne!(copy.entries[0].id, detail.entries[0].id);
         let _ = std::fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn setlist_neighbor_skips_missing_and_stops_at_ends() {
+        let services = AppServices::in_memory();
+        services
+            .import_text("{title: One}\n{key: C}\n[C]Hi", ImportMode::ChordPro)
+            .unwrap();
+        services
+            .import_text("{title: Two}\n{key: D}\n[D]Mid", ImportMode::ChordPro)
+            .unwrap();
+        services
+            .import_text("{title: Three}\n{key: G}\n[G]Hey", ImportMode::ChordPro)
+            .unwrap();
+        let setlist = services.create_setlist(Some("Set".into())).unwrap();
+        services.add_setlist_song(&setlist.id, "song-1").unwrap();
+        services.add_setlist_song(&setlist.id, "song-2").unwrap();
+        services.add_setlist_song(&setlist.id, "song-3").unwrap();
+        services.delete_song("song-2").unwrap();
+        let detail = services.get_setlist(&setlist.id).unwrap();
+        assert_eq!(detail.entries.len(), 3);
+        assert!(detail.entries[1].missing);
+
+        let first = services
+            .open_setlist_entry(&setlist.id, &detail.entries[0].id)
+            .unwrap();
+        assert_eq!(first.song.title, "One");
+        assert_eq!(
+            services.open_setlist_neighbor(-1).unwrap_err(),
+            "This is the first song in the setlist."
+        );
+        let third = services.open_setlist_neighbor(1).unwrap();
+        assert_eq!(third.song.title, "Three");
+        assert_eq!(third.setlist.as_ref().unwrap().index, 2);
+        assert_eq!(
+            services.open_setlist_neighbor(1).unwrap_err(),
+            "This is the last song in the setlist."
+        );
+        let back = services.open_setlist_neighbor(-1).unwrap();
+        assert_eq!(back.song.title, "One");
     }
 
     #[test]

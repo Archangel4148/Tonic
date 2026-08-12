@@ -367,6 +367,14 @@ fn setlist_open_entry(
 }
 
 #[tauri::command]
+fn setlist_open_neighbor(
+    services: tauri::State<'_, AppServices>,
+    delta: i32,
+) -> Result<SongSessionView, String> {
+    services.open_setlist_neighbor(delta)
+}
+
+#[tauri::command]
 fn editor_parse_body(
     services: tauri::State<'_, AppServices>,
     text: String,
@@ -430,6 +438,7 @@ pub fn run() {
             setlist_move_entry,
             setlist_update_entry,
             setlist_open_entry,
+            setlist_open_neighbor,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

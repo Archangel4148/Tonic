@@ -1,12 +1,12 @@
 # State management
 
-Application state has a single ownership model. Phase 8 owns the song library, setlists, and editor draft in Rust and presentation prefs in the UI.
+Application state has a single ownership model. Phase 9 owns the song library, setlists, and editor draft in Rust. Live mode, theme, and type scale are presentation state in the UI.
 
 ## Authoritative state
 
 Owned by Rust application services (`tonic-app`), not by React and not by the persistence crate.
 
-Phase 8 authoritative state owned by `AppServices`:
+Phase 9 authoritative state owned by `AppServices`:
 
 - Application identity (`AppInfo`)
 - Persistence health, derived from the `SongLibrary` boundary
@@ -41,7 +41,8 @@ Presentation state in the UI:
 - Loading / error / ready status
 - Import textarea draft
 - Editor lyric/metadata form fields before blur/save
-- Theme and type scale (`localStorage`)
+- Theme, type scale, and live-mode prefs (`localStorage`)
+- Live chrome, auto-scroll playing/speed, scroll position, fullscreen
 
 That UI status is not domain data. It only describes whether IPC succeeded.
 

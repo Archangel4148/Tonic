@@ -9,7 +9,7 @@ const mockedInvoke = vi.mocked(invoke);
 const appInfo = {
   name: "Tonic",
   version: "0.1.0",
-  phase: 8,
+  phase: 9,
   domainEngine: "tonic-domain",
   domainVersion: "0.1.0",
   persistenceHealthy: true,
@@ -410,6 +410,102 @@ describe("App", () => {
     expect(mockedInvoke).toHaveBeenCalledWith("setlist_open_entry", {
       setlistId: "setlist-1",
       entryId: "entry-1",
+    });
+  });
+
+  it("enters live mode and returns with escape", async () => {
+    mockIpc({
+      app_info: appInfo,
+      current_song: demoSession,
+      editor_state: null,
+      library_list: emptyLibrary,
+    });
+
+    render(<App />);
+    fireEvent.click(await screen.findByRole("button", { name: "Live" }));
+    expect(
+      await screen.findByRole("button", { name: "Exit live" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Auto-scroll" }),
+    ).toBeInTheDocument();
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(
+      await screen.findByRole("button", { name: "Live" }),
+    ).toBeInTheDocument();
+  });
+
+  it("locks live controls while hotkeys still work", async () => {
+    mockIpc({
+      app_info: appInfo,
+      current_song: demoSession,
+      editor_state: null,
+      library_list: emptyLibrary,
+    });
+
+    render(<App />);
+    fireEvent.click(await screen.findByRole("button", { name: "Live" }));
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Lock controls" }),
+    );
+    expect(
+      screen.queryByRole("button", { name: "Exit live" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Unlock controls" }),
+    ).toBeInTheDocument();
+    fireEvent.keyDown(window, { key: "l" });
+    expect(
+      await screen.findByRole("button", { name: "Exit live" }),
+    ).toBeInTheDocument();
+  });
+
+  it("advances the setlist from live mode", async () => {
+    const setlistSession: SongSession = {
+      ...demoSession,
+      setlist: {
+        setlistId: "setlist-1",
+        setlistName: "Friday gig",
+        entryId: "entry-1",
+        index: 0,
+        total: 2,
+        capoFret: null,
+        entryNotes: null,
+        playedKey: null,
+      },
+    };
+    const nextSession: SongSession = {
+      ...demoSession,
+      song: { ...demoSession.song, title: "Second Song" },
+      setlist: {
+        ...setlistSession.setlist!,
+        entryId: "entry-2",
+        index: 1,
+      },
+    };
+    mockIpc({
+      app_info: appInfo,
+      current_song: setlistSession,
+      editor_state: null,
+      library_list: emptyLibrary,
+      setlist_get: {
+        id: "setlist-1",
+        name: "Friday gig",
+        notes: null,
+        eventDate: null,
+        entries: [],
+      },
+      setlist_open_neighbor: nextSession,
+    });
+
+    render(<App />);
+    fireEvent.click(await screen.findByRole("button", { name: "Live" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Next" }));
+    expect(
+      await screen.findByRole("heading", { name: "Second Song" }),
+    ).toBeInTheDocument();
+    expect(mockedInvoke).toHaveBeenCalledWith("setlist_open_neighbor", {
+      delta: 1,
     });
   });
 

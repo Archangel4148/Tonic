@@ -22,6 +22,8 @@ function phaseLabel(phase: number): string {
       return "Editor";
     case 8:
       return "Setlists";
+    case 9:
+      return "Live";
     default:
       return "";
   }
