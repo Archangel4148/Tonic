@@ -32,16 +32,16 @@ Tonic/
 
 ## Naming
 
-| Name            | Where it appears                                                      |
-| --------------- | --------------------------------------------------------------------- |
-| Tonic           | Product / window title / UI                                           |
-| `tonic`         | npm package and Tauri binary crate                                    |
-| `tonic_lib`     | Tauri library crate name (Windows requires it to differ from the bin) |
-| `tonic-domain`  | Domain crate                                                          |
-| `tonic-app`     | Application crate                                                     |
-| `tonic-persist` | Persistence crate                                                     |
-| `tonic-import`  | ChordPro / plain-text / MusicXML import                               |
-| `com.tonic.app` | Bundle identifier                                                     |
+| Name                 | Where it appears                                                      |
+| -------------------- | --------------------------------------------------------------------- |
+| Tonic                | Product / window title / UI                                           |
+| `tonic`              | npm package and Tauri binary crate                                    |
+| `tonic_lib`          | Tauri library crate name (Windows requires it to differ from the bin) |
+| `tonic-domain`       | Domain crate                                                          |
+| `tonic-app`          | Application crate                                                     |
+| `tonic-persist`      | Persistence crate                                                     |
+| `tonic-import`       | ChordPro / plain-text / MusicXML import                               |
+| `com.tonic.songbook` | Bundle identifier                                                     |
 
 ## Frontend layout rule
 

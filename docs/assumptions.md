@@ -5,7 +5,7 @@ Decisions made where the spec left room. Each one uses the simplest behavior con
 ## Product name and identity
 
 - App name: **Tonic**
-- Bundle identifier: `com.tonic.app`
+- Bundle identifier: `com.tonic.songbook`
 - Crate prefix: `tonic-*`
 - The crates.io gRPC crate `tonic` is not used
 
@@ -64,7 +64,7 @@ Engineering docs live under `docs/`. The product spec was moved to `docs/spec.md
 
 ## Versioning
 
-The workspace starts at `0.1.0`. Release versioning and update strategy are Phase 12.
+Product version is **1.0.0** (aligned in `package.json`, workspace `Cargo.toml`, and `tauri.conf.json`). Updates are manual reinstall / APK replace — see [`release.md`](./release.md).
 
 ## License
 

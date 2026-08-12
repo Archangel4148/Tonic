@@ -25,6 +25,7 @@ This folder is the project documentation. The product requirements live in [`spe
 | [Live mode](./live-mode.md)                   | Stage view, auto-scroll, setlist navigation      |
 | [MusicXML](./musicxml.md)                     | Score import, MXL, OSMD sheet rendering          |
 | [Accessibility](./accessibility.md)           | Focus, SR labels, contrast, data-loss guards     |
+| [Release](./release.md)                       | Installers, APK, versioning, update strategy     |
 | [Phase 1 report](./phases/phase-1.md)         | Foundation checkpoint                            |
 | [Phase 2 report](./phases/phase-2.md)         | Music-engine checkpoint                          |
 | [Phase 3 report](./phases/phase-3.md)         | Song-model checkpoint                            |
@@ -36,6 +37,7 @@ This folder is the project documentation. The product requirements live in [`spe
 | [Phase 9 report](./phases/phase-9.md)         | Live mode checkpoint                             |
 | [Phase 10 report](./phases/phase-10.md)       | MusicXML / sheet music checkpoint                |
 | [Phase 11 report](./phases/phase-11.md)       | Accessibility & polish checkpoint                |
+| [Phase 12 report](./phases/phase-12.md)       | Packaging & release checkpoint                   |
 
 ## Source of truth
 

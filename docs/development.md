@@ -9,7 +9,7 @@
   - macOS: Xcode command line tools
   - Linux: WebKitGTK and the packages listed in the Tauri 2 desktop guide
 
-Android SDK/NDK are **not** required for Phase 1.
+For Android APK builds, also install the Android SDK/NDK and set `ANDROID_HOME` / `NDK_HOME`. See [`release.md`](./release.md).
 
 ## Install
 
@@ -46,7 +46,7 @@ npm run check
 
 See [testing.md](./testing.md) for details.
 
-## Build
+## Build & package
 
 Frontend production assets:
 
@@ -54,13 +54,27 @@ Frontend production assets:
 npm run build
 ```
 
-Native desktop bundle:
+Desktop installer (single target per OS — NSIS / DMG / AppImage):
 
 ```bash
-npm run tauri build
+npm run package:desktop
+# Windows shorthand:
+npm run package:desktop:windows
 ```
 
-Android is out of scope until packaging work begins. When that happens, the starting command will be `npm run tauri android init`, then `npm run tauri android dev`.
+Android (after SDK setup and `npm run android:init`):
+
+```bash
+npm run package:android
+```
+
+Full pre-release gate:
+
+```bash
+npm run release:check
+```
+
+Details: [`release.md`](./release.md).
 
 ## Editor
 

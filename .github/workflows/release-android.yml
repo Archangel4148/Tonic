@@ -1,0 +1,73 @@
+name: Release Android APK
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  NDK_VERSION: "27.0.11902837"
+
+jobs:
+  apk:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Install NDK
+        run: sdkmanager "ndk;${{ env.NDK_VERSION }}"
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android,armv7-linux-androideabi,i686-linux-android,x86_64-linux-android
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: "./src-tauri -> target"
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Initialize Android project if missing
+        run: |
+          if [ ! -d src-tauri/gen/android ]; then
+            npx tauri android init --ci --skip-targets-install
+          fi
+        env:
+          ANDROID_HOME: ${{ env.ANDROID_HOME }}
+          NDK_HOME: ${{ env.ANDROID_HOME }}/ndk/${{ env.NDK_VERSION }}
+
+      - name: Build universal APK (debug, sideloadable)
+        run: npx tauri android build --debug --apk
+        env:
+          ANDROID_HOME: ${{ env.ANDROID_HOME }}
+          NDK_HOME: ${{ env.ANDROID_HOME }}/ndk/${{ env.NDK_VERSION }}
+
+      - name: Collect APK
+        run: |
+          mkdir -p release-artifacts
+          find src-tauri/gen/android -name "*.apk" -print -exec cp {} release-artifacts/ \;
+          ls -la release-artifacts
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tonic-android-apk
+          path: release-artifacts/*.apk
+          if-no-files-found: error

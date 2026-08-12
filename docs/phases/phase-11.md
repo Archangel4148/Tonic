@@ -1,7 +1,7 @@
 # Phase 11 — Accessibility, Polish & Reliability
 
-**Status:** Implemented, pending review  
-**Do not start Phase 12 until explicitly instructed.**
+**Status:** Complete  
+**Next:** Phase 12 (packaging) — implemented separately.
 
 ## Goal
 
@@ -22,8 +22,6 @@ Make the application production-quality for everyday rehearsal and gig use.
 - Product phase reported by `AppServices` is **11**
 - Docs: this report; README / architecture / testing updates
 
-No packaging, installers, or Phase 12 release work.
-
 ## Acceptance criteria
 
 | Criterion                                                                          | Result                                                                                      |
@@ -40,7 +38,6 @@ No packaging, installers, or Phase 12 release work.
 
 - No automated color-contrast metering (manual gig-mode pass recommended)
 - ChordPro import polish still deferred
-- Android packaging still Phase 12+
 
 ## How to review
 

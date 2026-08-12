@@ -4,9 +4,7 @@ import { isFullscreenHotkey } from "./stage";
 describe("isFullscreenHotkey", () => {
   it("matches F11 and Alt+Enter", () => {
     expect(
-      isFullscreenHotkey(
-        new KeyboardEvent("keydown", { key: "F11" }),
-      ),
+      isFullscreenHotkey(new KeyboardEvent("keydown", { key: "F11" })),
     ).toBe(true);
     expect(
       isFullscreenHotkey(
@@ -16,8 +14,8 @@ describe("isFullscreenHotkey", () => {
     expect(
       isFullscreenHotkey(new KeyboardEvent("keydown", { key: "Enter" })),
     ).toBe(false);
-    expect(
-      isFullscreenHotkey(new KeyboardEvent("keydown", { key: "f" })),
-    ).toBe(false);
+    expect(isFullscreenHotkey(new KeyboardEvent("keydown", { key: "f" }))).toBe(
+      false,
+    );
   });
 });

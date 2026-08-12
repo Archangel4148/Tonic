@@ -43,5 +43,4 @@ Tonic aims to be usable on stage and at a desk: keyboard-first where it matters,
 
 ## Out of scope
 
-- Installer / packaging (Phase 12)
 - Automated WCAG color metering

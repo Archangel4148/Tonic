@@ -7,9 +7,9 @@ These choices follow the spec's required stack and keep Phase 1 small enough to 
 **Tauri 2** is required. It compiles one Rust + web codebase to desktop installers and Android APKs.
 
 - Product name: `Tonic`
-- Bundle identifier: `com.tonic.app`
-- Desktop is the Phase 1 launch target
-- Android packaging is deferred until later phases (`tauri android init` has not been run)
+- Bundle identifier: `com.tonic.songbook`
+- Desktop ships as a single installer per OS (NSIS / DMG / AppImage)
+- Android ships as a sideloaded universal APK after `tauri android init` (see [`release.md`](./release.md))
 
 ## Backend / domain
 

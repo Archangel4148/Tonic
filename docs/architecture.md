@@ -88,5 +88,5 @@ JSON uses camelCase to match TypeScript. Full editor command list: [`editor.md`]
 
 - Web URL import
 - Notation authoring
-- Android project generation / packaging (Phase 12)
 - Cloud, accounts, or telemetry
+- In-app auto-update (reinstall / replace APK; see [`release.md`](./release.md))

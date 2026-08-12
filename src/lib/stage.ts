@@ -52,7 +52,9 @@ export function isFullscreenHotkey(event: KeyboardEvent): boolean {
   if (event.key === "F11") {
     return true;
   }
-  return event.key === "Enter" && event.altKey && !event.ctrlKey && !event.metaKey;
+  return (
+    event.key === "Enter" && event.altKey && !event.ctrlKey && !event.metaKey
+  );
 }
 
 export function subscribeStageFullscreen(

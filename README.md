@@ -6,9 +6,9 @@ Tonic is built with **Tauri 2**, a **Rust** domain layer, and a **React + TypeSc
 
 ## Current phase
 
-**Phase 11 — Accessibility, Polish & Reliability**
+**Phase 12 — Packaging & Release**
 
-Import, edit, setlists, live mode, MusicXML, plus accessibility and reliability polish for everyday use.
+Version **1.0.0**. One desktop installer per OS; one Android APK for sideload. See [`docs/release.md`](./docs/release.md).
 
 ## Quick start
 
@@ -22,6 +22,12 @@ npm test
 npm run lint
 ```
 
+## Install packaged builds
+
+- Windows: run the NSIS `*-setup.exe` (embeds WebView2 for blank PCs)
+- Android: sideload the universal `.apk`
+- Details: [`docs/release.md`](./docs/release.md)
+
 ## Documentation
 
 All project documentation lives in [`docs/`](./docs/README.md).
@@ -29,6 +35,7 @@ All project documentation lives in [`docs/`](./docs/README.md).
 - [Product spec](./docs/spec.md)
 - [Architecture](./docs/architecture.md)
 - [Development](./docs/development.md)
+- [Release & installation](./docs/release.md)
 - [Music theory](./docs/music-theory.md)
 - [Song model](./docs/song-model.md)
 - [Import](./docs/import.md)
@@ -50,6 +57,7 @@ All project documentation lives in [`docs/`](./docs/README.md).
 - [Phase 9 report](./docs/phases/phase-9.md)
 - [Phase 10 report](./docs/phases/phase-10.md)
 - [Phase 11 report](./docs/phases/phase-11.md)
+- [Phase 12 report](./docs/phases/phase-12.md)
 
 ## License
 

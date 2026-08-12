@@ -8,10 +8,10 @@ const mockedInvoke = vi.mocked(invoke);
 
 const appInfo = {
   name: "Tonic",
-  version: "0.1.0",
-  phase: 11,
+  version: "1.0.0",
+  phase: 12,
   domainEngine: "tonic-domain",
-  domainVersion: "0.1.0",
+  domainVersion: "1.0.0",
   persistenceHealthy: true,
   performanceKeys: ["C", "G", "A", "Am"],
 };
@@ -116,7 +116,7 @@ function mockIpc(
   mockedInvoke.mockImplementation(async (cmd, args) => {
     const handler = { setlist_list: [], ...handlers }[String(cmd)];
     if (typeof handler === "function") {
-      return handler(args);
+      return (handler as (args?: unknown) => unknown)(args);
     }
     if (handler !== undefined) {
       return handler;
@@ -153,7 +153,7 @@ describe("App", () => {
       screen.getByRole("button", { name: /enter fullscreen/i }),
     ).toBeInTheDocument();
     fireEvent.click(screen.getByText("Engine"));
-    expect(screen.getByText(/tonic-domain v0\.1\.0/i)).toBeInTheDocument();
+    expect(screen.getByText(/tonic-domain v1\.0\.0/i)).toBeInTheDocument();
     expect(screen.getByText(/local library healthy/i)).toBeInTheDocument();
   });
 

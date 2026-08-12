@@ -12,14 +12,22 @@ node_modules
 dist
 dist-ssr
 *.local
+release-artifacts
 
 # Rust
 /target
 **/*.rs.bk
 
-# Tauri / mobile generated
-src-tauri/gen
+# Tauri / mobile generated (keep Android project when present)
+src-tauri/gen/*
+!src-tauri/gen/android/
+!src-tauri/gen/android/**
 src-tauri/target
+
+# Android local signing (never commit)
+*.jks
+*.keystore
+android-signing.env
 
 # Test / coverage
 coverage
