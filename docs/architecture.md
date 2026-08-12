@@ -58,9 +58,9 @@ Tauri entrypoint. It opens `AppServices` on the app data library path and expose
 
 ### React UI (`src/`)
 
-Presentation only. It renders library, setlists, live mode, `SongSessionView`, and OSMD sheet music, holds theme/type-scale/live prefs, and talks to Rust through `src/lib/tauri.ts`. It must not reimplement domain behavior. See [`viewer.md`](./viewer.md), [`persist.md`](./persist.md), [`setlists.md`](./setlists.md), [`live-mode.md`](./live-mode.md), and [`musicxml.md`](./musicxml.md).
+Presentation only. It renders library, setlists, live mode, `SongSessionView`, and OSMD sheet music, holds theme/type-scale/live prefs, and talks to Rust through `src/lib/tauri.ts`. It must not reimplement domain behavior. See [`viewer.md`](./viewer.md), [`persist.md`](./persist.md), [`setlists.md`](./setlists.md), [`live-mode.md`](./live-mode.md), [`musicxml.md`](./musicxml.md), and [`accessibility.md`](./accessibility.md).
 
-## IPC surface (Phase 10)
+## IPC surface (Phase 11)
 
 | Command                   | Direction | Purpose                                         |
 | ------------------------- | --------- | ----------------------------------------------- |
@@ -88,5 +88,5 @@ JSON uses camelCase to match TypeScript. Full editor command list: [`editor.md`]
 
 - Web URL import
 - Notation authoring
-- Android project generation
+- Android project generation / packaging (Phase 12)
 - Cloud, accounts, or telemetry

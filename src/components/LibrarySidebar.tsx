@@ -134,7 +134,10 @@ export function LibrarySidebar({
         <button
           type="button"
           role="tab"
+          id="library-tab-songs"
+          aria-controls="library-panel-songs"
           aria-selected={tab === "songs"}
+          tabIndex={tab === "songs" ? 0 : -1}
           className={tab === "songs" ? "chip chip--active" : "chip"}
           onClick={() => onTabChange("songs")}
         >
@@ -143,7 +146,10 @@ export function LibrarySidebar({
         <button
           type="button"
           role="tab"
+          id="library-tab-setlists"
+          aria-controls="library-panel-setlists"
           aria-selected={tab === "setlists"}
+          tabIndex={tab === "setlists" ? 0 : -1}
           className={tab === "setlists" ? "chip chip--active" : "chip"}
           onClick={() => onTabChange("setlists")}
         >
@@ -152,7 +158,11 @@ export function LibrarySidebar({
       </div>
 
       {tab === "songs" ? (
-        <>
+        <div
+          id="library-panel-songs"
+          role="tabpanel"
+          aria-labelledby="library-tab-songs"
+        >
           <label className="field-label">
             Search
             <input
@@ -250,7 +260,11 @@ export function LibrarySidebar({
           <section className="library-section" aria-label="All songs">
             <h3>{songs.length === 1 ? "1 song" : `${songs.length} songs`}</h3>
             {songs.length === 0 ? (
-              <p className="hint">Import a chart to start your songbook.</p>
+              <p className="hint">
+                {search || favoritesOnly || artist || songKey || tag
+                  ? "No songs match these filters."
+                  : "Import a chart to start your songbook."}
+              </p>
             ) : (
               <ul className="library-list">
                 {songs.map((song) => (
@@ -266,47 +280,53 @@ export function LibrarySidebar({
               </ul>
             )}
           </section>
-        </>
+        </div>
       ) : (
-        <section className="library-section" aria-label="All setlists">
-          <h3>
-            {setlists.length === 1
-              ? "1 setlist"
-              : `${setlists.length} setlists`}
-          </h3>
-          {setlists.length === 0 ? (
-            <p className="hint">Create a setlist for rehearsal or a gig.</p>
-          ) : (
-            <ul className="library-list">
-              {setlists.map((setlist) => (
-                <li key={setlist.id}>
-                  <div
-                    className={
-                      setlist.id === activeSetlistId
-                        ? "library-row library-row--setlist library-row--active"
-                        : "library-row library-row--setlist"
-                    }
-                  >
-                    <button
-                      type="button"
-                      className="library-open"
-                      disabled={disabled}
-                      onClick={() => onOpenSetlist(setlist.id)}
+        <div
+          id="library-panel-setlists"
+          role="tabpanel"
+          aria-labelledby="library-tab-setlists"
+        >
+          <section className="library-section" aria-label="All setlists">
+            <h3>
+              {setlists.length === 1
+                ? "1 setlist"
+                : `${setlists.length} setlists`}
+            </h3>
+            {setlists.length === 0 ? (
+              <p className="hint">Create a setlist for rehearsal or a gig.</p>
+            ) : (
+              <ul className="library-list">
+                {setlists.map((setlist) => (
+                  <li key={setlist.id}>
+                    <div
+                      className={
+                        setlist.id === activeSetlistId
+                          ? "library-row library-row--setlist library-row--active"
+                          : "library-row library-row--setlist"
+                      }
                     >
-                      <span className="library-title">{setlist.name}</span>
-                      <span className="library-meta">
-                        {setlist.songCount === 1
-                          ? "1 song"
-                          : `${setlist.songCount} songs`}
-                        {setlist.eventDate ? ` · ${setlist.eventDate}` : ""}
-                      </span>
-                    </button>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
+                      <button
+                        type="button"
+                        className="library-open"
+                        disabled={disabled}
+                        onClick={() => onOpenSetlist(setlist.id)}
+                      >
+                        <span className="library-title">{setlist.name}</span>
+                        <span className="library-meta">
+                          {setlist.songCount === 1
+                            ? "1 song"
+                            : `${setlist.songCount} songs`}
+                          {setlist.eventDate ? ` · ${setlist.eventDate}` : ""}
+                        </span>
+                      </button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        </div>
       )}
     </aside>
   );

@@ -26,6 +26,8 @@ function phaseLabel(phase: number): string {
       return "Live";
     case 10:
       return "Sheet music";
+    case 11:
+      return "Polish";
     default:
       return "";
   }

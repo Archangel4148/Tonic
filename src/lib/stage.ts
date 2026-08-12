@@ -32,6 +32,50 @@ export async function setStageFullscreen(enabled: boolean): Promise<void> {
   }
 }
 
+export async function getStageFullscreen(): Promise<boolean> {
+  try {
+    const { getCurrentWindow } = await import("@tauri-apps/api/window");
+    return await getCurrentWindow().isFullscreen();
+  } catch {
+    return Boolean(document.fullscreenElement);
+  }
+}
+
+export async function toggleStageFullscreen(): Promise<boolean> {
+  const next = !(await getStageFullscreen());
+  await setStageFullscreen(next);
+  return next;
+}
+
+/** F11 or Alt+Enter — typical desktop fullscreen toggles. */
+export function isFullscreenHotkey(event: KeyboardEvent): boolean {
+  if (event.key === "F11") {
+    return true;
+  }
+  return event.key === "Enter" && event.altKey && !event.ctrlKey && !event.metaKey;
+}
+
+export function subscribeStageFullscreen(
+  onChange: (enabled: boolean) => void,
+): () => void {
+  let cancelled = false;
+  const sync = () => {
+    void getStageFullscreen().then((enabled) => {
+      if (!cancelled) {
+        onChange(enabled);
+      }
+    });
+  };
+  document.addEventListener("fullscreenchange", sync);
+  window.addEventListener("focus", sync);
+  sync();
+  return () => {
+    cancelled = true;
+    document.removeEventListener("fullscreenchange", sync);
+    window.removeEventListener("focus", sync);
+  };
+}
+
 export async function setKeepAwake(enabled: boolean): Promise<void> {
   try {
     if (!enabled) {

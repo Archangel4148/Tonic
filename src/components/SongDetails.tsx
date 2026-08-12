@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { SongSession } from "../lib/types";
 
 type Props = {
   session: SongSession;
   disabled?: boolean;
+  onDirtyChange?: (dirty: boolean) => void;
   onSave: (values: {
     title: string;
     artist: string;
@@ -18,6 +19,7 @@ type Props = {
 export function SongDetails({
   session,
   disabled,
+  onDirtyChange,
   onSave,
   onDuplicate,
   onDelete,
@@ -36,9 +38,23 @@ export function SongDetails({
     setTags(session.tags.join(", "));
   }, [session]);
 
+  const dirty = useMemo(() => {
+    return (
+      title !== session.song.title ||
+      artist !== (session.song.artist ?? "") ||
+      album !== (session.song.album ?? "") ||
+      notes !== (session.song.notes ?? "") ||
+      tags !== session.tags.join(", ")
+    );
+  }, [title, artist, album, notes, tags, session]);
+
+  useEffect(() => {
+    onDirtyChange?.(dirty);
+  }, [dirty, onDirtyChange]);
+
   return (
     <details className="song-details panel">
-      <summary>Details</summary>
+      <summary>Details{dirty ? " (unsaved)" : ""}</summary>
       <form
         className="details-form"
         onSubmit={(event) => {
@@ -103,7 +119,7 @@ export function SongDetails({
           </button>
           <button
             type="button"
-            className="text-button"
+            className="text-button text-button--danger"
             disabled={disabled}
             onClick={onDelete}
           >

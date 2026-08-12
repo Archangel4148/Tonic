@@ -29,6 +29,7 @@ Live mode is **presentation state**. Song documents, setlist entries, and transp
 | `[` / `]`                         | Slower / faster auto-scroll                               |
 | `M`                               | Toggle extra metadata                                     |
 | `L`                               | Lock / unlock on-screen controls                          |
+| `F11` / `Alt+Enter`               | Toggle fullscreen                                         |
 | `Escape`                          | Exit live                                                 |
 
 Missing setlist songs are skipped. At either end, navigation stops (no wrap). A single song (no setlist) can still use live mode; previous/next stay disabled.

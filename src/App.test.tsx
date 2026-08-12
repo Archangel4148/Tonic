@@ -9,7 +9,7 @@ const mockedInvoke = vi.mocked(invoke);
 const appInfo = {
   name: "Tonic",
   version: "0.1.0",
-  phase: 10,
+  phase: 11,
   domainEngine: "tonic-domain",
   domainVersion: "0.1.0",
   persistenceHealthy: true,
@@ -149,6 +149,9 @@ describe("App", () => {
       screen.getByRole("option", { name: "MusicXML" }),
     ).toBeInTheDocument();
     expect(screen.getByRole("searchbox")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /enter fullscreen/i }),
+    ).toBeInTheDocument();
     fireEvent.click(screen.getByText("Engine"));
     expect(screen.getByText(/tonic-domain v0\.1\.0/i)).toBeInTheDocument();
     expect(screen.getByText(/local library healthy/i)).toBeInTheDocument();
@@ -177,7 +180,7 @@ describe("App", () => {
     expect(screen.getByText("Traditional")).toBeInTheDocument();
     expect(screen.getByText("Verse 1")).toBeInTheDocument();
     expect(
-      screen.getByLabelText("Amazing grace, how sweet the sound"),
+      screen.getByLabelText(/Amazing grace, how sweet the sound\. Chords:/i),
     ).toBeInTheDocument();
     const verse = screen.getByLabelText("Verse 1");
     expect(verse).toHaveTextContent("G");
@@ -229,7 +232,7 @@ describe("App", () => {
     expect(verse).toHaveTextContent("A");
     expect(verse).toHaveTextContent("E");
     expect(
-      screen.getByLabelText("Amazing grace, how sweet the sound"),
+      screen.getByLabelText(/Amazing grace, how sweet the sound\. Chords:/i),
     ).toBeInTheDocument();
     expect(mockedInvoke).toHaveBeenCalledWith("transpose_song", {
       semitones: 1,
@@ -522,5 +525,72 @@ describe("App", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "IPC unavailable",
     );
+    expect(
+      screen.getByRole("button", { name: /retry connection/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("exposes a skip link and empty-state guidance", async () => {
+    mockIpc({
+      app_info: appInfo,
+      current_song: null,
+      library_list: emptyLibrary,
+      editor_state: null,
+    });
+
+    render(<App />);
+    expect(
+      await screen.findByRole("link", { name: /skip to content/i }),
+    ).toHaveAttribute("href", "#main-content");
+    fireEvent.click(screen.getByRole("button", { name: /hide import/i }));
+    expect(
+      screen.getByText(/Open a song, import a chart, or create a setlist/i),
+    ).toBeInTheDocument();
+  });
+
+  it("warns before unload when the editor is dirty", async () => {
+    const dirtyEditor: EditorSession = {
+      songId: "song-1",
+      dirty: true,
+      isNew: true,
+      title: "Untitled",
+      artist: null,
+      album: null,
+      originalKey: null,
+      tempoBpm: null,
+      timeSignature: null,
+      notes: null,
+      tags: [],
+      warnings: [],
+      summaryMessage: null,
+      sections: [
+        {
+          label: "Verse",
+          kind: "verse",
+          number: null,
+          customName: null,
+          lines: [{ lyrics: "", chords: [], annotation: null }],
+        },
+      ],
+    };
+    mockIpc({
+      app_info: appInfo,
+      current_song: null,
+      library_list: emptyLibrary,
+      editor_state: dirtyEditor,
+    });
+
+    render(<App />);
+    expect(
+      await screen.findByRole("heading", { name: "New song" }),
+    ).toBeInTheDocument();
+
+    const event = new Event("beforeunload", { cancelable: true });
+    Object.defineProperty(event, "returnValue", {
+      writable: true,
+      value: undefined,
+    });
+    window.dispatchEvent(event);
+    expect(event.defaultPrevented).toBe(true);
   });
 });

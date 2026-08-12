@@ -126,3 +126,10 @@ Workspace crates declare MIT for now. This can change if the product owner picks
 - Unsupported MusicXML features warn and still show the supported notes.
 - No notation authoring. Editor keeps the score when editing metadata or the companion chart.
 - Pitch-class key jumps use the nearest signed interval (−6..=6) so sheet transpose does not leap an octave.
+
+## Accessibility & polish (Phase 11)
+
+- Skip link, focus-visible rings, larger hit targets, `prefers-contrast` / `prefers-reduced-motion`.
+- Dirty editor or Details form triggers `beforeunload` and leave confirms.
+- Library search is debounced; OSMD loads lazily when a score is shown.
+- Boot failure offers Retry; filtered library empty copy differs from a blank songbook.

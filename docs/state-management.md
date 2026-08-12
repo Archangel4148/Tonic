@@ -1,12 +1,12 @@
 # State management
 
-Application state has a single ownership model. Phase 10 owns the song library, setlists, editor draft, and derived sheet MusicXML in Rust. Live mode, theme, type scale, and OSMD rendering are presentation state in the UI.
+Application state has a single ownership model. Phase 11 owns the song library, setlists, editor draft, and derived sheet MusicXML in Rust. Live mode, theme, type scale, accessibility prefs, and OSMD rendering are presentation state in the UI.
 
 ## Authoritative state
 
 Owned by Rust application services (`tonic-app`), not by React and not by the persistence crate.
 
-Phase 10 authoritative state owned by `AppServices`:
+Phase 11 authoritative state owned by `AppServices`:
 
 - Application identity (`AppInfo`)
 - Persistence health, derived from the `SongLibrary` boundary

@@ -65,11 +65,10 @@ describe("SongViewer", () => {
 
     expect(screen.getByRole("heading", { name: "Demo" })).toBeInTheDocument();
     expect(screen.getByText("Chorus")).toBeInTheDocument();
-    expect(screen.getByLabelText("Hello world")).toBeInTheDocument();
-    expect(
-      screen.getByTitle("D (written C)", { hidden: true }),
-    ).toBeInTheDocument();
-    expect(screen.getByText("Xyz", { hidden: true })).toBeInTheDocument();
+    expect(screen.getByLabelText(/Hello world\. Chords:/i)).toBeInTheDocument();
+    expect(screen.getByTitle("D (written C)")).toBeInTheDocument();
+    expect(screen.getByTitle("Xyz (unrecognized)")).toBeInTheDocument();
+    expect(screen.getByLabelText(/Xyz \(unrecognized\)/i)).toBeInTheDocument();
     expect(screen.getByText("quietly")).toBeInTheDocument();
     expect(
       screen.getByText("Some content could not be recognized."),

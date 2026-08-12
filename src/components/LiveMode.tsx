@@ -11,9 +11,12 @@ import {
   persistScrollSpeed,
 } from "../lib/livePrefs";
 import {
+  isFullscreenHotkey,
   refreshKeepAwake,
   setKeepAwake,
   setStageFullscreen,
+  subscribeStageFullscreen,
+  toggleStageFullscreen,
 } from "../lib/stage";
 import { applyTheme, applyTypeScale, clampScale } from "../lib/theme";
 import type { SongSession, ThemePreference, TypeScale } from "../lib/types";
@@ -62,6 +65,7 @@ export function LiveMode({
   const [hideMeta, setHideMeta] = useState(() =>
     typeof localStorage === "undefined" ? false : loadHideMeta(),
   );
+  const [fullscreen, setFullscreen] = useState(true);
   const [liveScale, setLiveScale] = useState<TypeScale>(() =>
     typeof localStorage === "undefined"
       ? { lyric: 1.9, chord: 1.65, section: 1.05 }
@@ -104,6 +108,7 @@ export function LiveMode({
     applyTheme("dark", false);
     applyTypeScale(liveScale);
     void setStageFullscreen(true);
+    setFullscreen(true);
     void setKeepAwake(true);
     return () => {
       document.documentElement.removeAttribute("data-live");
@@ -115,6 +120,8 @@ export function LiveMode({
     // Enter/exit live once per mount; restore values are captured on enter.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => subscribeStageFullscreen(setFullscreen), []);
 
   useEffect(() => {
     applyTypeScale(liveScale);
@@ -207,6 +214,11 @@ export function LiveMode({
       if (event.key === "l" || event.key === "L") {
         event.preventDefault();
         toggleLock();
+        return;
+      }
+      if (isFullscreenHotkey(event)) {
+        event.preventDefault();
+        void toggleStageFullscreen().then(setFullscreen);
         return;
       }
       showChrome();
@@ -369,6 +381,9 @@ export function LiveMode({
       <div
         className="live-chrome"
         aria-hidden={controlsLocked || !chromeVisible}
+        {...(controlsLocked || !chromeVisible
+          ? ({ inert: true } as { inert: boolean })
+          : {})}
       >
         <div className="live-chrome-bar live-chrome-bar--top">
           <div className="live-identity">
@@ -384,6 +399,20 @@ export function LiveMode({
               {setlist?.playedKey ? ` · played ${setlist.playedKey}` : ""}
             </p>
           </div>
+          <button
+            type="button"
+            className="text-button"
+            aria-pressed={fullscreen}
+            aria-label={fullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+            title={
+              fullscreen
+                ? "Exit fullscreen (F11 or Alt+Enter)"
+                : "Fullscreen (F11 or Alt+Enter)"
+            }
+            onClick={() => void toggleStageFullscreen().then(setFullscreen)}
+          >
+            {fullscreen ? "Windowed" : "Fullscreen"}
+          </button>
           <button
             type="button"
             className="text-button"

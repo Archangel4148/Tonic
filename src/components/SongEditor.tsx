@@ -129,7 +129,7 @@ export function SongEditor({
               })()
             }
           >
-            Save song
+            {disabled ? "Saving…" : "Save song"}
           </button>
           <button
             type="button"

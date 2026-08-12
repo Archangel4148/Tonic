@@ -71,6 +71,13 @@ Tauri `invoke` is mocked in `src/test/setup.ts` so UI tests do not require a run
 - Chart-line syllable splitting
 - Viewer warnings and unrecognized chords
 
+Phase 11 coverage:
+
+- Debounced search helper
+- Skip link, empty-state copy, boot retry control
+- Dirty-editor `beforeunload` guard
+- Chart/viewer SR labels for unrecognized chords
+
 Phase 10 coverage (`cargo test -p tonic-import` / `tonic-app` + UI):
 
 - MusicXML metadata, notes, lyrics, harmony companion chart (`twinkle.musicxml`)

@@ -9,11 +9,7 @@ export function ChartLine({ line }: Props) {
   const segments = splitChartLine(line.lyrics, line.chords);
   const hasLyrics = line.lyrics.length > 0;
   const chordOnly = !hasLyrics && line.chords.length > 0;
-  const ariaLabel = hasLyrics
-    ? line.lyrics
-    : chordOnly
-      ? line.chords.map((chord) => chord.symbol).join(" ")
-      : undefined;
+  const ariaLabel = buildAriaLabel(line);
 
   return (
     <div
@@ -36,7 +32,7 @@ export function ChartLine({ line }: Props) {
       ))}
 
       {chordOnly ? (
-        <p className="chart-chords-only">
+        <p className="chart-chords-only" aria-hidden="true">
           {line.chords.map((chord) => (
             <ChordMark
               key={`${chord.symbol}-${chord.lyricIndex}`}
@@ -46,13 +42,10 @@ export function ChartLine({ line }: Props) {
         </p>
       ) : (
         segments.length > 0 && (
-          <p className="chart-syllables" aria-hidden={hasLyrics}>
+          <p className="chart-syllables" aria-hidden="true">
             {segments.map((segment, index) => (
               <span key={`${segment.text}-${index}`} className="syllable">
-                <span
-                  className="syllable-chords"
-                  aria-hidden={!segment.chords.length}
-                >
+                <span className="syllable-chords">
                   {segment.chords.length === 0 ? (
                     <span className="chord chord--empty">&nbsp;</span>
                   ) : (
@@ -76,19 +69,52 @@ export function ChartLine({ line }: Props) {
   );
 }
 
+function buildAriaLabel(line: LineView): string | undefined {
+  if (line.lyrics.length === 0 && line.chords.length === 0) {
+    return undefined;
+  }
+  const chordText = line.chords
+    .map((chord) => {
+      if (chord.status === "unrecognized") {
+        return `${chord.symbol} (unrecognized)`;
+      }
+      if (chord.status === "partiallyRecognized") {
+        return `${chord.symbol} (partial)`;
+      }
+      return chord.symbol;
+    })
+    .join(", ");
+  if (line.lyrics.length === 0) {
+    return chordText || undefined;
+  }
+  if (!chordText) {
+    return line.lyrics;
+  }
+  return `${line.lyrics}. Chords: ${chordText}`;
+}
+
 function ChordMark({ chord }: { chord: ChordView }) {
   const unusual =
     chord.status === "unrecognized" || chord.status === "partiallyRecognized";
+  const statusLabel =
+    chord.status === "unrecognized"
+      ? "unrecognized"
+      : chord.status === "partiallyRecognized"
+        ? "partially recognized"
+        : null;
   return (
     <span
       className={unusual ? `chord chord--${chord.status}` : "chord"}
       title={
         chord.symbol === chord.written
-          ? chord.symbol
+          ? statusLabel
+            ? `${chord.symbol} (${statusLabel})`
+            : chord.symbol
           : `${chord.symbol} (written ${chord.written})`
       }
     >
       {chord.symbol}
+      {statusLabel && <span className="sr-only"> ({statusLabel})</span>}
     </span>
   );
 }

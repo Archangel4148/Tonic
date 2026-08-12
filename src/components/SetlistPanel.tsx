@@ -251,6 +251,7 @@ export function SetlistPanel({
                   type="button"
                   className="text-button"
                   disabled={disabled || index === 0}
+                  aria-label={`Move ${entry.title} up`}
                   onClick={() => onMoveEntry(index, index - 1)}
                 >
                   Up
@@ -259,14 +260,16 @@ export function SetlistPanel({
                   type="button"
                   className="text-button"
                   disabled={disabled || index === setlist.entries.length - 1}
+                  aria-label={`Move ${entry.title} down`}
                   onClick={() => onMoveEntry(index, index + 1)}
                 >
                   Down
                 </button>
                 <button
                   type="button"
-                  className="text-button"
+                  className="text-button text-button--danger"
                   disabled={disabled}
+                  aria-label={`Remove ${entry.title} from setlist`}
                   onClick={() => onRemoveEntry(entry.id)}
                 >
                   Remove

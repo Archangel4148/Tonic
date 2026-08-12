@@ -160,7 +160,7 @@ impl AppServices {
         AppInfo {
             name: "Tonic",
             version: env!("CARGO_PKG_VERSION"),
-            phase: 10,
+            phase: 11,
             domain_engine: engine_name(),
             domain_version: engine_version(),
         }
@@ -1586,7 +1586,7 @@ mod tests {
         let info = services.info();
 
         assert_eq!(info.name, "Tonic");
-        assert_eq!(info.phase, 10);
+        assert_eq!(info.phase, 11);
         assert_eq!(info.domain_engine, "tonic-domain");
         assert!(!info.version.is_empty());
         assert!(!info.domain_version.is_empty());

@@ -6,9 +6,9 @@ Tonic is built with **Tauri 2**, a **Rust** domain layer, and a **React + TypeSc
 
 ## Current phase
 
-**Phase 10 — MusicXML & Sheet Music**
+**Phase 11 — Accessibility, Polish & Reliability**
 
-Import, edit, organize setlists, perform in live mode, and open MusicXML / MXL scores offline.
+Import, edit, setlists, live mode, MusicXML, plus accessibility and reliability polish for everyday use.
 
 ## Quick start
 
@@ -38,6 +38,7 @@ All project documentation lives in [`docs/`](./docs/README.md).
 - [Setlists](./docs/setlists.md)
 - [Live mode](./docs/live-mode.md)
 - [MusicXML](./docs/musicxml.md)
+- [Accessibility](./docs/accessibility.md)
 - [Phase 1 report](./docs/phases/phase-1.md)
 - [Phase 2 report](./docs/phases/phase-2.md)
 - [Phase 3 report](./docs/phases/phase-3.md)
@@ -48,6 +49,7 @@ All project documentation lives in [`docs/`](./docs/README.md).
 - [Phase 8 report](./docs/phases/phase-8.md)
 - [Phase 9 report](./docs/phases/phase-9.md)
 - [Phase 10 report](./docs/phases/phase-10.md)
+- [Phase 11 report](./docs/phases/phase-11.md)
 
 ## License
 

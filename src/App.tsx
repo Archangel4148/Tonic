@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { EngineStatus } from "./components/EngineStatus";
 import { ImportPanel } from "./components/ImportPanel";
 import { LibrarySidebar, type LibraryTab } from "./components/LibrarySidebar";
@@ -9,6 +9,7 @@ import { SongEditor } from "./components/SongEditor";
 import { SongViewer } from "./components/SongViewer";
 import { TransposeBar } from "./components/TransposeBar";
 import { TypeScaleControls } from "./components/TypeScaleControls";
+import { debounce } from "./lib/debounce";
 import {
   addSetlistSong,
   beginEdit,
@@ -49,6 +50,11 @@ import {
   loadTypeScale,
   persistTypeScale,
 } from "./lib/theme";
+import {
+  isFullscreenHotkey,
+  subscribeStageFullscreen,
+  toggleStageFullscreen,
+} from "./lib/stage";
 import type {
   AppInfo,
   ImportFormat,
@@ -70,6 +76,7 @@ type BootState =
 
 function App() {
   const [boot, setBoot] = useState<BootState>({ status: "loading" });
+  const [bootNonce, setBootNonce] = useState(0);
   const [session, setSession] = useState<SongSession | null>(null);
   const [editor, setEditor] = useState<EditorSession | null>(null);
   const [library, setLibrary] = useState<LibraryList | null>(null);
@@ -77,6 +84,7 @@ function App() {
   const [openSetlist, setOpenSetlist] = useState<Setlist | null>(null);
   const [libraryTab, setLibraryTab] = useState<LibraryTab>("songs");
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [favoritesOnly, setFavoritesOnly] = useState(false);
   const [artistFilter, setArtistFilter] = useState("");
   const [keyFilter, setKeyFilter] = useState("");
@@ -87,6 +95,8 @@ function App() {
   const [importOpen, setImportOpen] = useState(true);
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [detailsDirty, setDetailsDirty] = useState(false);
+  const [fullscreen, setFullscreen] = useState(false);
   const [live, setLive] = useState(false);
   const [theme, setTheme] = useState<ThemePreference>(() =>
     typeof localStorage === "undefined" ? "dark" : loadTheme(),
@@ -104,15 +114,30 @@ function App() {
 
   const query = useMemo(
     () => ({
-      search: search || null,
+      search: debouncedSearch || null,
       artist: artistFilter || null,
       key: keyFilter || null,
       favoritesOnly,
       tag: tagFilter || null,
       sort,
     }),
-    [search, artistFilter, keyFilter, favoritesOnly, tagFilter, sort],
+    [debouncedSearch, artistFilter, keyFilter, favoritesOnly, tagFilter, sort],
   );
+
+  const hasUnsavedWork = Boolean(editor?.dirty) || detailsDirty;
+
+  const scheduleSearch = useMemo(
+    () =>
+      debounce((value: string) => {
+        setDebouncedSearch(value);
+      }, 200),
+    [],
+  );
+
+  useEffect(() => {
+    scheduleSearch(search);
+    return () => scheduleSearch.cancel();
+  }, [search, scheduleSearch]);
 
   async function refreshLibrary(): Promise<void> {
     setLibrary(await listLibrary(query));
@@ -130,6 +155,7 @@ function App() {
 
   useEffect(() => {
     let cancelled = false;
+    setBoot({ status: "loading" });
 
     Promise.all([
       getAppInfo(),
@@ -181,7 +207,7 @@ function App() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [bootNonce]);
 
   useEffect(() => {
     if (boot.status !== "ready") {
@@ -211,7 +237,64 @@ function App() {
     persistTypeScale(typeScale);
   }, [typeScale]);
 
+  useEffect(() => subscribeStageFullscreen(setFullscreen), []);
+
+  useEffect(() => {
+    function onKey(event: KeyboardEvent) {
+      if (live) {
+        return;
+      }
+      const target = event.target as HTMLElement | null;
+      if (
+        target &&
+        (target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.tagName === "SELECT" ||
+          target.isContentEditable)
+      ) {
+        return;
+      }
+      if (!isFullscreenHotkey(event)) {
+        return;
+      }
+      event.preventDefault();
+      void toggleStageFullscreen().then(setFullscreen);
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [live]);
+
+  useEffect(() => {
+    const onBeforeUnload = (event: BeforeUnloadEvent) => {
+      if (!hasUnsavedWork) {
+        return;
+      }
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, [hasUnsavedWork]);
+
+  const onDetailsDirtyChange = useCallback((dirty: boolean) => {
+    setDetailsDirty(dirty);
+  }, []);
+
+  async function confirmLeaveDetails(): Promise<boolean> {
+    if (!detailsDirty) {
+      return true;
+    }
+    if (!window.confirm("Discard unsaved detail changes?")) {
+      return false;
+    }
+    setDetailsDirty(false);
+    return true;
+  }
+
   async function confirmLeaveEditor(): Promise<boolean> {
+    if (!(await confirmLeaveDetails())) {
+      return false;
+    }
     if (!editor) {
       return true;
     }
@@ -284,19 +367,37 @@ function App() {
   }
 
   return (
-    <div className="app-shell">
+    <div className="app-shell" aria-busy={busy}>
+      <a className="skip-link" href="#main-content">
+        Skip to content
+      </a>
       <header className="app-header">
         <div className="brand">
           <p className="eyebrow">Songbook</p>
           <h1>Tonic</h1>
         </div>
         <div className="header-tools">
+          <button
+            type="button"
+            className={fullscreen ? "chip chip--active" : "chip"}
+            aria-pressed={fullscreen}
+            aria-label={fullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+            title={
+              fullscreen
+                ? "Exit fullscreen (F11 or Alt+Enter)"
+                : "Fullscreen (F11 or Alt+Enter)"
+            }
+            onClick={() => void toggleStageFullscreen().then(setFullscreen)}
+          >
+            {fullscreen ? "Exit full" : "Fullscreen"}
+          </button>
           <div className="theme-toggle" role="group" aria-label="Theme">
             {(["dark", "light", "system"] as const).map((option) => (
               <button
                 key={option}
                 type="button"
                 className={theme === option ? "chip chip--active" : "chip"}
+                aria-pressed={theme === option}
                 onClick={() => setTheme(option)}
               >
                 {option === "dark"
@@ -437,7 +538,10 @@ function App() {
           />
         )}
 
-        <main>
+        <main id="main-content" tabIndex={-1}>
+          <div className="sr-only" aria-live="polite">
+            {busy ? "Working…" : ""}
+          </div>
           {boot.status === "loading" && (
             <p role="status">Connecting to the local engine…</p>
           )}
@@ -450,6 +554,13 @@ function App() {
                 Run the desktop app with <code>npm run tauri dev</code> so the
                 UI can talk to the Rust engine.
               </p>
+              <button
+                type="button"
+                className="primary-button"
+                onClick={() => setBootNonce((value) => value + 1)}
+              >
+                Retry connection
+              </button>
             </div>
           )}
 
@@ -514,6 +625,7 @@ function App() {
                       await clearSong();
                       setSession(null);
                       setEditor(null);
+                      setDetailsDirty(false);
                       setImportOpen(false);
                       setActionError(null);
                     }}
@@ -669,9 +781,10 @@ function App() {
                   <SongDetails
                     session={session}
                     disabled={busy}
+                    onDirtyChange={onDetailsDirtyChange}
                     onSave={(values) =>
-                      void runAction(() =>
-                        updateMetadata({
+                      void runAction(async () => {
+                        const next = await updateMetadata({
                           title: values.title,
                           artist: values.artist || null,
                           album: values.album || null,
@@ -680,8 +793,10 @@ function App() {
                             .split(",")
                             .map((tag) => tag.trim())
                             .filter(Boolean),
-                        }),
-                      )
+                        });
+                        setDetailsDirty(false);
+                        return next;
+                      })
                     }
                     onDuplicate={() =>
                       void (async () => {
