@@ -6,9 +6,9 @@ Tonic is built with **Tauri 2**, a **Rust** domain layer, and a **React + TypeSc
 
 ## Current phase
 
-**Phase 3 — Canonical Song Model**
+**Phase 4 — ChordPro & Plain Text Import**
 
-Songs are structured documents (sections, lines, chord/lyric tokens) in Rust. Import, library, editor, and live mode are not implemented yet.
+Songs import from ChordPro and chord-over-lyrics text into the canonical Rust model. Viewer, library, editor, and live mode are not implemented yet.
 
 ## Quick start
 
@@ -31,9 +31,11 @@ All project documentation lives in [`docs/`](./docs/README.md).
 - [Development](./docs/development.md)
 - [Music theory](./docs/music-theory.md)
 - [Song model](./docs/song-model.md)
+- [Import](./docs/import.md)
 - [Phase 1 report](./docs/phases/phase-1.md)
 - [Phase 2 report](./docs/phases/phase-2.md)
 - [Phase 3 report](./docs/phases/phase-3.md)
+- [Phase 4 report](./docs/phases/phase-4.md)
 
 ## License
 

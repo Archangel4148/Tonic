@@ -11,6 +11,8 @@ function phaseLabel(phase: number): string {
       return " — Music engine";
     case 3:
       return " — Song model";
+    case 4:
+      return " — Import";
     default:
       return "";
   }

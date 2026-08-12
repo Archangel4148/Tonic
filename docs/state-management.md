@@ -6,10 +6,11 @@ Application state has a single ownership model. Phase 1 only implements enough o
 
 Owned by Rust application services (`tonic-app`), not by React and not by the persistence crate.
 
-Phase 1 authoritative state:
+Phase 1–4 authoritative state owned by `AppServices`:
 
 - Application identity (`AppInfo`)
 - Persistence health, derived from the `Store` boundary
+- Import orchestration (`import_song` → `tonic-import` → `Song`); results are not stored in the library yet
 
 Domain authoritative song data (Phase 3, in `tonic-domain`):
 
@@ -71,8 +72,8 @@ That UI status is not domain data. It only describes whether IPC succeeded.
 ┌──────────────────────────────────────────────┐
 │ tonic-app :: AppServices                     │
 │  authoritative in-memory session state       │
-└───────────────┬──────────────────┬───────────┘
-                ▼                  ▼
-        tonic-domain         tonic-persist
-        (pure logic)         (durable copy)
+└────────┬──────────────┬──────────────┬───────┘
+         ▼              ▼              ▼
+   tonic-domain   tonic-import   tonic-persist
+   (pure logic)   (parsers)      (durable copy)
 ```

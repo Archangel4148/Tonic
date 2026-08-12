@@ -13,7 +13,11 @@ Tonic/
 ├── crates/
 │   ├── domain/                tonic-domain (music engine + Song model)
 │   ├── app/                   tonic-app
-│   └── persist/               tonic-persist
+│   ├── persist/               tonic-persist
+│   └── import/                tonic-import (ChordPro + plain text)
+│       ├── src/
+│       ├── fixtures/
+│       └── tests/
 ├── src/                       React + TypeScript UI
 │   ├── App.tsx                Application shell
 │   ├── lib/                   IPC wrappers and shared UI types
@@ -35,6 +39,7 @@ Tonic/
 | `tonic-domain`  | Domain crate                                                          |
 | `tonic-app`     | Application crate                                                     |
 | `tonic-persist` | Persistence crate                                                     |
+| `tonic-import`  | ChordPro / plain-text import                                          |
 | `com.tonic.app` | Bundle identifier                                                     |
 
 ## Frontend layout rule

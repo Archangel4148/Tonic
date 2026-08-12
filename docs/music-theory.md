@@ -89,6 +89,5 @@ concert_pitch(G, capo 2) = A
 ## Out of scope here
 
 - Song / line / section model (Phase 3)
-- ChordPro or plain-text import (Phase 4)
 - Transpose UI or Tauri commands (Phase 5)
 - Changing chord quality when moving between major and minor keys — only pitch-bearing notes change

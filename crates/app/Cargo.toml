@@ -8,6 +8,7 @@ license.workspace = true
 [dependencies]
 tonic-domain.workspace = true
 tonic-persist.workspace = true
+tonic-import.workspace = true
 
 [lints]
 workspace = true

@@ -1,0 +1,12 @@
+[package]
+name = "tonic-import"
+version.workspace = true
+edition.workspace = true
+description = "ChordPro and plain-text import into Tonic's canonical Song model"
+license.workspace = true
+
+[dependencies]
+tonic-domain.workspace = true
+
+[lints]
+workspace = true

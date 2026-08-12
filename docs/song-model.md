@@ -2,7 +2,7 @@
 
 The in-memory song document lives in `tonic-domain`. Import, editor, renderer, transposition display, library, and setlists must all consume this model. They must not reparse raw source text.
 
-Phase 3 defines the types and JSON round-trip. ChordPro import is Phase 4. Durable storage is Phase 6.
+Phase 3 defines the types and JSON round-trip. ChordPro / plain-text import is Phase 4 (`tonic-import`; see [`import.md`](./import.md)). Durable storage is Phase 6.
 
 ## Document shape
 
@@ -62,7 +62,6 @@ This JSON is the interchange form for tests and later persistence. It is not its
 
 ## Out of scope here
 
-- ChordPro / plain-text parsers (Phase 4)
 - Viewer / transpose UI (Phase 5)
 - Saving to disk (Phase 6)
 - Setlists (Phase 8)

@@ -1,6 +1,12 @@
 [workspace]
 resolver = "2"
-members = ["src-tauri", "crates/domain", "crates/app", "crates/persist"]
+members = [
+    "src-tauri",
+    "crates/domain",
+    "crates/app",
+    "crates/persist",
+    "crates/import",
+]
 
 [workspace.package]
 version = "0.1.0"
@@ -13,6 +19,7 @@ serde_json = "1"
 tonic-domain = { path = "crates/domain" }
 tonic-app = { path = "crates/app" }
 tonic-persist = { path = "crates/persist" }
+tonic-import = { path = "crates/import" }
 
 [workspace.lints.rust]
 unsafe_code = "forbid"

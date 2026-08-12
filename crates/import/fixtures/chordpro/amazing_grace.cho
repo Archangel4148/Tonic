@@ -1,0 +1,14 @@
+{title: Amazing Grace}
+{artist: Traditional}
+{key: G}
+{tempo: 72}
+{time: 3/4}
+
+{start_of_verse: Verse 1}
+[G]Amazing grace, how [D]sweet the sound
+That [Em]saved a wretch like [C]me
+{end_of_verse}
+
+{start_of_chorus}
+[G]Amazing grace
+{end_of_chorus}

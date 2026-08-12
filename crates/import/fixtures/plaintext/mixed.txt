@@ -1,0 +1,8 @@
+Title: Mixed Chart
+
+[Chorus]
+C     G
+Hello world
+This lyric line has no chords above it
+N.C.
+Standalone lyric

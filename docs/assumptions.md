@@ -23,7 +23,19 @@ Not chosen yet. Phase 1 only has an in-memory `Store` stub. SQLite vs filesystem
 
 ## Import crate layout
 
-Phase 4 will decide whether ChordPro / plain-text parsers live in `tonic-persist`, `tonic-domain`, or a new `tonic-import` crate. No import crate was created in Phase 1.
+ChordPro and plain-text parsers live in a dedicated `tonic-import` crate. They are not part of `tonic-domain` (no parsing of source formats in the music engine) and not part of `tonic-persist` (import is not storage). `tonic-app` orchestrates import; IPC/UI arrives in Phase 5.
+
+## Import behavior (Phase 4)
+
+- Import never hard-fails; warnings plus a usable `Song`.
+- User-facing summary for any warning: “Some content could not be recognized.”
+- Unknown chords are preserved with `ParseStatus::Unrecognized`.
+- Chord-line detection requires a majority of **fully** recognized tokens (partial words such as `Amazing` do not count).
+- Plain `[Chorus]` is a section header, not ChordPro.
+- `{capo}` / `Capo:` become song notes, not a domain capo field.
+- `{new_song}` skips remaining content rather than splitting files into multiple songs.
+- Default section is Verse when none is declared.
+- `SongId` is still assigned by the caller.
 
 ## Tauri opener plugin
 

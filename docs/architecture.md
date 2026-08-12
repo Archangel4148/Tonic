@@ -7,20 +7,20 @@ Tonic keeps a strict separation between presentation, application services, doma
 ```text
 UI / Presentation (React)
         ↓  IPC only
-Tauri shell (src-tauri)
+    Tauri shell (src-tauri)
         ↓
 Application services (tonic-app)
         ↓
-   ┌────┴────┐
-   ↓         ↓
-Domain    Persistence
-(tonic-    (tonic-
- domain)   persist)
+   ┌────┴────┬────────┐
+   ↓         ↓        ↓
+Domain    Persist   Import
+(tonic-   (tonic-   (tonic-
+ domain)  persist)  import)
 ```
 
 The spec diagram lists domain above persistence. That is treated as a **layering** diagram, not as "domain depends on persistence."
 
-Domain code must stay independently unit-testable. Persistence will depend on domain types once songs exist. Application services orchestrate both.
+Domain code must stay independently unit-testable. Persistence will depend on domain types once songs exist. Import depends on domain types only. Application services orchestrate domain, import, and persist.
 
 ## Invariants
 
@@ -32,6 +32,7 @@ Domain code must stay independently unit-testable. Persistence will depend on do
 6. Setlists reference songs; they do not copy song documents.
 7. There is one transposition implementation, living in `tonic-domain`.
 8. The domain crate can be tested with `cargo test -p tonic-domain` and has no Tauri/React dependencies.
+9. Import parsers live in `tonic-import`, not in the UI, domain engine, or persistence crate.
 
 ## Current crate roles
 
@@ -41,11 +42,15 @@ Pure domain logic: music engine plus the canonical `Song` model. See [`music-the
 
 ### `tonic-app`
 
-Owns running-process authoritative state. Phase 1 holds `AppServices`, which reports identity and persistence health. Song library, setlists, and preferences will be added here rather than in React or the Tauri crate.
+Owns running-process authoritative state. Reports identity and persistence health, and orchestrates import via `AppServices::import_song`. Song library, setlists, and preferences will be added here rather than in React or the Tauri crate.
+
+### `tonic-import`
+
+ChordPro and plain-text parsers. Depends on `tonic-domain` only. See [`import.md`](./import.md).
 
 ### `tonic-persist`
 
-Persistence interface. Phase 1 provides `Store` and `MemoryStore`. SQLite or filesystem storage is Phase 6. Import/export parsers are not implemented yet; Phase 4 will decide whether they live here or in a dedicated import crate.
+Persistence interface. Phase 1 provides `Store` and `MemoryStore`. SQLite or filesystem storage is Phase 6. Import parsers live in `tonic-import`, not here.
 
 ### `tonic` (`src-tauri`)
 
@@ -65,10 +70,11 @@ JSON uses camelCase to match TypeScript.
 
 ## What later phases still do not include
 
-- Import/export (Phase 4+)
-- Transpose UI / viewer (Phase 5)
+- Import IPC / viewer / transpose UI (Phase 5)
 - Durable storage (Phase 6)
 - Library, editor, or performance UI
 - Setlists (Phase 8)
+- Web URL import
+- MusicXML (Phase 10)
 - Android project generation
 - Cloud, accounts, or telemetry

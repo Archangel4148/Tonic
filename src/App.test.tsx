@@ -14,7 +14,7 @@ describe("App", () => {
     mockedInvoke.mockResolvedValue({
       name: "Tonic",
       version: "0.1.0",
-      phase: 3,
+      phase: 4,
       domainEngine: "tonic-domain",
       domainVersion: "0.1.0",
       persistenceHealthy: true,

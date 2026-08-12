@@ -22,6 +22,7 @@ Phase 1 splits that work into workspace crates so later phases do not have to in
 | `tonic-domain`        | Music theory and canonical song model. Serde JSON only; no UI/Tauri. |
 | `tonic-app`           | Application services and in-memory authoritative state.              |
 | `tonic-persist`       | Persistence boundary. In-memory stub only in Phase 1.                |
+| `tonic-import`        | ChordPro and plain-text import into `Song`. No UI/Tauri.             |
 | `tonic` (`src-tauri`) | Windowing, IPC, and OS integration.                                  |
 
 The popular gRPC crate also named `tonic` is not a dependency. Our crates use the `tonic-*` prefix to stay distinct.
@@ -44,7 +45,7 @@ Durable storage (likely SQLite via Tauri or a Rust crate) is a Phase 6 decision.
 
 | Tool                       | Role                                          |
 | -------------------------- | --------------------------------------------- |
-| `cargo test`               | Domain, app, and persist unit tests           |
+| `cargo test`               | Domain, app, persist, and import unit tests   |
 | `cargo clippy`             | Rust lints, warnings denied in `npm run lint` |
 | `rustfmt`                  | Rust formatting                               |
 | Vitest + Testing Library   | React shell tests                             |

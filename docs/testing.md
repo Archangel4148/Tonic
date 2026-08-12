@@ -41,6 +41,16 @@ Phase 3 coverage:
 - JSON round-trip equality
 - Performance-key display does not mutate written chords or source
 
+Phase 4 coverage (`cargo test -p tonic-import`):
+
+- ChordPro metadata, sections, and inline chord positions (`amazing_grace.cho`)
+- Unknown ChordPro chords preserved; slash chords fully recognized
+- Malformed ChordPro keeps title, lyrics, and usable chords
+- Plain-text chord-over-lyrics column alignment
+- Lyric-only lines and mixed charts
+- Unknown plain-text chords preserved
+- Content-based format detection (ChordPro vs `[Chorus]` plain text)
+
 ## Frontend
 
 Vitest uses jsdom and Testing Library.
@@ -54,7 +64,8 @@ Tauri `invoke` is mocked in `src/test/setup.ts` so UI tests do not require a run
 
 - End-to-end Tauri window launch (manual: `npm run tauri dev`)
 - Android
-- Import, song rendering, durable persistence round-trips
+- Song rendering and import UI (Phase 5)
+- Durable persistence round-trips (Phase 6)
 - UI-level transposition (engine is tested in Rust only)
 
 Those arrive with the phases that implement them.
