@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { EngineStatus } from "./components/EngineStatus";
+import { SettingsPanel } from "./components/SettingsPanel";
 import { ImportPanel } from "./components/ImportPanel";
 import { LibrarySidebar, type LibraryTab } from "./components/LibrarySidebar";
 import { LiveMode } from "./components/LiveMode";
@@ -8,12 +8,12 @@ import { SongDetails } from "./components/SongDetails";
 import { SongEditor } from "./components/SongEditor";
 import { SongViewer } from "./components/SongViewer";
 import { TransposeBar } from "./components/TransposeBar";
-import { TypeScaleControls } from "./components/TypeScaleControls";
 import { debounce } from "./lib/debounce";
 import {
   addSetlistSong,
   beginEdit,
   cancelEdit,
+  clearLibrary,
   clearSong,
   createSetlist,
   createSong,
@@ -24,6 +24,7 @@ import {
   getAppInfo,
   getCurrentSong,
   getEditorState,
+  getLibraryInfo,
   getSetlist,
   importBinary,
   importSong,
@@ -59,6 +60,7 @@ import {
 import type {
   AppInfo,
   ImportFormat,
+  LibraryInfo,
   LibraryList,
   LibrarySort,
   EditorSession,
@@ -94,6 +96,8 @@ function App() {
   const [importText, setImportText] = useState("");
   const [importFormat, setImportFormat] = useState<ImportFormat>("auto");
   const [importOpen, setImportOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [libraryInfo, setLibraryInfo] = useState<LibraryInfo | null>(null);
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [detailsDirty, setDetailsDirty] = useState(false);
@@ -238,6 +242,27 @@ function App() {
     persistTypeScale(typeScale);
   }, [typeScale]);
 
+  useEffect(() => {
+    if (!settingsOpen || boot.status !== "ready") {
+      return;
+    }
+    let cancelled = false;
+    getLibraryInfo()
+      .then((info) => {
+        if (!cancelled) {
+          setLibraryInfo(info);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setLibraryInfo(null);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [settingsOpen, boot.status, library, setlists]);
+
   useEffect(() => subscribeStageFullscreen(setFullscreen), []);
 
   useEffect(() => {
@@ -380,6 +405,15 @@ function App() {
         <div className="header-tools">
           <button
             type="button"
+            className={settingsOpen ? "chip chip--active" : "chip"}
+            aria-pressed={settingsOpen}
+            aria-haspopup="dialog"
+            onClick={() => setSettingsOpen(true)}
+          >
+            Settings
+          </button>
+          <button
+            type="button"
             className={fullscreen ? "chip chip--active" : "chip"}
             aria-pressed={fullscreen}
             aria-label={fullscreen ? "Exit fullscreen" : "Enter fullscreen"}
@@ -392,26 +426,51 @@ function App() {
           >
             {fullscreen ? "Exit full" : "Fullscreen"}
           </button>
-          <div className="theme-toggle" role="group" aria-label="Theme">
-            {(["dark", "light", "system"] as const).map((option) => (
-              <button
-                key={option}
-                type="button"
-                className={theme === option ? "chip chip--active" : "chip"}
-                aria-pressed={theme === option}
-                onClick={() => setTheme(option)}
-              >
-                {option === "dark"
-                  ? "Dark"
-                  : option === "light"
-                    ? "Light"
-                    : "System"}
-              </button>
-            ))}
-          </div>
-          {boot.status === "ready" && <EngineStatus info={boot.info} />}
         </div>
       </header>
+
+      {boot.status === "ready" && (
+        <SettingsPanel
+          open={settingsOpen}
+          onClose={() => setSettingsOpen(false)}
+          appInfo={boot.info}
+          libraryInfo={libraryInfo}
+          theme={theme}
+          onThemeChange={setTheme}
+          typeScale={typeScale}
+          onTypeScaleChange={setTypeScale}
+          busy={busy}
+          onClearLibrary={() =>
+            void (async () => {
+              if (!(await confirmLeaveEditor())) {
+                return;
+              }
+              setBusy(true);
+              setActionError(null);
+              try {
+                await clearLibrary();
+                await clearSong();
+                setSession(null);
+                setEditor(null);
+                setOpenSetlist(null);
+                setDetailsDirty(false);
+                setImportOpen(false);
+                await refreshLibrary();
+                await refreshSetlists();
+                setLibraryInfo(await getLibraryInfo());
+              } catch (error: unknown) {
+                setActionError(
+                  error instanceof Error
+                    ? error.message
+                    : "Could not clear the library.",
+                );
+              } finally {
+                setBusy(false);
+              }
+            })()
+          }
+        />
+      )}
 
       <div className="app-workspace">
         {boot.status === "ready" && (
@@ -651,7 +710,6 @@ function App() {
                     onReset={() => void runAction(() => resetPerformanceKey())}
                   />
                 )}
-                <TypeScaleControls scale={typeScale} onChange={setTypeScale} />
               </div>
 
               {actionError && (

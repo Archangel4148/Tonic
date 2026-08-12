@@ -211,6 +211,13 @@ export type EditorSaveResult = {
   editor: EditorSession;
 };
 
+export type LibraryInfo = {
+  libraryPath: string | null;
+  songCount: number;
+  setlistCount: number;
+  persistenceHealthy: boolean;
+};
+
 export type ThemePreference = "dark" | "light" | "system";
 
 export type TypeScale = {

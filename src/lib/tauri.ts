@@ -5,6 +5,7 @@ import type {
   EditorSaveResult,
   EditorSession,
   ImportFormat,
+  LibraryInfo,
   LibraryList,
   LibraryQuery,
   MetadataUpdate,
@@ -17,6 +18,14 @@ import type {
 
 export async function getAppInfo(): Promise<AppInfo> {
   return invoke<AppInfo>("app_info");
+}
+
+export async function getLibraryInfo(): Promise<LibraryInfo> {
+  return invoke<LibraryInfo>("library_info");
+}
+
+export async function clearLibrary(): Promise<void> {
+  return invoke<void>("library_clear");
 }
 
 export async function importSong(

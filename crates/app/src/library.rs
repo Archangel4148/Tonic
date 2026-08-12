@@ -4,6 +4,15 @@ use serde::{Deserialize, Serialize};
 use tonic_domain::Song;
 use tonic_persist::StoredSong;
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LibraryInfoView {
+    pub library_path: Option<String>,
+    pub song_count: usize,
+    pub setlist_count: usize,
+    pub persistence_healthy: bool,
+}
+
 #[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LibraryQuery {

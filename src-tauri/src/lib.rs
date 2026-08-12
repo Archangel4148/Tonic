@@ -6,7 +6,7 @@
 use serde::Serialize;
 use tonic_app::{
     performance_key_choices, AppServices, EditorMetaUpdate, EditorSaveResult, EditorSessionView,
-    ImportMode, LibraryListView, LibraryQuery, MetadataUpdate, SectionLabelInput,
+    ImportMode, LibraryInfoView, LibraryListView, LibraryQuery, MetadataUpdate, SectionLabelInput,
     SetlistMetaUpdate, SetlistSummaryView, SetlistView, SongSessionView,
 };
 
@@ -34,6 +34,16 @@ fn app_info(services: tauri::State<'_, AppServices>) -> AppInfoResponse {
         persistence_healthy: services.persistence_healthy(),
         performance_keys: performance_key_choices(),
     }
+}
+
+#[tauri::command]
+fn library_info(services: tauri::State<'_, AppServices>) -> LibraryInfoView {
+    services.library_info()
+}
+
+#[tauri::command]
+fn library_clear(services: tauri::State<'_, AppServices>) -> Result<(), String> {
+    services.clear_library()
 }
 
 #[tauri::command]
@@ -413,6 +423,8 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             app_info,
+            library_info,
+            library_clear,
             import_song,
             import_binary,
             import_url,

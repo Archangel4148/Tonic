@@ -16,6 +16,13 @@ const appInfo = {
   performanceKeys: ["C", "G", "A", "Am"],
 };
 
+const emptyLibraryInfo = {
+  libraryPath: null,
+  songCount: 0,
+  setlistCount: 0,
+  persistenceHealthy: true,
+};
+
 const emptyLibrary = {
   songs: [],
   recents: [],
@@ -116,7 +123,11 @@ function mockIpc(
   handlers: Record<string, unknown | ((args?: unknown) => unknown)>,
 ) {
   mockedInvoke.mockImplementation(async (cmd, args) => {
-    const handler = { setlist_list: [], ...handlers }[String(cmd)];
+    const handler = {
+      setlist_list: [],
+      library_info: emptyLibraryInfo,
+      ...handlers,
+    }[String(cmd)];
     if (typeof handler === "function") {
       return (handler as (args?: unknown) => unknown)(args);
     }
@@ -154,9 +165,9 @@ describe("App", () => {
     expect(
       screen.getByRole("button", { name: /enter fullscreen/i }),
     ).toBeInTheDocument();
-    fireEvent.click(screen.getByText("Engine"));
-    expect(screen.getByText(/tonic-domain v1\.0\.0/i)).toBeInTheDocument();
-    expect(screen.getByText(/local library healthy/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Settings" }));
+    expect(await screen.findByText(/tonic-domain v1\.0\.0/i)).toBeInTheDocument();
+    expect(screen.getByText(/library healthy/i)).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Import chart" }));
     expect(screen.getByLabelText(/chart text/i)).toBeInTheDocument();

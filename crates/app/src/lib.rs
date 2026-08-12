@@ -10,7 +10,7 @@ mod setlist;
 mod view;
 
 use std::collections::HashMap;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
 use tonic_domain::{
@@ -33,7 +33,7 @@ pub use editor::{
     EditorChordView, EditorLineView, EditorMetaUpdate, EditorSaveResult, EditorSectionView,
     EditorSessionView, SectionLabelInput,
 };
-pub use library::{LibraryListView, LibraryQuery, LibrarySongSummary, MetadataUpdate};
+pub use library::{LibraryInfoView, LibraryListView, LibraryQuery, LibrarySongSummary, MetadataUpdate};
 pub use setlist::{
     SetlistContextView, SetlistEntryView, SetlistMetaUpdate, SetlistSummaryView, SetlistView,
 };
@@ -98,6 +98,7 @@ struct AppState {
 /// Phase 6 owns the library in memory and write-through persists each change.
 pub struct AppServices {
     library: Box<dyn SongLibrary>,
+    library_root: Option<PathBuf>,
     state: Mutex<AppState>,
 }
 
@@ -109,7 +110,7 @@ impl AppServices {
 
     #[must_use]
     pub fn in_memory() -> Self {
-        Self::from_library(Box::new(MemoryLibrary::new())).expect("memory library loads")
+        Self::from_library(Box::new(MemoryLibrary::new()), None).expect("memory library loads")
     }
 
     /// Open a filesystem library under `root`.
@@ -118,10 +119,14 @@ impl AppServices {
     ///
     /// Returns [`PersistError`] when the directory cannot be used.
     pub fn open(root: impl AsRef<Path>) -> Result<Self, PersistError> {
-        Self::from_library(Box::new(FileLibrary::open(root)?))
+        let root = root.as_ref().to_path_buf();
+        Self::from_library(Box::new(FileLibrary::open(&root)?), Some(root))
     }
 
-    fn from_library(library: Box<dyn SongLibrary>) -> Result<Self, PersistError> {
+    fn from_library(
+        library: Box<dyn SongLibrary>,
+        library_root: Option<PathBuf>,
+    ) -> Result<Self, PersistError> {
         library.health_check()?;
         let (next_id, records) = library.load_all()?;
         let snapshot = library.load_setlists()?;
@@ -136,6 +141,7 @@ impl AppServices {
             .collect();
         Ok(Self {
             library,
+            library_root,
             state: Mutex::new(AppState {
                 next_id: next_id.max(1),
                 next_setlist_id: snapshot.next_setlist_id.max(1),
@@ -179,6 +185,59 @@ impl AppServices {
         let state = self.lock();
         let records: Vec<StoredSong> = state.songs.values().cloned().collect();
         library::build_list(&records, &query)
+    }
+
+    #[must_use]
+    pub fn library_info(&self) -> LibraryInfoView {
+        let state = self.lock();
+        LibraryInfoView {
+            library_path: self
+                .library_root
+                .as_ref()
+                .map(|path| path.to_string_lossy().into_owned()),
+            song_count: state.songs.len(),
+            setlist_count: state.setlists.len(),
+            persistence_healthy: self.persistence_healthy(),
+        }
+    }
+
+    /// Remove every song and setlist from the library.
+    ///
+    /// # Errors
+    ///
+    /// Editor has unsaved changes or persistence fails.
+    pub fn clear_library(&self) -> Result<(), String> {
+        let mut state = self.lock();
+        ensure_no_dirty_editor(&state)?;
+        let song_ids: Vec<String> = state.songs.keys().cloned().collect();
+        for id in &song_ids {
+            self.library
+                .delete(id)
+                .map_err(|error| error.to_string())?;
+        }
+        let setlist_ids: Vec<String> = state.setlists.keys().cloned().collect();
+        for id in &setlist_ids {
+            self.library
+                .delete_setlist(id)
+                .map_err(|error| error.to_string())?;
+        }
+        self.library
+            .save_next_id(1)
+            .map_err(|error| error.to_string())?;
+        self.library
+            .save_next_setlist_ids(1, 1)
+            .map_err(|error| error.to_string())?;
+        state.songs.clear();
+        state.setlists.clear();
+        state.next_id = 1;
+        state.next_setlist_id = 1;
+        state.next_entry_id = 1;
+        state.editor = None;
+        clear_setlist_session(&mut state);
+        state.session_id = None;
+        state.warnings.clear();
+        state.steps = 0;
+        Ok(())
     }
 
     /// Import a chord sheet, save it to the library, and open it.
