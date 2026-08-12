@@ -48,3 +48,15 @@ The workspace starts at `0.1.0`. Release versioning and update strategy are Phas
 ## License
 
 Workspace crates declare MIT for now. This can change if the product owner picks a different license before release.
+
+## Music theory (Phase 2)
+
+- Bare `sus` means `sus4`.
+- `ø` / `hdim` canonicalizes to `m7b5`.
+- `M` vs `m` after the root is case-sensitive: `CM7` is major seven, `Cm7` is minor seven.
+- German `H` is unrecognized.
+- Double sharp is `##` / `𝄪` only; LilyPond `x` is not accepted so tokens like `Cxyz` stay partial rather than `C##`.
+- Keyless transpose preserves accidental family; natural notes use the sharp chromatic (`C+1 → C#`, `B+2 → C#`).
+- Minor keys use the natural minor scale for diatonic spelling.
+- Capo frets are `0..=12`.
+- Phase 2 does not expose transposition over IPC or in the UI.

@@ -1,11 +1,27 @@
 //! Music-theory and song-domain layer for Tonic.
 //!
 //! This crate must remain independent of UI, Tauri, and persistence.
-//! Phase 1 only establishes the boundary; chord parsing and transposition
-//! arrive in Phase 2.
+
+mod capo;
+mod chord;
+mod key;
+mod note;
+mod parse;
+mod pitch;
+mod transpose;
+
+pub use capo::{concert_key, concert_pitch, played_key, played_shape, Capo, CapoError};
+pub use chord::{
+    AddedTone, Alteration, Chord, Extension, ParseStatus, Quality, Seventh, Suspension,
+};
+pub use key::{AccidentalPreference, Key, Mode};
+pub use note::{Accidental, Letter, Note, Spelling};
+pub use parse::parse_chord;
+pub use pitch::{PitchClass, Semitones};
+pub use transpose::{transpose_semitones, transpose_to_key};
 
 /// Current product phase implemented by this crate's public surface.
-pub const PHASE: u32 = 1;
+pub const PHASE: u32 = 2;
 
 /// Human-readable identity of the domain engine.
 #[must_use]
@@ -34,6 +50,6 @@ mod tests {
         assert!(is_available());
         assert_eq!(engine_name(), "tonic-domain");
         assert!(!engine_version().is_empty());
-        assert_eq!(PHASE, 1);
+        assert_eq!(PHASE, 2);
     }
 }

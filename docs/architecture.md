@@ -37,7 +37,7 @@ Domain code must stay independently unit-testable. Persistence will depend on do
 
 ### `tonic-domain`
 
-Pure domain logic. Phase 1 only exposes engine identity/health so the boundary can be tested. Notes, keys, chords, and transposition arrive in Phase 2. The canonical song model arrives in Phase 3.
+Pure domain logic. Phase 2 implements notes, keys, chord parsing, transposition, and capo math. See [`music-theory.md`](./music-theory.md). The canonical song model arrives in Phase 3.
 
 ### `tonic-app`
 
@@ -63,12 +63,12 @@ Presentation only. It may hold view state such as loading/error flags. It talks 
 
 JSON uses camelCase to match TypeScript.
 
-## What Phase 1 deliberately does not include
+## What later phases still do not include
 
-- Chord parser or transposition engine
-- Canonical song/setlist types
-- Import/export
-- Durable storage
+- Canonical song/setlist types (Phase 3)
+- Import/export (Phase 4+)
+- Transpose UI / viewer (Phase 5)
+- Durable storage (Phase 6)
 - Library, editor, or performance UI
 - Android project generation
 - Cloud, accounts, or telemetry

@@ -3,6 +3,17 @@ import { getAppInfo } from "./lib/tauri";
 import type { AppInfo } from "./lib/types";
 import "./App.css";
 
+function phaseLabel(phase: number): string {
+  switch (phase) {
+    case 1:
+      return " — Foundation";
+    case 2:
+      return " — Music engine";
+    default:
+      return "";
+  }
+}
+
 type LoadState =
   | { status: "loading" }
   | { status: "ready"; info: AppInfo }
@@ -71,7 +82,10 @@ function App() {
               </div>
               <div>
                 <dt>Phase</dt>
-                <dd>{state.info.phase} — Foundation</dd>
+                <dd>
+                  {state.info.phase}
+                  {phaseLabel(state.info.phase)}
+                </dd>
               </div>
               <div>
                 <dt>Domain engine</dt>

@@ -1,7 +1,7 @@
 # Phase 1 — Foundation & Architecture
 
-**Status:** Implemented, pending review  
-**Do not start Phase 2 until explicitly instructed.**
+**Status:** Complete  
+**Phase 2 may proceed.****
 
 ## Goal
 
@@ -21,14 +21,14 @@ Create the project skeleton and establish architectural boundaries without imple
 
 ## Acceptance criteria
 
-| Criterion                      | Result                                                                 |
-| ------------------------------ | ---------------------------------------------------------------------- |
-| Application launches           | `npm run tauri dev` compiled and started `tonic.exe`                   |
-| Test suite runs                | Rust: 4 passed. UI: 2 passed                                           |
-| Build succeeds                 | Frontend production build + Cargo workspace build                      |
-| Architecture is documented     | `docs/architecture.md` and related docs                                |
-| Domain code runs without UI    | `cargo test -p tonic-domain` — crate has zero dependencies             |
-| No unnecessary future features | No chord engine, song model, library, editor, or MusicXML              |
+| Criterion                      | Result                                                     |
+| ------------------------------ | ---------------------------------------------------------- |
+| Application launches           | `npm run tauri dev` compiled and started `tonic.exe`       |
+| Test suite runs                | Rust: 4 passed. UI: 2 passed                               |
+| Build succeeds                 | Frontend production build + Cargo workspace build          |
+| Architecture is documented     | `docs/architecture.md` and related docs                    |
+| Domain code runs without UI    | `cargo test -p tonic-domain` — crate has zero dependencies |
+| No unnecessary future features | No chord engine, song model, library, editor, or MusicXML  |
 
 ## Review notes
 

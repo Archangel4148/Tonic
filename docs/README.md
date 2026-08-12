@@ -6,16 +6,18 @@ This folder is the project documentation. The product requirements live in [`spe
 
 ## Start here
 
-| Document                                      | What it covers                                       |
-| --------------------------------------------- | ---------------------------------------------------- |
-| [Development](./development.md)               | Install, run, test, lint, and build                  |
-| [Technology choices](./technology-choices.md) | Why Tauri, Rust, React, and the supporting tools     |
-| [Architecture](./architecture.md)             | Layer boundaries and dependency rules                |
-| [Project structure](./project-structure.md)   | Where code and docs live                             |
-| [State management](./state-management.md)     | What owns authoritative vs derived state             |
-| [Testing](./testing.md)                       | Rust and UI test setup                               |
-| [Assumptions](./assumptions.md)               | Decisions made where the spec was open               |
-| [Phase 1 report](./phases/phase-1.md)         | Foundation checkpoint, limitations, and review notes |
+| Document                                      | What it covers                                   |
+| --------------------------------------------- | ------------------------------------------------ |
+| [Development](./development.md)               | Install, run, test, lint, and build              |
+| [Technology choices](./technology-choices.md) | Why Tauri, Rust, React, and the supporting tools |
+| [Architecture](./architecture.md)             | Layer boundaries and dependency rules            |
+| [Project structure](./project-structure.md)   | Where code and docs live                         |
+| [State management](./state-management.md)     | What owns authoritative vs derived state         |
+| [Testing](./testing.md)                       | Rust and UI test setup                           |
+| [Assumptions](./assumptions.md)               | Decisions made where the spec was open           |
+| [Music theory](./music-theory.md)             | Notes, keys, parser, transposition, spelling     |
+| [Phase 1 report](./phases/phase-1.md)         | Foundation checkpoint                            |
+| [Phase 2 report](./phases/phase-2.md)         | Music-engine checkpoint                          |
 
 ## Source of truth
 

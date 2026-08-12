@@ -6,9 +6,9 @@ Tonic is built with **Tauri 2**, a **Rust** domain layer, and a **React + TypeSc
 
 ## Current phase
 
-**Phase 1 — Foundation & Architecture**
+**Phase 2 — Music Theory & Chord Engine**
 
-The app launches a shell and proves that domain, application, UI, and persistence boundaries are in place. Music theory, import, library, and live mode are not implemented yet.
+The Rust domain crate parses and transposes chords. Import, library, editor, and live mode are not implemented yet.
 
 ## Quick start
 
@@ -29,7 +29,9 @@ All project documentation lives in [`docs/`](./docs/README.md).
 - [Product spec](./docs/spec.md)
 - [Architecture](./docs/architecture.md)
 - [Development](./docs/development.md)
+- [Music theory](./docs/music-theory.md)
 - [Phase 1 report](./docs/phases/phase-1.md)
+- [Phase 2 report](./docs/phases/phase-2.md)
 
 ## License
 

@@ -23,9 +23,16 @@ Phase 1 coverage:
 
 - `tonic-domain` can run without UI/Tauri dependencies
 - `tonic-persist` memory stub is healthy and preserves error messages
-- `tonic-app` wires domain + persist and reports Tonic Phase 1 identity
+- `tonic-app` wires domain + persist and reports application identity
 
-Music-theory tests in later phases should be exhaustive and explicit: valid chords, invalid input, enharmonics, slash chords, and key context.
+Phase 2 coverage (`cargo test -p tonic-domain`):
+
+- Note parsing, enharmonics, invalid notes
+- Key parsing, enharmonic keys, diatonic spelling (`Ab` vs `G#`)
+- Chord parse: required families, slash chords, partial and unrecognized input
+- Semitone transpose acceptance examples (`C→D`, `F#m7b5/C#→G#m7b5/D#`, …)
+- Key-to-key transpose spelling
+- Capo sounding vs played shapes
 
 ## Frontend
 
@@ -40,7 +47,8 @@ Tauri `invoke` is mocked in `src/test/setup.ts` so UI tests do not require a run
 
 - End-to-end Tauri window launch (manual: `npm run tauri dev`)
 - Android
-- Import, transposition, rendering, persistence round-trips
+- Import, song rendering, persistence round-trips
+- UI-level transposition (engine is tested in Rust only)
 
 Those arrive with the phases that implement them.
 
