@@ -11,7 +11,9 @@ use crate::note::Note;
 #[must_use]
 pub fn parse_chord(input: &str) -> Chord {
     let original = input.to_string();
-    let trimmed = input.trim();
+    let trimmed_input = input.trim();
+    let trimmed = unwrap_outer_parens(trimmed_input);
+    let parenthesized = trimmed != trimmed_input;
     if trimmed.is_empty() {
         return Chord::unrecognized(original);
     }
@@ -74,6 +76,48 @@ pub fn parse_chord(input: &str) -> Chord {
         tail,
         status,
     )
+    .with_parenthesized(parenthesized)
+}
+
+/// Strip one or more layers of parentheses that wrap the entire symbol.
+///
+/// Chart authors often write optional/echoed chords as `(Eb)` or `(G)`. Alteration
+/// groups like `C7(b9)` are not fully wrapped, so they are left alone.
+fn unwrap_outer_parens(input: &str) -> &str {
+    let mut s = input;
+    while s.len() >= 2 && s.starts_with('(') && s.ends_with(')') {
+        let inner = &s[1..s.len() - 1];
+        // Only unwrap when the outer pair matches (no earlier close).
+        if matching_outer_parens(s) {
+            s = inner.trim();
+        } else {
+            break;
+        }
+    }
+    s
+}
+
+fn matching_outer_parens(s: &str) -> bool {
+    if !s.starts_with('(') || !s.ends_with(')') {
+        return false;
+    }
+    let mut depth = 0i32;
+    for (i, ch) in s.char_indices() {
+        match ch {
+            '(' => depth += 1,
+            ')' => {
+                depth -= 1;
+                if depth == 0 {
+                    return i + ch.len_utf8() == s.len();
+                }
+                if depth < 0 {
+                    return false;
+                }
+            }
+            _ => {}
+        }
+    }
+    false
 }
 
 fn parse_quality(
@@ -300,6 +344,11 @@ fn parse_one_alteration(cursor: &mut Cursor<'_>, alterations: &mut Vec<Alteratio
         ("b9", 9, -1),
         ("b6", 6, -1),
         ("b5", 5, -1),
+        // Jazz shorthand: hyphen as flat (`C7-9` = C7b9).
+        ("-13", 13, -1),
+        ("-11", 11, -1),
+        ("-9", 9, -1),
+        ("-6", 6, -1),
         ("-5", 5, -1),
         ("♭13", 13, -1),
         ("♭9", 9, -1),
@@ -465,6 +514,13 @@ mod tests {
         assert_full("C7(b9)", "C7b9");
         assert_full("Cmaj7(#11)", "Cmaj7#11");
         assert_full("C(add9)", "Cadd9");
+        assert_full("(Eb)", "(Eb)");
+        assert_full("(G)", "(G)");
+        assert_full("(C7b9)", "(C7b9)");
+        assert_full("C7-9", "C7b9");
+        assert_full("C7(-9)", "C7b9");
+        assert!(!parse_chord("C7(b9)").parenthesized());
+        assert!(parse_chord("(Eb)").parenthesized());
     }
 
     #[test]

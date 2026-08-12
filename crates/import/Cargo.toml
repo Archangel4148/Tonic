@@ -6,6 +6,7 @@ description = "ChordPro, plain-text, and MusicXML import into Tonic's canonical 
 license.workspace = true
 
 [dependencies]
+html-escape = "0.2"
 roxmltree = "0.20"
 serde = { workspace = true }
 serde_json = { workspace = true }

@@ -343,6 +343,11 @@ fn apply_directive(
                 )]));
             }
         }
+        "note" | "notes" => {
+            if !value.is_empty() {
+                note_lines.push(value.to_string());
+            }
+        }
         "new_song" => {
             // Many real .pro dumps start with `{ns}`. Only skip if a song body
             // has already been collected.

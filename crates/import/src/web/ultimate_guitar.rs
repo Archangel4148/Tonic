@@ -205,69 +205,16 @@ fn attribute_value<'a>(tag: &'a str, name: &str) -> Option<&'a str> {
 }
 
 fn decode_html_entities(input: &str) -> String {
+    // UG (and JSON-in-HTML) often double-encodes (`&amp;rsquo;` → `&rsquo;` → `'`).
     let mut out = input.to_string();
     for _ in 0..4 {
-        let next = decode_html_entities_once(&out);
+        let next = html_escape::decode_html_entities(&out).into_owned();
         if next == out {
             break;
         }
         out = next;
     }
     out
-}
-
-fn decode_html_entities_once(input: &str) -> String {
-    let mut out = String::with_capacity(input.len());
-    let chars: Vec<char> = input.chars().collect();
-    let mut i = 0;
-    while i < chars.len() {
-        if chars[i] == '&' {
-            let start = i;
-            i += 1;
-            while i < chars.len() && chars[i] != ';' && i - start < 12 {
-                i += 1;
-            }
-            if i < chars.len() && chars[i] == ';' {
-                let entity: String = chars[start..=i].iter().collect();
-                if let Some(decoded) = decode_entity(&entity) {
-                    out.push(decoded);
-                    i += 1;
-                    continue;
-                }
-            }
-            out.push(chars[start]);
-            i = start + 1;
-            continue;
-        }
-        out.push(chars[i]);
-        i += 1;
-    }
-    out
-}
-
-fn decode_entity(entity: &str) -> Option<char> {
-    if !entity.starts_with('&') || !entity.ends_with(';') {
-        return None;
-    }
-    let inner = &entity[1..entity.len() - 1];
-    match inner {
-        "quot" => Some('"'),
-        "apos" => Some('\''),
-        "amp" => Some('&'),
-        "lt" => Some('<'),
-        "gt" => Some('>'),
-        "nbsp" => Some('\u{00a0}'),
-        _ if inner.starts_with('#') => {
-            if inner.len() > 2 && (inner.as_bytes()[1] == b'x' || inner.as_bytes()[1] == b'X') {
-                u32::from_str_radix(&inner[2..], 16)
-                    .ok()
-                    .and_then(char::from_u32)
-            } else {
-                inner[1..].parse::<u32>().ok().and_then(char::from_u32)
-            }
-        }
-        _ => None,
-    }
 }
 
 fn normalize_line_breaks(content: &str) -> String {
@@ -296,21 +243,21 @@ fn ug_tab_content_to_plain(
     out.push('\n');
 
     let expanded = expand_ug_tab_blocks(content);
-    let mut pending_annotations: Vec<String> = Vec::new();
+    let mut seen_section = false;
+    let mut preamble: Vec<String> = Vec::new();
 
     for line in expanded.lines() {
         let trimmed = line.trim();
         if trimmed.is_empty() {
             continue;
         }
-        if is_chart_annotation(trimmed) {
-            pending_annotations.push(trimmed.to_string());
-            continue;
-        }
         if let Some((label, rest)) = split_leading_section_header(trimmed) {
+            if !seen_section {
+                flush_preamble_notes(&mut out, &mut preamble);
+                seen_section = true;
+            }
             out.push_str(&section_label_line(&label));
             out.push('\n');
-            flush_pending_annotations(&mut out, &mut pending_annotations);
             if !rest.is_empty() {
                 if is_chart_annotation(rest) {
                     out.push_str(rest);
@@ -324,18 +271,33 @@ fn ug_tab_content_to_plain(
             }
             continue;
         }
-        flush_pending_annotations(&mut out, &mut pending_annotations);
+        if !seen_section {
+            for part in normalize_ug_plain_line(line.trim_end()) {
+                let text = part.trim();
+                if !text.is_empty() {
+                    preamble.push(text.to_string());
+                }
+            }
+            continue;
+        }
+        if is_chart_annotation(trimmed) {
+            out.push_str(trimmed);
+            out.push('\n');
+            continue;
+        }
         for part in normalize_ug_plain_line(line.trim_end()) {
             out.push_str(&part);
             out.push('\n');
         }
     }
-    flush_pending_annotations(&mut out, &mut pending_annotations);
+    flush_preamble_notes(&mut out, &mut preamble);
     out
 }
 
-fn flush_pending_annotations(out: &mut String, pending: &mut Vec<String>) {
-    for note in pending.drain(..) {
+fn flush_preamble_notes(out: &mut String, preamble: &mut Vec<String>) {
+    for note in preamble.drain(..) {
+        // Plain-text `note:` metadata becomes song.notes (not a default Verse).
+        out.push_str("note: ");
         out.push_str(&note);
         out.push('\n');
     }
@@ -515,7 +477,40 @@ fn ug_inline_content_to_chordpro(
         .replace("<br/>", "\n")
         .replace("<br />", "\n")
         .replace("<br>", "\n");
-    out.push_str(&normalized);
+
+    let mut seen_section = false;
+    let mut preamble: Vec<String> = Vec::new();
+    for line in normalized.lines() {
+        let trimmed = line.trim();
+        if trimmed.is_empty() {
+            continue;
+        }
+        if split_leading_section_header(trimmed).is_some()
+            || trimmed.starts_with('{')
+                && (trimmed.to_ascii_lowercase().contains("start_of_")
+                    || trimmed.to_ascii_lowercase().contains("sov")
+                    || trimmed.to_ascii_lowercase().contains("soc"))
+        {
+            if !seen_section {
+                for note in preamble.drain(..) {
+                    out.push_str(&format!("{{notes: {note}}}\n"));
+                }
+                seen_section = true;
+            }
+            out.push_str(line);
+            out.push('\n');
+            continue;
+        }
+        if !seen_section {
+            preamble.push(strip_ug_chord_markers(trimmed));
+            continue;
+        }
+        out.push_str(line);
+        out.push('\n');
+    }
+    for note in preamble.drain(..) {
+        out.push_str(&format!("{{notes: {note}}}\n"));
+    }
     out
 }
 
@@ -601,6 +596,22 @@ mod tests {
     }
 
     #[test]
+    fn decodes_named_typography_entities() {
+        assert_eq!(
+            decode_html_entities("I&rsquo;ll find someone like you"),
+            "I’ll find someone like you"
+        );
+        assert_eq!(
+            decode_html_entities("&ldquo;hello&rdquo; &ndash; &mdash; &hellip;"),
+            "“hello” – — …"
+        );
+        assert_eq!(
+            decode_html_entities("Tom &amp; Jerry &amp;rsquo;s"),
+            "Tom & Jerry ’s"
+        );
+    }
+
+    #[test]
     fn expands_tab_blocks_to_chord_over_lyrics() {
         let input = "[tab]     [ch]G[/ch]                          [ch]C[/ch]               [ch]G[/ch]\nOn a warm summer&#039;s evenin&#039;[/tab]";
         let decoded = decode_html_entities(input);
@@ -639,14 +650,33 @@ mod tests {
     }
 
     #[test]
-    fn keeps_preamble_as_pending_annotations_for_next_section() {
+    fn preamble_before_first_section_becomes_notes() {
+        let plain = ug_tab_content_to_plain(
+            "Capo 5 for the original studio version  https://example.com/a\nCapo 6 for the official video  https://example.com/b\n\n[Verse 1]\n[ch]G[/ch]  [ch]Em[/ch]\nI heard there was a secret chord",
+            Some("Hallelujah"),
+            Some("Jeff Buckley"),
+            Some("C"),
+        );
+        assert!(plain.contains("note: Capo 5 for the original studio version  https://example.com/a"));
+        assert!(plain.contains("note: Capo 6 for the official video  https://example.com/b"));
+        assert!(plain.contains("[Verse 1]"));
+        let verse_idx = plain.find("[Verse 1]").unwrap();
+        let note_idx = plain.find("note: Capo 5").unwrap();
+        assert!(note_idx < verse_idx);
+        assert!(!plain[..verse_idx].contains("I heard"));
+    }
+
+    #[test]
+    fn keeps_preamble_credits_as_notes_not_first_section() {
         let plain = ug_tab_content_to_plain(
             "Tabbed by: Emrldeyzs\nCapo 2\n\n[Intro]\n[ch]Am[/ch] x2",
             Some("Example"),
             Some("Artist"),
             Some("Am"),
         );
-        assert!(plain.contains("[Intro]\nTabbed by: Emrldeyzs\nCapo 2\nAm\nRepeat 2×"));
+        assert!(plain.contains("note: Tabbed by: Emrldeyzs"));
+        assert!(plain.contains("note: Capo 2"));
+        assert!(plain.contains("[Intro]\nAm\nRepeat 2×"));
         assert!(!plain.contains("capo: 2"));
     }
 

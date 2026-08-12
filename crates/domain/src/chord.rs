@@ -156,6 +156,10 @@ pub struct Chord {
     source_text: String,
     status: ParseStatus,
     unparsed_tail: String,
+    /// Whole-symbol parentheses as in `(Eb)` (optional / echoed chord notation).
+    /// Distinct from alteration groups like `C7(b9)`.
+    #[serde(default)]
+    parenthesized: bool,
 }
 
 impl Chord {
@@ -174,6 +178,7 @@ impl Chord {
             unparsed_tail: source_text.clone(),
             source_text,
             status: ParseStatus::Unrecognized,
+            parenthesized: false,
         }
     }
 
@@ -204,7 +209,14 @@ impl Chord {
             source_text: source_text.into(),
             status,
             unparsed_tail: unparsed_tail.into(),
+            parenthesized: false,
         }
+    }
+
+    #[must_use]
+    pub fn with_parenthesized(mut self, parenthesized: bool) -> Self {
+        self.parenthesized = parenthesized;
+        self
     }
 
     #[must_use]
@@ -248,6 +260,11 @@ impl Chord {
     }
 
     #[must_use]
+    pub fn parenthesized(&self) -> bool {
+        self.parenthesized
+    }
+
+    #[must_use]
     pub fn source_text(&self) -> &str {
         &self.source_text
     }
@@ -277,6 +294,7 @@ impl Chord {
     /// Canonical ASCII symbol for the recognized components.
     ///
     /// Unrecognized chords return the original source text so content is not lost.
+    /// Whole-symbol parentheses from the chart (e.g. `(Eb)`) are preserved.
     #[must_use]
     pub fn symbol(&self) -> String {
         let Some(root) = self.root else {
@@ -328,7 +346,11 @@ impl Chord {
             out.push('/');
             out.push_str(&bass.symbol());
         }
-        out
+        if self.parenthesized {
+            format!("({out})")
+        } else {
+            out
+        }
     }
 }
 

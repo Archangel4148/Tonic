@@ -162,7 +162,17 @@ fn metadata_prefix(line: &str) -> Option<(&str, &str)> {
     let key = name.to_ascii_lowercase();
     matches!(
         key.as_str(),
-        "title" | "artist" | "composer" | "album" | "key" | "capo" | "tempo" | "time" | "bpm"
+        "title"
+            | "artist"
+            | "composer"
+            | "album"
+            | "key"
+            | "capo"
+            | "tempo"
+            | "time"
+            | "bpm"
+            | "note"
+            | "notes"
     )
     .then_some((name, value.trim()))
 }
@@ -230,6 +240,7 @@ fn apply_metadata(
             ));
         }
         "capo" => note_lines.push(format!("Capo: {value}")),
+        "note" | "notes" if !value.is_empty() => note_lines.push(value.to_string()),
         _ => {}
     }
 }

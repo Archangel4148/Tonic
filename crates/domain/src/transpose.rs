@@ -53,6 +53,8 @@ mod tests {
         assert_eq!(symbol_after("Bb", 2), "C");
         assert_eq!(symbol_after("G/B", 2), "A/C#");
         assert_eq!(symbol_after("F#m7b5/C#", 2), "G#m7b5/D#");
+        assert_eq!(symbol_after("(C)", 2), "(D)");
+        assert_eq!(symbol_after("(Eb)", 0), "(Eb)");
     }
 
     #[test]

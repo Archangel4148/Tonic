@@ -89,7 +89,11 @@ fn parses_tab_block_chord_over_lyrics_with_column_alignment() {
     assert_eq!(alignments[2].chord.symbol(), "G");
 
     let notes = result.song.notes().unwrap_or("");
-    assert!(notes.is_empty());
+    assert!(notes.contains("Original key Eb"), "{notes}");
+    assert!(
+        notes.contains("The first few lines are picking"),
+        "{notes}"
+    );
 
     let annotations: Vec<_> = verse
         .lines()
@@ -101,7 +105,12 @@ fn parses_tab_block_chord_over_lyrics_with_column_alignment() {
             })
         })
         .collect();
-    assert!(annotations.iter().any(|note| note.contains("Original key Eb")));
+    assert!(
+        !annotations
+            .iter()
+            .any(|note| note.contains("Original key Eb")),
+        "preamble should be song notes, not verse annotations: {annotations:?}"
+    );
 }
 
 #[test]
@@ -148,9 +157,17 @@ fn parses_intro_progression_and_repeat_markers() {
             })
         })
         .collect();
-    assert!(intro_annotations.iter().any(|note| note.contains("Tabbed by")));
-    assert!(intro_annotations.iter().any(|note| note == "Capo 2"));
+    assert!(
+        !intro_annotations
+            .iter()
+            .any(|note| note.contains("Tabbed by") || note == "Capo 2"),
+        "preamble should be song notes, not intro annotations: {intro_annotations:?}"
+    );
     assert!(intro_annotations.iter().any(|note| note == "Repeat 2×"));
+
+    let notes = result.song.notes().unwrap_or("");
+    assert!(notes.contains("Tabbed by: Emrldeyzs"), "{notes}");
+    assert!(notes.contains("Capo 2"), "{notes}");
 
     let harmonies = result
         .song
@@ -169,8 +186,6 @@ fn parses_intro_progression_and_repeat_markers() {
             .iter()
             .any(|line| line.lyric_text().contains("fade out"))
     );
-
-    assert!(result.song.notes().unwrap_or("").is_empty());
 }
 
 #[test]
@@ -238,6 +253,94 @@ fn bar_progression_lines_become_recognized_chords() {
         .map(|token| token.chord().symbol())
         .collect();
     assert_eq!(solo_chords, vec!["Am", "C", "D", "F"]);
+
+    let interlude = result
+        .song
+        .sections()
+        .iter()
+        .find(|section| matches!(section.label(), SectionLabel::Instrumental))
+        .expect("interlude section");
+    let interlude_chords: Vec<_> = interlude.lines()[0]
+        .chord_tokens()
+        .map(|token| (token.chord().symbol(), token.chord().status()))
+        .collect();
+    assert_eq!(
+        interlude_chords
+            .iter()
+            .map(|(symbol, _)| symbol.as_str())
+            .collect::<Vec<_>>(),
+        vec!["(Eb)", "Eb", "C7b9", "F"]
+    );
+    assert!(
+        interlude_chords
+            .iter()
+            .all(|(_, status)| *status == tonic_domain::ParseStatus::FullyRecognized),
+        "{interlude_chords:?}"
+    );
+    assert!(
+        !result
+            .warnings
+            .iter()
+            .any(|warning| warning.message.contains("(Eb)")
+                || warning.message.contains("C7-9")),
+        "unexpected warnings: {:?}",
+        result.warnings
+    );
+}
+
+#[test]
+fn preamble_before_first_section_becomes_song_notes() {
+    let html = include_str!("../fixtures/web/ultimate_guitar_preamble_notes.html");
+    let result = import_web_html(
+        "https://tabs.ultimate-guitar.com/tab/jeff-buckley/hallelujah-chords-328812",
+        html,
+        SongId::new("song-preamble"),
+    )
+    .expect("preamble fixture should parse");
+
+    assert_eq!(result.song.title(), "Hallelujah");
+    assert_eq!(result.song.artist(), Some("Jeff Buckley"));
+
+    let notes = result.song.notes().unwrap_or("");
+    assert!(
+        notes.contains("Capo 5 for the original studio version"),
+        "{notes}"
+    );
+    assert!(notes.contains("Capo 6 for the official video"), "{notes}");
+    assert!(notes.contains("youtube.com"), "{notes}");
+
+    assert!(
+        !result
+            .song
+            .sections()
+            .iter()
+            .any(|section| matches!(section.label(), SectionLabel::Verse { number: None })),
+        "unlabeled default Verse should not be created for preamble: {:?}",
+        result
+            .song
+            .sections()
+            .iter()
+            .map(|section| format!("{:?}", section.label()))
+            .collect::<Vec<_>>()
+    );
+
+    let verse1 = result
+        .song
+        .sections()
+        .iter()
+        .find(|section| matches!(section.label(), SectionLabel::Verse { number: Some(1) }))
+        .expect("verse 1");
+    assert!(verse1
+        .lines()
+        .iter()
+        .any(|line| line.lyric_text().contains("secret chord")));
+    assert!(
+        !verse1
+            .lines()
+            .iter()
+            .any(|line| line.lyric_text().contains("Capo")),
+        "capo preamble should not appear as verse lyrics"
+    );
 }
 
 #[test]
