@@ -80,10 +80,11 @@ export function ImportPanel({
           </select>
         </label>
 
+        {/* Android greys out unknown extensions when accept is extension-only. */}
         <input
           ref={fileRef}
           type="file"
-          accept=".cho,.crd,.chopro,.chordpro,.pro,.txt,.text,.musicxml,.xml,.mxl"
+          accept="*/*"
           hidden
           onChange={async (event) => {
             const file = event.target.files?.[0];
@@ -91,21 +92,20 @@ export function ImportPanel({
             if (!file) {
               return;
             }
-            const ext = file.name.split(".").pop()?.toLowerCase();
+            const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
             if (ext === "mxl") {
               const bytes = new Uint8Array(await file.arrayBuffer());
               onImportBinary(bytes, file.name);
               return;
             }
             const contents = await file.text();
-            const nextFormat: ImportFormat =
-              ext && CHART_EXTENSIONS.includes(ext)
-                ? "chordPro"
-                : ext === "txt" || ext === "text"
-                  ? "plainText"
-                  : ext === "musicxml" || ext === "xml"
-                    ? "musicXml"
-                    : format;
+            const nextFormat: ImportFormat = CHART_EXTENSIONS.includes(ext)
+              ? "chordPro"
+              : ext === "txt" || ext === "text"
+                ? "plainText"
+                : ext === "musicxml" || ext === "xml"
+                  ? "musicXml"
+                  : format;
             onTextChange(contents);
             onFormatChange(nextFormat);
             onImport(contents, nextFormat);
