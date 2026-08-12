@@ -17,10 +17,13 @@ jobs:
         include:
           - platform: windows-latest
             args: --bundles nsis
+            bundle: nsis
           - platform: macos-latest
             args: --bundles dmg
+            bundle: dmg
           - platform: ubuntu-22.04
             args: --bundles appimage
+            bundle: appimage
 
     runs-on: ${{ matrix.platform }}
 
@@ -59,3 +62,9 @@ jobs:
           prerelease: false
           args: ${{ matrix.args }}
           includeUpdaterJson: false
+
+      - name: Upload installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: installer-${{ matrix.platform }}
+          path: src-tauri/target/release/bundle/${{ matrix.bundle }}/
