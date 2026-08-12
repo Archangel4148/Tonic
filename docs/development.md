@@ -33,7 +33,7 @@ Frontend only, in a browser:
 npm run dev
 ```
 
-Browser-only mode cannot call the Rust engine. The shell will show an engine-unavailable message. Import, library, and transpose need `npm run tauri dev`.
+Browser-only mode cannot call the Rust engine. The shell will show an engine-unavailable message. Import, library, setlists, and transpose need `npm run tauri dev`.
 
 ## Test, lint, format
 

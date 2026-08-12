@@ -59,13 +59,57 @@ export type SongSession = {
   semitoneOffset: number;
   favorite: boolean;
   tags: string[];
+  setlist: SetlistContext | null;
+};
+
+export type SetlistContext = {
+  setlistId: string;
+  setlistName: string;
+  entryId: string;
+  index: number;
+  total: number;
+  capoFret: number | null;
+  entryNotes: string | null;
+  playedKey: string | null;
+};
+
+export type SetlistSummary = {
+  id: string;
+  name: string;
+  notes: string | null;
+  eventDate: string | null;
+  songCount: number;
+  updatedAt: number | null;
+};
+
+export type SetlistEntry = {
+  id: string;
+  songId: string;
+  title: string;
+  artist: string | null;
+  missing: boolean;
+  songKey: string | null;
+  performanceKey: string | null;
+  capoFret: number | null;
+  notes: string | null;
+};
+
+export type Setlist = {
+  id: string;
+  name: string;
+  notes: string | null;
+  eventDate: string | null;
+  entries: SetlistEntry[];
+};
+
+export type SetlistMetaUpdate = {
+  name: string;
+  notes: string | null;
+  eventDate: string | null;
 };
 
 export type LibrarySort =
-  | "title"
-  | "artist"
-  | "recentOpened"
-  | "recentModified";
+  "title" | "artist" | "recentOpened" | "recentModified";
 
 export type LibraryQuery = {
   search?: string | null;

@@ -6,6 +6,7 @@
 mod file;
 mod memory;
 mod record;
+mod setlist;
 
 use std::fmt;
 use std::path::Path;
@@ -13,6 +14,7 @@ use std::path::Path;
 pub use file::FileLibrary;
 pub use memory::MemoryLibrary;
 pub use record::StoredSong;
+pub use setlist::{SetlistEntry, SetlistSnapshot, StoredSetlist};
 
 /// Recoverable persistence failure.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -49,6 +51,14 @@ pub trait SongLibrary: Send + Sync {
     fn save(&self, record: &StoredSong) -> Result<(), PersistError>;
     fn delete(&self, id: &str) -> Result<(), PersistError>;
     fn save_next_id(&self, next_id: u64) -> Result<(), PersistError>;
+    fn load_setlists(&self) -> Result<SetlistSnapshot, PersistError>;
+    fn save_setlist(&self, setlist: &StoredSetlist) -> Result<(), PersistError>;
+    fn delete_setlist(&self, id: &str) -> Result<(), PersistError>;
+    fn save_next_setlist_ids(
+        &self,
+        next_setlist_id: u64,
+        next_entry_id: u64,
+    ) -> Result<(), PersistError>;
 }
 
 /// Open a filesystem library, creating the directory if needed.
@@ -120,6 +130,30 @@ mod tests {
         library.delete("song-1").unwrap();
         let (_, remaining) = library.load_all().unwrap();
         assert!(remaining.is_empty());
+
+        let setlist = StoredSetlist {
+            id: "setlist-1".into(),
+            name: "Gig".into(),
+            notes: Some("Friday".into()),
+            event_date: Some("2026-08-14".into()),
+            entries: vec![SetlistEntry {
+                id: "entry-1".into(),
+                song_id: "song-1".into(),
+                performance_key: Some("Bb".into()),
+                capo_fret: Some(2),
+                notes: Some("slow intro".into()),
+            }],
+            updated_at: Some(30),
+        };
+        library.save_setlist(&setlist).unwrap();
+        library.save_next_setlist_ids(2, 2).unwrap();
+        let snapshot = library.load_setlists().unwrap();
+        assert_eq!(snapshot.next_setlist_id, 2);
+        assert_eq!(snapshot.next_entry_id, 2);
+        assert_eq!(snapshot.setlists.len(), 1);
+        assert_eq!(snapshot.setlists[0].entries[0].song_id, "song-1");
+        library.delete_setlist("setlist-1").unwrap();
+        assert!(library.load_setlists().unwrap().setlists.is_empty());
         let _ = std::fs::remove_dir_all(root);
     }
 

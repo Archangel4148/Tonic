@@ -19,8 +19,9 @@ This folder is the project documentation. The product requirements live in [`spe
 | [Song model](./song-model.md)                 | Canonical song, tokens, JSON interchange         |
 | [Import](./import.md)                         | ChordPro and plain-text parsers                  |
 | [Viewer](./viewer.md)                         | Song reading, alignment, transpose UI            |
-| [Persistence](./persist.md)                   | Local JSON library                               |
+| [Persistence](./persist.md)                   | Local JSON library and setlists                  |
 | [Editor](./editor.md)                         | New song, chart editor, save/cancel              |
+| [Setlists](./setlists.md)                     | Ordered song references, per-entry overrides     |
 | [Phase 1 report](./phases/phase-1.md)         | Foundation checkpoint                            |
 | [Phase 2 report](./phases/phase-2.md)         | Music-engine checkpoint                          |
 | [Phase 3 report](./phases/phase-3.md)         | Song-model checkpoint                            |
@@ -28,6 +29,7 @@ This folder is the project documentation. The product requirements live in [`spe
 | [Phase 5 report](./phases/phase-5.md)         | Viewer checkpoint                                |
 | [Phase 6 report](./phases/phase-6.md)         | Library checkpoint                               |
 | [Phase 7 report](./phases/phase-7.md)         | Editor checkpoint                                |
+| [Phase 8 report](./phases/phase-8.md)         | Setlists checkpoint                              |
 
 ## Source of truth
 

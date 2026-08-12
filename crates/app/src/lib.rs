@@ -6,6 +6,7 @@
 
 mod editor;
 mod library;
+mod setlist;
 mod view;
 
 use std::collections::HashMap;
@@ -16,7 +17,9 @@ use tonic_domain::{
     engine_name, engine_version, Key, Line, ParseStatus, Quality, Section, Song, SongId, Timestamp,
 };
 use tonic_import::{import, import_auto, ImportFormat, ImportWarning};
-use tonic_persist::{FileLibrary, MemoryLibrary, SongLibrary, StoredSong};
+use tonic_persist::{
+    FileLibrary, MemoryLibrary, SetlistEntry, SongLibrary, StoredSetlist, StoredSong,
+};
 
 use editor::{
     apply_meta, editor_view, line_mut, parse_chord_symbol, parse_label, refresh_chord_warnings,
@@ -28,6 +31,9 @@ pub use editor::{
     EditorSessionView, SectionLabelInput,
 };
 pub use library::{LibraryListView, LibraryQuery, LibrarySongSummary, MetadataUpdate};
+pub use setlist::{
+    SetlistContextView, SetlistEntryView, SetlistMetaUpdate, SetlistSummaryView, SetlistView,
+};
 pub use tonic_persist::PersistError;
 pub use view::{
     performance_key_choices, ChordView, LineView, SectionView, SongSessionView, SongView,
@@ -70,8 +76,13 @@ pub struct AppInfo {
 
 struct AppState {
     next_id: u64,
+    next_setlist_id: u64,
+    next_entry_id: u64,
     songs: HashMap<String, StoredSong>,
+    setlists: HashMap<String, StoredSetlist>,
     session_id: Option<String>,
+    session_setlist_id: Option<String>,
+    session_entry_id: Option<String>,
     warnings: Vec<ImportWarning>,
     steps: i32,
     editor: Option<EditorSession>,
@@ -108,16 +119,27 @@ impl AppServices {
     fn from_library(library: Box<dyn SongLibrary>) -> Result<Self, PersistError> {
         library.health_check()?;
         let (next_id, records) = library.load_all()?;
+        let snapshot = library.load_setlists()?;
         let songs = records
             .into_iter()
             .map(|record| (record.song.id().as_str().to_string(), record))
+            .collect();
+        let setlists = snapshot
+            .setlists
+            .into_iter()
+            .map(|setlist| (setlist.id.clone(), setlist))
             .collect();
         Ok(Self {
             library,
             state: Mutex::new(AppState {
                 next_id: next_id.max(1),
+                next_setlist_id: snapshot.next_setlist_id.max(1),
+                next_entry_id: snapshot.next_entry_id.max(1),
                 songs,
+                setlists,
                 session_id: None,
+                session_setlist_id: None,
+                session_entry_id: None,
                 warnings: Vec::new(),
                 steps: 0,
                 editor: None,
@@ -136,7 +158,7 @@ impl AppServices {
         AppInfo {
             name: "Tonic",
             version: env!("CARGO_PKG_VERSION"),
-            phase: 7,
+            phase: 8,
             domain_engine: engine_name(),
             domain_version: engine_version(),
         }
@@ -163,6 +185,7 @@ impl AppServices {
         let mut state = self.lock();
         ensure_no_dirty_editor(&state)?;
         state.editor = None;
+        clear_setlist_session(&mut state);
         let id = SongId::new(format!("song-{}", state.next_id));
         state.next_id += 1;
         let result = match mode {
@@ -207,6 +230,7 @@ impl AppServices {
         let mut state = self.lock();
         ensure_no_dirty_editor(&state)?;
         state.editor = None;
+        clear_setlist_session(&mut state);
         let record = state
             .songs
             .get_mut(id)
@@ -228,13 +252,25 @@ impl AppServices {
     pub fn transpose_by(&self, semitones: i32) -> Result<SongSessionView, String> {
         let mut state = self.lock();
         ensure_no_dirty_editor(&state)?;
+        let setlist_session = state.session_setlist_id.is_some();
         {
             let song = open_song_mut(&mut state)?;
-            ensure_original_key(song);
+            if setlist_session {
+                ensure_original_key_only(song);
+            } else {
+                ensure_original_key(song);
+            }
         }
-        state.steps += semitones;
-        apply_steps(&mut state);
-        self.persist_open(&mut state)?;
+        if setlist_session {
+            self.persist_song_document(&state)?;
+            state.steps += semitones;
+            apply_setlist_steps(&mut state)?;
+            self.persist_open_setlist(&mut state)?;
+        } else {
+            state.steps += semitones;
+            apply_steps(&mut state);
+            self.persist_open(&mut state)?;
+        }
         Ok(session_view(&state))
     }
 
@@ -247,15 +283,26 @@ impl AppServices {
         let target = Key::parse(symbol).ok_or_else(|| format!("Unknown key '{symbol}'."))?;
         let mut state = self.lock();
         ensure_no_dirty_editor(&state)?;
+        let setlist_session = state.session_setlist_id.is_some();
         let original = {
             let song = open_song_mut(&mut state)?;
-            ensure_original_key(song)
+            if setlist_session {
+                ensure_original_key_only(song)
+            } else {
+                ensure_original_key(song)
+            }
         };
         let diff =
             i32::from(target.pitch_class().value()) - i32::from(original.pitch_class().value());
         state.steps = diff.rem_euclid(12);
-        open_song_mut(&mut state)?.set_performance_key(Some(target));
-        self.persist_open(&mut state)?;
+        if setlist_session {
+            self.persist_song_document(&state)?;
+            set_open_entry_key(&mut state, Some(target.symbol()))?;
+            self.persist_open_setlist(&mut state)?;
+        } else {
+            open_song_mut(&mut state)?.set_performance_key(Some(target));
+            self.persist_open(&mut state)?;
+        }
         Ok(session_view(&state))
     }
 
@@ -267,14 +314,24 @@ impl AppServices {
     pub fn reset_performance_key(&self) -> Result<SongSessionView, String> {
         let mut state = self.lock();
         ensure_no_dirty_editor(&state)?;
-        {
-            let song = open_song_mut(&mut state)?;
-            if let Some(original) = song.original_key() {
-                song.set_performance_key(Some(original));
+        if state.session_setlist_id.is_some() {
+            set_open_entry_key(&mut state, None)?;
+            if let Some(song_id) = state.session_id.as_deref() {
+                if let Some(record) = state.songs.get(song_id) {
+                    state.steps = steps_from_song(&record.song);
+                }
             }
+            self.persist_open_setlist(&mut state)?;
+        } else {
+            {
+                let song = open_song_mut(&mut state)?;
+                if let Some(original) = song.original_key() {
+                    song.set_performance_key(Some(original));
+                }
+            }
+            state.steps = 0;
+            self.persist_open(&mut state)?;
         }
-        state.steps = 0;
-        self.persist_open(&mut state)?;
         Ok(session_view(&state))
     }
 
@@ -282,6 +339,7 @@ impl AppServices {
         let mut state = self.lock();
         ensure_no_dirty_editor(&state)?;
         state.editor = None;
+        clear_setlist_session(&mut state);
         state.session_id = None;
         state.warnings.clear();
         state.steps = 0;
@@ -349,6 +407,7 @@ impl AppServices {
         let mut state = self.lock();
         ensure_no_dirty_editor(&state)?;
         state.editor = None;
+        clear_setlist_session(&mut state);
         let source = state
             .songs
             .get(id)
@@ -407,11 +466,314 @@ impl AppServices {
             state.editor = None;
         }
         if state.session_id.as_deref() == Some(id) {
+            clear_setlist_session(&mut state);
             state.session_id = None;
             state.warnings.clear();
             state.steps = 0;
         }
         Ok(state.session_id.as_ref().map(|_| session_view(&state)))
+    }
+
+    #[must_use]
+    pub fn list_setlists(&self) -> Vec<SetlistSummaryView> {
+        let state = self.lock();
+        let mut list: Vec<SetlistSummaryView> =
+            state.setlists.values().map(setlist::summary).collect();
+        list.sort_by_key(|left| left.name.to_lowercase());
+        list
+    }
+
+    /// # Errors
+    ///
+    /// Unknown setlist id.
+    pub fn get_setlist(&self, id: &str) -> Result<SetlistView, String> {
+        let state = self.lock();
+        let setlist = state
+            .setlists
+            .get(id)
+            .ok_or_else(|| format!("Setlist '{id}' was not found."))?;
+        Ok(setlist::detail(setlist, &state.songs))
+    }
+
+    /// # Errors
+    ///
+    /// Persist failure.
+    pub fn create_setlist(&self, name: Option<String>) -> Result<SetlistView, String> {
+        let mut state = self.lock();
+        let id = format!("setlist-{}", state.next_setlist_id);
+        state.next_setlist_id += 1;
+        let name = name
+            .map(|value| value.trim().to_string())
+            .filter(|value| !value.is_empty())
+            .unwrap_or_else(|| "Untitled setlist".to_string());
+        let setlist = StoredSetlist {
+            id: id.clone(),
+            name,
+            notes: None,
+            event_date: None,
+            entries: Vec::new(),
+            updated_at: Some(Timestamp::now().as_secs()),
+        };
+        self.persist_setlist(&setlist, Some((state.next_setlist_id, state.next_entry_id)))?;
+        state.setlists.insert(id, setlist.clone());
+        Ok(setlist::detail(&setlist, &state.songs))
+    }
+
+    /// # Errors
+    ///
+    /// Unknown id, empty name, or persist failure.
+    pub fn update_setlist_meta(
+        &self,
+        id: &str,
+        update: SetlistMetaUpdate,
+    ) -> Result<SetlistView, String> {
+        let name = update.name.trim();
+        if name.is_empty() {
+            return Err("Setlist name cannot be empty.".to_string());
+        }
+        let mut state = self.lock();
+        let setlist = state
+            .setlists
+            .get_mut(id)
+            .ok_or_else(|| format!("Setlist '{id}' was not found."))?;
+        setlist.name = name.to_string();
+        setlist.notes = library::blank_to_none(update.notes);
+        setlist.event_date = library::blank_to_none(update.event_date);
+        setlist.updated_at = Some(Timestamp::now().as_secs());
+        let persisted = setlist.clone();
+        self.persist_setlist(&persisted, None)?;
+        Ok(setlist::detail(&persisted, &state.songs))
+    }
+
+    /// # Errors
+    ///
+    /// Unknown id or persist failure.
+    pub fn delete_setlist(&self, id: &str) -> Result<(), String> {
+        let mut state = self.lock();
+        if !state.setlists.contains_key(id) {
+            return Err(format!("Setlist '{id}' was not found."));
+        }
+        self.library
+            .delete_setlist(id)
+            .map_err(|error| error.to_string())?;
+        state.setlists.remove(id);
+        if state.session_setlist_id.as_deref() == Some(id) {
+            clear_setlist_session(&mut state);
+        }
+        Ok(())
+    }
+
+    /// # Errors
+    ///
+    /// Unknown id or persist failure.
+    pub fn duplicate_setlist(&self, id: &str) -> Result<SetlistView, String> {
+        let mut state = self.lock();
+        let source = state
+            .setlists
+            .get(id)
+            .ok_or_else(|| format!("Setlist '{id}' was not found."))?
+            .clone();
+        let new_id = format!("setlist-{}", state.next_setlist_id);
+        state.next_setlist_id += 1;
+        let mut entries = Vec::new();
+        for entry in source.entries {
+            let entry_id = format!("entry-{}", state.next_entry_id);
+            state.next_entry_id += 1;
+            entries.push(SetlistEntry {
+                id: entry_id,
+                song_id: entry.song_id,
+                performance_key: entry.performance_key,
+                capo_fret: entry.capo_fret,
+                notes: entry.notes,
+            });
+        }
+        let setlist = StoredSetlist {
+            id: new_id.clone(),
+            name: format!("{} (copy)", source.name),
+            notes: source.notes,
+            event_date: source.event_date,
+            entries,
+            updated_at: Some(Timestamp::now().as_secs()),
+        };
+        self.persist_setlist(&setlist, Some((state.next_setlist_id, state.next_entry_id)))?;
+        state.setlists.insert(new_id, setlist.clone());
+        Ok(setlist::detail(&setlist, &state.songs))
+    }
+
+    /// # Errors
+    ///
+    /// Unknown setlist/song or persist failure.
+    pub fn add_setlist_song(&self, setlist_id: &str, song_id: &str) -> Result<SetlistView, String> {
+        let mut state = self.lock();
+        if !state.songs.contains_key(song_id) {
+            return Err(format!("Song '{song_id}' was not found."));
+        }
+        let entry_id = format!("entry-{}", state.next_entry_id);
+        state.next_entry_id += 1;
+        let setlist = state
+            .setlists
+            .get_mut(setlist_id)
+            .ok_or_else(|| format!("Setlist '{setlist_id}' was not found."))?;
+        setlist.entries.push(SetlistEntry {
+            id: entry_id,
+            song_id: song_id.to_string(),
+            performance_key: None,
+            capo_fret: None,
+            notes: None,
+        });
+        setlist.updated_at = Some(Timestamp::now().as_secs());
+        let persisted = setlist.clone();
+        self.persist_setlist(
+            &persisted,
+            Some((state.next_setlist_id, state.next_entry_id)),
+        )?;
+        Ok(setlist::detail(&persisted, &state.songs))
+    }
+
+    /// # Errors
+    ///
+    /// Unknown setlist/entry or persist failure.
+    pub fn remove_setlist_entry(
+        &self,
+        setlist_id: &str,
+        entry_id: &str,
+    ) -> Result<SetlistView, String> {
+        let mut state = self.lock();
+        let setlist = state
+            .setlists
+            .get_mut(setlist_id)
+            .ok_or_else(|| format!("Setlist '{setlist_id}' was not found."))?;
+        let before = setlist.entries.len();
+        setlist.entries.retain(|entry| entry.id != entry_id);
+        if setlist.entries.len() == before {
+            return Err(format!("Setlist entry '{entry_id}' was not found."));
+        }
+        setlist.updated_at = Some(Timestamp::now().as_secs());
+        let persisted = setlist.clone();
+        self.persist_setlist(&persisted, None)?;
+        if state.session_entry_id.as_deref() == Some(entry_id) {
+            clear_setlist_session(&mut state);
+        }
+        Ok(setlist::detail(&persisted, &state.songs))
+    }
+
+    /// # Errors
+    ///
+    /// Unknown setlist/index or persist failure.
+    pub fn move_setlist_entry(
+        &self,
+        setlist_id: &str,
+        from: usize,
+        to: usize,
+    ) -> Result<SetlistView, String> {
+        let mut state = self.lock();
+        let setlist = state
+            .setlists
+            .get_mut(setlist_id)
+            .ok_or_else(|| format!("Setlist '{setlist_id}' was not found."))?;
+        let len = setlist.entries.len();
+        if from >= len || to >= len {
+            return Err("That setlist entry was not found.".to_string());
+        }
+        if from != to {
+            let entry = setlist.entries.remove(from);
+            setlist.entries.insert(to, entry);
+            setlist.updated_at = Some(Timestamp::now().as_secs());
+        }
+        let persisted = setlist.clone();
+        self.persist_setlist(&persisted, None)?;
+        Ok(setlist::detail(&persisted, &state.songs))
+    }
+
+    /// # Errors
+    ///
+    /// Unknown entry, invalid capo, or persist failure.
+    pub fn update_setlist_entry(
+        &self,
+        setlist_id: &str,
+        entry_id: &str,
+        performance_key: Option<String>,
+        capo_fret: Option<u8>,
+        notes: Option<String>,
+    ) -> Result<SetlistView, String> {
+        if let Some(fret) = capo_fret {
+            tonic_domain::Capo::new(fret).map_err(|error| error.to_string())?;
+        }
+        let key = match performance_key
+            .as_deref()
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+        {
+            Some(symbol) => Some(
+                Key::parse(symbol)
+                    .ok_or_else(|| format!("Unknown key '{symbol}'."))?
+                    .symbol(),
+            ),
+            None => None,
+        };
+        let mut state = self.lock();
+        let setlist = state
+            .setlists
+            .get_mut(setlist_id)
+            .ok_or_else(|| format!("Setlist '{setlist_id}' was not found."))?;
+        let entry = setlist
+            .entries
+            .iter_mut()
+            .find(|entry| entry.id == entry_id)
+            .ok_or_else(|| format!("Setlist entry '{entry_id}' was not found."))?;
+        entry.performance_key = key;
+        entry.capo_fret = capo_fret;
+        entry.notes = library::blank_to_none(notes);
+        setlist.updated_at = Some(Timestamp::now().as_secs());
+        let persisted = setlist.clone();
+        self.persist_setlist(&persisted, None)?;
+        if state.session_entry_id.as_deref() == Some(entry_id) {
+            if let Some(song_id) = state.session_id.clone() {
+                if let Some(record) = state.songs.get(&song_id) {
+                    state.steps = entry_steps(&record.song, &persisted, entry_id);
+                }
+            }
+        }
+        Ok(setlist::detail(&persisted, &state.songs))
+    }
+
+    /// Open a setlist entry without mutating the underlying song document.
+    ///
+    /// # Errors
+    ///
+    /// Unknown setlist/entry/song, dirty editor, or persist failure updating recents.
+    pub fn open_setlist_entry(
+        &self,
+        setlist_id: &str,
+        entry_id: &str,
+    ) -> Result<SongSessionView, String> {
+        let mut state = self.lock();
+        ensure_no_dirty_editor(&state)?;
+        state.editor = None;
+        let setlist = state
+            .setlists
+            .get(setlist_id)
+            .ok_or_else(|| format!("Setlist '{setlist_id}' was not found."))?
+            .clone();
+        let entry = setlist
+            .entries
+            .iter()
+            .find(|entry| entry.id == entry_id)
+            .ok_or_else(|| format!("Setlist entry '{entry_id}' was not found."))?
+            .clone();
+        let record = state
+            .songs
+            .get_mut(&entry.song_id)
+            .ok_or_else(|| format!("Song '{}' was not found.", entry.song_id))?;
+        record.last_opened_at = Some(Timestamp::now().as_secs());
+        let persisted = record.clone();
+        self.persist_record(&persisted, None)?;
+        state.warnings.clear();
+        state.session_id = Some(entry.song_id.clone());
+        state.session_setlist_id = Some(setlist_id.to_string());
+        state.session_entry_id = Some(entry_id.to_string());
+        state.steps = entry_steps(&persisted.song, &setlist, entry_id);
+        Ok(session_view(&state))
     }
 
     /// Start a new unsaved song in the editor.
@@ -422,6 +784,7 @@ impl AppServices {
     pub fn create_song(&self) -> Result<EditorSessionView, String> {
         let mut state = self.lock();
         ensure_no_dirty_editor(&state)?;
+        clear_setlist_session(&mut state);
         let id = SongId::new(format!("song-{}", state.next_id));
         state.next_id += 1;
         self.library
@@ -441,6 +804,7 @@ impl AppServices {
     pub fn begin_edit(&self, id: &str) -> Result<EditorSessionView, String> {
         let mut state = self.lock();
         ensure_no_dirty_editor(&state)?;
+        clear_setlist_session(&mut state);
         let record = state
             .songs
             .get(id)
@@ -822,6 +1186,49 @@ impl AppServices {
         Ok(editor_view(editor))
     }
 
+    fn persist_setlist(
+        &self,
+        setlist: &StoredSetlist,
+        ids: Option<(u64, u64)>,
+    ) -> Result<(), String> {
+        self.library
+            .save_setlist(setlist)
+            .map_err(|error| error.to_string())?;
+        if let Some((next_setlist_id, next_entry_id)) = ids {
+            self.library
+                .save_next_setlist_ids(next_setlist_id, next_entry_id)
+                .map_err(|error| error.to_string())?;
+        }
+        Ok(())
+    }
+
+    fn persist_song_document(&self, state: &AppState) -> Result<(), String> {
+        let id = state
+            .session_id
+            .as_deref()
+            .ok_or_else(|| "No song is loaded.".to_string())?;
+        let record = state
+            .songs
+            .get(id)
+            .ok_or_else(|| "No song is loaded.".to_string())?;
+        self.persist_record(record, None)
+    }
+
+    fn persist_open_setlist(&self, state: &mut AppState) -> Result<(), String> {
+        let id = state
+            .session_setlist_id
+            .as_deref()
+            .ok_or_else(|| "No setlist is open.".to_string())?
+            .to_string();
+        let setlist = state
+            .setlists
+            .get_mut(&id)
+            .ok_or_else(|| "No setlist is open.".to_string())?;
+        setlist.updated_at = Some(Timestamp::now().as_secs());
+        let persisted = setlist.clone();
+        self.persist_setlist(&persisted, None)
+    }
+
     fn persist_open(&self, state: &mut AppState) -> Result<(), String> {
         let id = state
             .session_id
@@ -867,13 +1274,96 @@ fn session_view(state: &AppState) -> SongSessionView {
         .songs
         .get(id)
         .expect("open song must exist in library");
+    let mut song = record.song.clone();
+    let mut setlist_ctx = None;
+    if let (Some(setlist_id), Some(entry_id)) = (
+        state.session_setlist_id.as_deref(),
+        state.session_entry_id.as_deref(),
+    ) {
+        if let Some(setlist) = state.setlists.get(setlist_id) {
+            if let Some(entry) = setlist.entries.iter().find(|entry| entry.id == entry_id) {
+                if let Some(symbol) = entry.performance_key.as_deref() {
+                    if let Some(key) = Key::parse(symbol) {
+                        song.set_performance_key(Some(key));
+                    }
+                }
+                setlist_ctx = setlist::context(setlist, entry_id, song.performance_key());
+            }
+        }
+    }
     SongSessionView::from_parts(
-        &record.song,
+        &song,
         &state.warnings,
         state.steps,
         record.favorite,
         record.tags.clone(),
+        setlist_ctx,
     )
+}
+
+fn clear_setlist_session(state: &mut AppState) {
+    state.session_setlist_id = None;
+    state.session_entry_id = None;
+}
+
+fn apply_setlist_steps(state: &mut AppState) -> Result<(), String> {
+    let original = {
+        let song = open_song_mut(state)?;
+        song.original_key()
+            .ok_or_else(|| "No original key.".to_string())?
+    };
+    let target = original.transpose_semitones(state.steps);
+    set_open_entry_key(state, Some(target.symbol()))
+}
+
+fn set_open_entry_key(state: &mut AppState, key: Option<String>) -> Result<(), String> {
+    let setlist_id = state
+        .session_setlist_id
+        .clone()
+        .ok_or_else(|| "No setlist is open.".to_string())?;
+    let entry_id = state
+        .session_entry_id
+        .clone()
+        .ok_or_else(|| "No setlist entry is open.".to_string())?;
+    let setlist = state
+        .setlists
+        .get_mut(&setlist_id)
+        .ok_or_else(|| format!("Setlist '{setlist_id}' was not found."))?;
+    let entry = setlist
+        .entries
+        .iter_mut()
+        .find(|entry| entry.id == entry_id)
+        .ok_or_else(|| format!("Setlist entry '{entry_id}' was not found."))?;
+    entry.performance_key = key;
+    Ok(())
+}
+
+fn entry_steps(song: &Song, setlist: &StoredSetlist, entry_id: &str) -> i32 {
+    let Some(entry) = setlist.entries.iter().find(|entry| entry.id == entry_id) else {
+        return steps_from_song(song);
+    };
+    match (
+        song.original_key(),
+        entry
+            .performance_key
+            .as_deref()
+            .and_then(Key::parse)
+            .or_else(|| song.performance_key()),
+    ) {
+        (Some(original), Some(performance)) => (i32::from(performance.pitch_class().value())
+            - i32::from(original.pitch_class().value()))
+        .rem_euclid(12),
+        _ => 0,
+    }
+}
+
+fn ensure_original_key_only(song: &mut Song) -> Key {
+    if let Some(key) = song.original_key() {
+        return key;
+    }
+    let inferred = infer_key(song);
+    song.set_original_key(Some(inferred));
+    inferred
 }
 
 fn ensure_no_dirty_editor(state: &AppState) -> Result<(), String> {
@@ -981,7 +1471,7 @@ mod tests {
         let info = services.info();
 
         assert_eq!(info.name, "Tonic");
-        assert_eq!(info.phase, 7);
+        assert_eq!(info.phase, 8);
         assert_eq!(info.domain_engine, "tonic-domain");
         assert!(!info.version.is_empty());
         assert!(!info.domain_version.is_empty());
@@ -1182,6 +1672,63 @@ mod tests {
             services.list_library(LibraryQuery::default()).songs[0].id,
             "song-1"
         );
+    }
+
+    #[test]
+    fn setlist_references_songs_and_keeps_independent_overrides() {
+        let root = temp_root();
+        {
+            let services = AppServices::open(&root).unwrap();
+            let _imported = services
+                .import_text("{title: Grace}\n{key: C}\n[C]Hi", ImportMode::ChordPro)
+                .unwrap();
+            let setlist = services.create_setlist(Some("Gig".into())).unwrap();
+            services.add_setlist_song(&setlist.id, "song-1").unwrap();
+            services.add_setlist_song(&setlist.id, "song-1").unwrap();
+            let detail = services.get_setlist(&setlist.id).unwrap();
+            assert_eq!(detail.entries.len(), 2);
+            assert_eq!(detail.entries[0].song_id, "song-1");
+            assert_eq!(detail.entries[1].song_id, "song-1");
+            assert_ne!(detail.entries[0].id, detail.entries[1].id);
+
+            services
+                .update_setlist_entry(
+                    &setlist.id,
+                    &detail.entries[0].id,
+                    Some("Bb".into()),
+                    Some(2),
+                    Some("slow".into()),
+                )
+                .unwrap();
+            let opened = services
+                .open_setlist_entry(&setlist.id, &detail.entries[0].id)
+                .unwrap();
+            assert_eq!(opened.song.performance_key.as_deref(), Some("Bb"));
+            assert_eq!(opened.setlist.as_ref().unwrap().capo_fret, Some(2));
+            assert_eq!(
+                opened.setlist.as_ref().unwrap().played_key.as_deref(),
+                Some("Ab")
+            );
+            services.transpose_by(1).unwrap();
+        }
+
+        let services = AppServices::open(&root).unwrap();
+        let list = services.list_setlists();
+        assert_eq!(list.len(), 1);
+        let detail = services.get_setlist(&list[0].id).unwrap();
+        assert_eq!(detail.entries[0].performance_key.as_deref(), Some("B"));
+        assert_eq!(detail.entries[0].capo_fret, Some(2));
+        assert!(detail.entries[1].performance_key.is_none());
+        let song = services.open_song("song-1").unwrap();
+        assert_eq!(song.song.performance_key.as_deref(), Some("C"));
+        assert!(song.setlist.is_none());
+
+        let copy = services.duplicate_setlist(&list[0].id).unwrap();
+        assert_eq!(copy.name, "Gig (copy)");
+        assert_eq!(copy.entries.len(), 2);
+        assert_ne!(copy.id, list[0].id);
+        assert_ne!(copy.entries[0].id, detail.entries[0].id);
+        let _ = std::fs::remove_dir_all(root);
     }
 
     #[test]

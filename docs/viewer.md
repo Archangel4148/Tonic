@@ -16,7 +16,7 @@ The first usable reading experience: import a chart, view aligned chords and lyr
 | `reset_performance_key` | Performance key = original key              |
 | `clear_song`            | Close the viewer session (library unchanged) |
 
-`SongSessionView` includes display chord symbols already spelled for the performance key, plus written symbols, lyric indices, warnings, and semitone offset.
+`SongSessionView` includes display chord symbols already spelled for the performance key, plus written symbols, lyric indices, warnings, semitone offset, and optional setlist context (Phase 8).
 
 Written tokens and `source.originalContent` are unchanged when the key changes (`Song::display_chord`).
 
@@ -41,7 +41,5 @@ Dark is the default (live-performance first). System follows `prefers-color-sche
 
 ## Out of scope
 
-- Durable library save (Phase 6)
-- Editor (Phase 7)
-- Setlists / live mode (Phases 8–9)
+- Live mode (Phase 9)
 - Web URL import, MusicXML

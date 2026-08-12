@@ -9,6 +9,9 @@ import type {
   LibraryQuery,
   MetadataUpdate,
   SectionLabelInput,
+  Setlist,
+  SetlistMetaUpdate,
+  SetlistSummary,
   SongSession,
 } from "./types";
 
@@ -63,9 +66,7 @@ export async function duplicateLibrarySong(id: string): Promise<SongSession> {
   return invoke<SongSession>("library_duplicate", { id });
 }
 
-export async function toggleFavorite(
-  id: string,
-): Promise<SongSession | null> {
+export async function toggleFavorite(id: string): Promise<SongSession | null> {
   return invoke<SongSession | null>("library_toggle_favorite", { id });
 }
 
@@ -203,4 +204,76 @@ export async function editorParseBody(
   format: ImportFormat = "auto",
 ): Promise<EditorSession> {
   return invoke<EditorSession>("editor_parse_body", { text, format });
+}
+
+export async function listSetlists(): Promise<SetlistSummary[]> {
+  return invoke<SetlistSummary[]>("setlist_list");
+}
+
+export async function getSetlist(id: string): Promise<Setlist> {
+  return invoke<Setlist>("setlist_get", { id });
+}
+
+export async function createSetlist(name?: string | null): Promise<Setlist> {
+  return invoke<Setlist>("setlist_create", { name: name ?? null });
+}
+
+export async function updateSetlistMeta(
+  id: string,
+  update: SetlistMetaUpdate,
+): Promise<Setlist> {
+  return invoke<Setlist>("setlist_update_meta", { id, update });
+}
+
+export async function deleteSetlist(id: string): Promise<void> {
+  return invoke<void>("setlist_delete", { id });
+}
+
+export async function duplicateSetlist(id: string): Promise<Setlist> {
+  return invoke<Setlist>("setlist_duplicate", { id });
+}
+
+export async function addSetlistSong(
+  setlistId: string,
+  songId: string,
+): Promise<Setlist> {
+  return invoke<Setlist>("setlist_add_song", { setlistId, songId });
+}
+
+export async function removeSetlistEntry(
+  setlistId: string,
+  entryId: string,
+): Promise<Setlist> {
+  return invoke<Setlist>("setlist_remove_entry", { setlistId, entryId });
+}
+
+export async function moveSetlistEntry(
+  setlistId: string,
+  from: number,
+  to: number,
+): Promise<Setlist> {
+  return invoke<Setlist>("setlist_move_entry", { setlistId, from, to });
+}
+
+export async function updateSetlistEntry(
+  setlistId: string,
+  entryId: string,
+  performanceKey: string | null,
+  capoFret: number | null,
+  notes: string | null,
+): Promise<Setlist> {
+  return invoke<Setlist>("setlist_update_entry", {
+    setlistId,
+    entryId,
+    performanceKey,
+    capoFret,
+    notes,
+  });
+}
+
+export async function openSetlistEntry(
+  setlistId: string,
+  entryId: string,
+): Promise<SongSession> {
+  return invoke<SongSession>("setlist_open_entry", { setlistId, entryId });
 }

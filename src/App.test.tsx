@@ -9,7 +9,7 @@ const mockedInvoke = vi.mocked(invoke);
 const appInfo = {
   name: "Tonic",
   version: "0.1.0",
-  phase: 7,
+  phase: 8,
   domainEngine: "tonic-domain",
   domainVersion: "0.1.0",
   persistenceHealthy: true,
@@ -69,6 +69,7 @@ const demoSession: SongSession = {
   semitoneOffset: 0,
   favorite: false,
   tags: ["hymn"],
+  setlist: null,
 };
 
 const transposedSession: SongSession = {
@@ -111,7 +112,7 @@ function mockIpc(
   handlers: Record<string, unknown | ((args?: unknown) => unknown)>,
 ) {
   mockedInvoke.mockImplementation(async (cmd, args) => {
-    const handler = handlers[String(cmd)];
+    const handler = { setlist_list: [], ...handlers }[String(cmd)];
     if (typeof handler === "function") {
       return handler(args);
     }
@@ -312,6 +313,104 @@ describe("App", () => {
       screen.getByRole("button", { name: "Tag chord at caret" }),
     ).toBeInTheDocument();
     expect(mockedInvoke).toHaveBeenCalledWith("editor_create");
+  });
+
+  it("opens a setlist entry without copying the song id", async () => {
+    const setlistSession: SongSession = {
+      ...demoSession,
+      song: { ...demoSession.song, performanceKey: "Bb" },
+      setlist: {
+        setlistId: "setlist-1",
+        setlistName: "Friday gig",
+        entryId: "entry-1",
+        index: 0,
+        total: 2,
+        capoFret: 2,
+        entryNotes: "slow intro",
+        playedKey: "Ab",
+      },
+    };
+    mockIpc({
+      app_info: appInfo,
+      current_song: null,
+      editor_state: null,
+      library_list: {
+        ...emptyLibrary,
+        songs: [
+          {
+            id: demoSession.song.id,
+            title: demoSession.song.title,
+            artist: demoSession.song.artist,
+            album: demoSession.song.album,
+            originalKey: demoSession.song.originalKey,
+            performanceKey: demoSession.song.performanceKey,
+            favorite: false,
+            tags: ["hymn"],
+            lastOpenedAt: 1,
+            lastModifiedAt: 1,
+          },
+        ],
+        artists: ["Traditional"],
+        keys: ["G"],
+        tags: ["hymn"],
+      },
+      setlist_list: [
+        {
+          id: "setlist-1",
+          name: "Friday gig",
+          notes: null,
+          eventDate: null,
+          songCount: 2,
+          updatedAt: 1,
+        },
+      ],
+      setlist_get: {
+        id: "setlist-1",
+        name: "Friday gig",
+        notes: null,
+        eventDate: null,
+        entries: [
+          {
+            id: "entry-1",
+            songId: demoSession.song.id,
+            title: demoSession.song.title,
+            artist: demoSession.song.artist,
+            missing: false,
+            songKey: "G",
+            performanceKey: "Bb",
+            capoFret: 2,
+            notes: "slow intro",
+          },
+          {
+            id: "entry-2",
+            songId: demoSession.song.id,
+            title: demoSession.song.title,
+            artist: demoSession.song.artist,
+            missing: false,
+            songKey: "G",
+            performanceKey: null,
+            capoFret: null,
+            notes: null,
+          },
+        ],
+      },
+      setlist_open_entry: setlistSession,
+    });
+
+    render(<App />);
+    fireEvent.click(await screen.findByRole("tab", { name: "Setlists" }));
+    fireEvent.click(await screen.findByRole("button", { name: /Friday gig/i }));
+    fireEvent.click(
+      await screen.findByRole("button", { name: /1\. Amazing Grace/i }),
+    );
+    expect(await screen.findByLabelText("Setlist context")).toHaveTextContent(
+      /Friday gig/,
+    );
+    expect(screen.getByText(/Played/)).toHaveTextContent("Ab");
+    expect(mockedInvoke).toHaveBeenCalledWith("setlist_open_entry", {
+      setlistId: "setlist-1",
+      entryId: "entry-1",
+    });
   });
 
   it("surfaces an error when the engine is unavailable", async () => {

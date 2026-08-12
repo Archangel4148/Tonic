@@ -1,17 +1,18 @@
 # State management
 
-Application state has a single ownership model. Phase 7 owns the song library and editor draft in Rust and presentation prefs in the UI.
+Application state has a single ownership model. Phase 8 owns the song library, setlists, and editor draft in Rust and presentation prefs in the UI.
 
 ## Authoritative state
 
 Owned by Rust application services (`tonic-app`), not by React and not by the persistence crate.
 
-Phase 7 authoritative state owned by `AppServices`:
+Phase 8 authoritative state owned by `AppServices`:
 
 - Application identity (`AppInfo`)
 - Persistence health, derived from the `SongLibrary` boundary
 - In-memory song library (`StoredSong`: domain `Song` + favorite/tags/recents)
-- Current session (open song id + import warnings + transpose steps)
+- In-memory setlists (`StoredSetlist`: ordered song-id entries + per-entry overrides)
+- Current session (open song id + optional setlist/entry id + import warnings + transpose steps)
 - Editor draft (`EditorSession`: unsaved `Song` + dirty/new flags)
 
 Domain authoritative song data (Phase 3, in `tonic-domain`):
@@ -21,7 +22,6 @@ Domain authoritative song data (Phase 3, in `tonic-domain`):
 
 Later authoritative application state will include:
 
-- Setlists and setlist-entry overrides
 - User display and transposition preferences stored in Rust
 
 Persistence stores a durable copy of authoritative documents. It does not become the live source of truth while the app is running. On startup, services will load from persistence into memory; during a session, memory wins until a successful save.
@@ -33,6 +33,7 @@ Recalculated from authoritative state. Do not store it as a second source of tru
 Derived (recalculated, not stored as truth):
 
 - Transposed/display chords (`Song::display_chord` → `SongSessionView`)
+- Setlist played key (`played_key` from performance key + capo)
 - Rendered chord/lyric layout in React
 
 Presentation state in the UI:
@@ -52,9 +53,9 @@ That UI status is not domain data. It only describes whether IPC succeeded.
 
 ## Persistence rules
 
-- Phase 6+: filesystem JSON round-trips songs across restarts. Write-through after import, transpose, metadata, favorite, duplicate, delete, and **editor Save**. Editor Cancel does not write.
+- Phase 6+: filesystem JSON round-trips songs (and, from Phase 8, setlists) across restarts. Write-through after import, transpose, metadata, favorite, duplicate, delete, setlist edits, and **editor Save**. Editor Cancel does not write.
 - Persistence is a durable snapshot, not live truth.
-- Setlist entries will reference song IDs. They must not embed a full copy of the song document.
+- Setlist entries reference song IDs. They must not embed a full copy of the song document.
 
 ## Diagram
 
@@ -64,7 +65,7 @@ That UI status is not domain data. It only describes whether IPC succeeded.
 │  presentation state only                     │
 │  (loading, layout, unsaved editor drafts)    │
 └──────────────────────┬───────────────────────┘
-                       │ invoke (app_info, import, library, transpose, …)
+                       │ invoke (app_info, import, library, setlist, transpose, …)
                        ▼
 ┌──────────────────────────────────────────────┐
 │ Tauri shell                                  │

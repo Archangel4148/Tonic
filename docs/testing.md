@@ -71,6 +71,12 @@ Tauri `invoke` is mocked in `src/test/setup.ts` so UI tests do not require a run
 - Chart-line syllable splitting
 - Viewer warnings and unrecognized chords
 
+Phase 8 coverage:
+
+- Persist setlist round-trip + delete; index counters survive song `save_next_id`
+- Same song twice with independent key/capo; library song unchanged; duplicate mints new ids
+- UI setlist open entry against mocked IPC
+
 Phase 7 coverage:
 
 - Domain line tag/untag and lyric clamp

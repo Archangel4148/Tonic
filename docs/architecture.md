@@ -42,7 +42,7 @@ Pure domain logic: music engine plus the canonical `Song` model. See [`music-the
 
 ### `tonic-app`
 
-Owns running-process authoritative state: identity, persistence health, the in-memory song library, the open session, the editor draft, and import/transpose orchestration. Returns `SongSessionView` / `LibraryListView` / `EditorSessionView` DTOs for the UI. Setlists and durable display preferences will be added here rather than in React or the Tauri crate.
+Owns running-process authoritative state: identity, persistence health, the in-memory song library, setlists, the open session (including optional setlist context), the editor draft, and import/transpose orchestration. Returns `SongSessionView` / `LibraryListView` / `EditorSessionView` / setlist DTOs for the UI. Durable display preferences will be added here rather than in React or the Tauri crate.
 
 ### `tonic-import`
 
@@ -58,9 +58,9 @@ Tauri entrypoint. It opens `AppServices` on the app data library path and expose
 
 ### React UI (`src/`)
 
-Presentation only. It renders library + `SongSessionView`, holds theme/type-scale prefs, and talks to Rust through `src/lib/tauri.ts`. It must not reimplement domain behavior. See [`viewer.md`](./viewer.md) and [`persist.md`](./persist.md).
+Presentation only. It renders library, setlists, and `SongSessionView`, holds theme/type-scale prefs, and talks to Rust through `src/lib/tauri.ts`. It must not reimplement domain behavior. See [`viewer.md`](./viewer.md), [`persist.md`](./persist.md), and [`setlists.md`](./setlists.md).
 
-## IPC surface (Phase 7)
+## IPC surface (Phase 8)
 
 | Command                     | Direction | Purpose                                        |
 | --------------------------- | --------- | ---------------------------------------------- |
@@ -78,12 +78,13 @@ Presentation only. It renders library + `SongSessionView`, holds theme/type-scal
 | `library_toggle_favorite`   | UI → Rust | Toggle favorite                                |
 | `library_update_metadata`   | UI → Rust | Edit title/artist/album/notes/tags             |
 | `editor_*`                  | UI → Rust | New/edit draft, save/cancel, sections, tagging |
+| `setlist_*`                 | UI → Rust | Setlist CRUD, reorder, entry overrides, open   |
 
-JSON uses camelCase to match TypeScript. Full editor command list: [`editor.md`](./editor.md).
+JSON uses camelCase to match TypeScript. Full editor command list: [`editor.md`](./editor.md). Setlists: [`setlists.md`](./setlists.md).
 
 ## What later phases still do not include
 
-- Setlists (Phase 8)
+- Live performance mode (Phase 9)
 - Web URL import
 - MusicXML (Phase 10)
 - Android project generation

@@ -49,5 +49,4 @@ Written chord tokens stay authoritative. Transpose is disabled while the editor 
 
 ## Out of scope here
 
-- Setlists (Phase 8)
 - Live/performance mode (Phase 9)

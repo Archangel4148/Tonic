@@ -3,14 +3,64 @@ import type { SongSession } from "../lib/types";
 
 type Props = {
   session: SongSession;
+  disabled?: boolean;
+  onCapoChange?: (fret: number | null) => void;
 };
 
-export function SongViewer({ session }: Props) {
-  const { song, warnings, summaryMessage, semitoneOffset, favorite, tags } =
-    session;
+export function SongViewer({ session, disabled, onCapoChange }: Props) {
+  const {
+    song,
+    warnings,
+    summaryMessage,
+    semitoneOffset,
+    favorite,
+    tags,
+    setlist,
+  } = session;
 
   return (
     <article className="song-viewer" aria-labelledby="song-title">
+      {setlist && (
+        <aside className="setlist-banner" aria-label="Setlist context">
+          <p>
+            <strong>{setlist.setlistName}</strong>
+            {" · "}
+            {setlist.index + 1} of {setlist.total}
+            {setlist.playedKey && (
+              <>
+                {" · "}
+                Played <strong>{setlist.playedKey}</strong>
+              </>
+            )}
+          </p>
+          {onCapoChange && (
+            <label className="field-label">
+              Capo
+              <select
+                value={setlist.capoFret == null ? "" : String(setlist.capoFret)}
+                disabled={disabled}
+                onChange={(event) =>
+                  onCapoChange(
+                    event.target.value === ""
+                      ? null
+                      : Number(event.target.value),
+                  )
+                }
+              >
+                <option value="">None</option>
+                {Array.from({ length: 13 }, (_, fret) => (
+                  <option key={fret} value={String(fret)}>
+                    {fret}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+          {setlist.entryNotes && (
+            <p className="song-notes">{setlist.entryNotes}</p>
+          )}
+        </aside>
+      )}
       <header className="song-header">
         <h2 id="song-title">
           {favorite ? "★ " : ""}

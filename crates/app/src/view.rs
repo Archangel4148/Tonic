@@ -4,6 +4,8 @@ use serde::Serialize;
 use tonic_domain::{Line, LineToken, ParseStatus, Song, SourceFormat};
 use tonic_import::{ImportWarning, WarningKind, UNRECOGNIZED_CONTENT_MESSAGE};
 
+use crate::setlist::SetlistContextView;
+
 /// Session snapshot returned to the UI after import or transpose.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -14,6 +16,7 @@ pub struct SongSessionView {
     pub semitone_offset: i32,
     pub favorite: bool,
     pub tags: Vec<String>,
+    pub setlist: Option<SetlistContextView>,
 }
 
 /// Render-ready song. Display chord symbols are already transposed.
@@ -76,6 +79,7 @@ impl SongSessionView {
         semitone_offset: i32,
         favorite: bool,
         tags: Vec<String>,
+        setlist: Option<SetlistContextView>,
     ) -> Self {
         Self {
             song: SongView::from_song(song),
@@ -85,6 +89,7 @@ impl SongSessionView {
             semitone_offset,
             favorite,
             tags,
+            setlist,
         }
     }
 }

@@ -54,6 +54,7 @@ const session: SongSession = {
   semitoneOffset: 2,
   favorite: false,
   tags: ["demo"],
+  setlist: null,
 };
 
 describe("SongViewer", () => {

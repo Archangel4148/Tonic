@@ -6,7 +6,8 @@
 use serde::Serialize;
 use tonic_app::{
     performance_key_choices, AppServices, EditorMetaUpdate, EditorSaveResult, EditorSessionView,
-    ImportMode, LibraryListView, LibraryQuery, MetadataUpdate, SectionLabelInput, SongSessionView,
+    ImportMode, LibraryListView, LibraryQuery, MetadataUpdate, SectionLabelInput,
+    SetlistMetaUpdate, SetlistSummaryView, SetlistView, SongSessionView,
 };
 
 #[derive(Serialize)]
@@ -277,6 +278,95 @@ fn editor_set_annotation(
 }
 
 #[tauri::command]
+fn setlist_list(services: tauri::State<'_, AppServices>) -> Vec<SetlistSummaryView> {
+    services.list_setlists()
+}
+
+#[tauri::command]
+fn setlist_get(services: tauri::State<'_, AppServices>, id: String) -> Result<SetlistView, String> {
+    services.get_setlist(&id)
+}
+
+#[tauri::command]
+fn setlist_create(
+    services: tauri::State<'_, AppServices>,
+    name: Option<String>,
+) -> Result<SetlistView, String> {
+    services.create_setlist(name)
+}
+
+#[tauri::command]
+fn setlist_update_meta(
+    services: tauri::State<'_, AppServices>,
+    id: String,
+    update: SetlistMetaUpdate,
+) -> Result<SetlistView, String> {
+    services.update_setlist_meta(&id, update)
+}
+
+#[tauri::command]
+fn setlist_delete(services: tauri::State<'_, AppServices>, id: String) -> Result<(), String> {
+    services.delete_setlist(&id)
+}
+
+#[tauri::command]
+fn setlist_duplicate(
+    services: tauri::State<'_, AppServices>,
+    id: String,
+) -> Result<SetlistView, String> {
+    services.duplicate_setlist(&id)
+}
+
+#[tauri::command]
+fn setlist_add_song(
+    services: tauri::State<'_, AppServices>,
+    setlist_id: String,
+    song_id: String,
+) -> Result<SetlistView, String> {
+    services.add_setlist_song(&setlist_id, &song_id)
+}
+
+#[tauri::command]
+fn setlist_remove_entry(
+    services: tauri::State<'_, AppServices>,
+    setlist_id: String,
+    entry_id: String,
+) -> Result<SetlistView, String> {
+    services.remove_setlist_entry(&setlist_id, &entry_id)
+}
+
+#[tauri::command]
+fn setlist_move_entry(
+    services: tauri::State<'_, AppServices>,
+    setlist_id: String,
+    from: usize,
+    to: usize,
+) -> Result<SetlistView, String> {
+    services.move_setlist_entry(&setlist_id, from, to)
+}
+
+#[tauri::command]
+fn setlist_update_entry(
+    services: tauri::State<'_, AppServices>,
+    setlist_id: String,
+    entry_id: String,
+    performance_key: Option<String>,
+    capo_fret: Option<u8>,
+    notes: Option<String>,
+) -> Result<SetlistView, String> {
+    services.update_setlist_entry(&setlist_id, &entry_id, performance_key, capo_fret, notes)
+}
+
+#[tauri::command]
+fn setlist_open_entry(
+    services: tauri::State<'_, AppServices>,
+    setlist_id: String,
+    entry_id: String,
+) -> Result<SongSessionView, String> {
+    services.open_setlist_entry(&setlist_id, &entry_id)
+}
+
+#[tauri::command]
 fn editor_parse_body(
     services: tauri::State<'_, AppServices>,
     text: String,
@@ -329,6 +419,17 @@ pub fn run() {
             editor_set_chord_index,
             editor_set_annotation,
             editor_parse_body,
+            setlist_list,
+            setlist_get,
+            setlist_create,
+            setlist_update_meta,
+            setlist_delete,
+            setlist_duplicate,
+            setlist_add_song,
+            setlist_remove_entry,
+            setlist_move_entry,
+            setlist_update_entry,
+            setlist_open_entry,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

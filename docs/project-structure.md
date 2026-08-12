@@ -45,7 +45,7 @@ Tonic/
 
 ## Frontend layout rule
 
-`src/components/` holds viewer, import, library sidebar, editor, and metadata details. Do not add a router, client store, or setlist screens ahead of Phase 8.
+`src/components/` holds viewer, import, library sidebar, setlists, editor, and metadata details. Do not add a router, client store, or live-mode screens ahead of Phase 9.
 
 ## Generated / ignored output
 

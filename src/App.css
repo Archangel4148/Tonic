@@ -459,6 +459,13 @@ button:disabled {
   margin: 0;
 }
 
+.library-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 0.75rem;
+}
+
 .library-filters {
   display: grid;
   gap: 0.55rem;
@@ -492,6 +499,10 @@ button:disabled {
 .library-row--active {
   border-color: var(--accent);
   background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.library-row--setlist {
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .library-star,
@@ -536,6 +547,82 @@ button:disabled {
   padding: 0.1rem 0.55rem;
   font-size: 0.78rem;
   color: var(--muted);
+}
+
+.setlist-banner {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.25rem;
+  align-items: end;
+  margin-bottom: 1rem;
+  padding: 0.7rem 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+
+.setlist-banner p {
+  margin: 0;
+}
+
+.setlist-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.55rem;
+}
+
+.setlist-header h2 {
+  margin: 0;
+}
+
+.setlist-entries {
+  list-style: none;
+  margin: 0.75rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.85rem;
+}
+
+.setlist-entry {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 0.7rem 0.8rem;
+  display: grid;
+  gap: 0.65rem;
+}
+
+.setlist-entry--active {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+
+.setlist-open {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+  display: grid;
+  gap: 0.15rem;
+  padding: 0;
+}
+
+.setlist-entry-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  align-items: end;
+}
+
+.setlist-entry-tools .field-label {
+  min-width: 6.5rem;
+}
+
+.setlist-entry-tools input {
+  min-width: 10rem;
+  flex: 1;
 }
 
 .song-details summary {

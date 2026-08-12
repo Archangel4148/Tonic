@@ -62,4 +62,4 @@ This JSON is the interchange form for tests and later persistence. It is not its
 
 ## Out of scope here
 
-- Setlists (Phase 8)
+- Setlist documents live in persist/app and reference `SongId` only. See [`setlists.md`](./setlists.md).

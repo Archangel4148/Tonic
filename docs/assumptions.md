@@ -97,3 +97,13 @@ Workspace crates declare MIT for now. This can change if the product owner picks
 - Chord tagging sends the symbol to Rust (`parse_chord`). The UI does not parse.
 - “Paste chart to replace body” reuses `tonic-import` and keeps existing metadata when already filled in.
 - Changing original key in the editor also updates performance key when they still matched.
+
+## Setlists (Phase 8)
+
+- Entries store `songId` only. The same song may appear multiple times via distinct `entry-{n}` ids.
+- Per-entry performance key, capo (`0..=12`), and notes do not mutate the library `Song`.
+- Opening an entry builds a display clone; transpose/key/reset in that session write the entry, not the song. Original key may still be inferred on the song if it was missing.
+- Capo is not a domain `Song` field. Played key is derived (`played_key`) for the viewer banner.
+- Missing referenced songs remain as entries and show `(missing song)`.
+- Duplicate setlist copies entry settings but mints new setlist and entry ids.
+- Live mode (fullscreen, next/previous, auto-scroll) is Phase 9.
