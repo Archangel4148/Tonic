@@ -635,8 +635,7 @@ function App() {
                 )}
                 {session && !editor && (
                   <TransposeBar
-                    originalKey={session.song.originalKey}
-                    performanceKey={session.song.performanceKey}
+                    displayKey={session.song.displayKey}
                     semitoneOffset={session.semitoneOffset}
                     keys={keys}
                     disabled={busy}

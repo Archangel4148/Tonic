@@ -11,6 +11,7 @@ const session: SongSession = {
     album: null,
     originalKey: "C",
     performanceKey: "D",
+    displayKey: "D",
     tempoBpm: null,
     timeSignature: null,
     notes: null,

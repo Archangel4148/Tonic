@@ -1,6 +1,5 @@
 type Props = {
-  originalKey: string | null;
-  performanceKey: string | null;
+  displayKey: string | null;
   semitoneOffset: number;
   keys: string[];
   disabled?: boolean;
@@ -10,8 +9,7 @@ type Props = {
 };
 
 export function TransposeBar({
-  originalKey,
-  performanceKey,
+  displayKey,
   semitoneOffset,
   keys,
   disabled = false,
@@ -19,7 +17,7 @@ export function TransposeBar({
   onSelectKey,
   onReset,
 }: Props) {
-  const selectValue = performanceKey ?? originalKey ?? "";
+  const selectValue = displayKey ?? "";
 
   return (
     <div className="transpose-bar" role="group" aria-label="Transpose">

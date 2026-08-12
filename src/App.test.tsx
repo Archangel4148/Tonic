@@ -32,6 +32,7 @@ const demoSession: SongSession = {
     album: null,
     originalKey: "G",
     performanceKey: "G",
+    displayKey: "G",
     tempoBpm: 72,
     timeSignature: "3/4",
     notes: null,
@@ -80,6 +81,7 @@ const transposedSession: SongSession = {
   song: {
     ...demoSession.song,
     performanceKey: "A",
+    displayKey: "A",
     sections: [
       {
         label: "Verse 1",
@@ -326,7 +328,7 @@ describe("App", () => {
   it("opens a setlist entry without copying the song id", async () => {
     const setlistSession: SongSession = {
       ...demoSession,
-      song: { ...demoSession.song, performanceKey: "Bb" },
+      song: { ...demoSession.song, performanceKey: "Bb", displayKey: "Bb" },
       setlist: {
         setlistId: "setlist-1",
         setlistName: "Friday gig",

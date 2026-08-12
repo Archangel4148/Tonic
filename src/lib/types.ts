@@ -39,6 +39,7 @@ export type SongView = {
   album: string | null;
   originalKey: string | null;
   performanceKey: string | null;
+  displayKey: string | null;
   tempoBpm: number | null;
   timeSignature: string | null;
   notes: string | null;

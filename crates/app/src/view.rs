@@ -8,6 +8,7 @@ use tonic_import::{
     ImportWarning, WarningKind, UNRECOGNIZED_CONTENT_MESSAGE, UNSUPPORTED_MUSICXML_MESSAGE,
 };
 
+use crate::infer_key_from_content;
 use crate::setlist::SetlistContextView;
 
 /// Session snapshot returned to the UI after import or transpose.
@@ -35,6 +36,8 @@ pub struct SongView {
     pub album: Option<String>,
     pub original_key: Option<String>,
     pub performance_key: Option<String>,
+    /// Effective key for transpose controls: performance, original, or inferred from content.
+    pub display_key: Option<String>,
     pub tempo_bpm: Option<u16>,
     pub time_signature: Option<String>,
     pub notes: Option<String>,
@@ -111,6 +114,7 @@ impl SongView {
             album: song.album().map(str::to_string),
             original_key: song.original_key().map(|key| key.symbol()),
             performance_key: song.performance_key().map(|key| key.symbol()),
+            display_key: display_key(song),
             tempo_bpm: song.tempo().map(|tempo| tempo.bpm()),
             time_signature: song.time_signature().map(|ts| ts.symbol()),
             notes: song.notes().map(str::to_string),
@@ -140,6 +144,13 @@ impl From<&ImportWarning> for WarningView {
             line: warning.line,
         }
     }
+}
+
+fn display_key(song: &Song) -> Option<String> {
+    song.performance_key()
+        .or(song.original_key())
+        .or_else(|| infer_key_from_content(song))
+        .map(|key| key.symbol())
 }
 
 fn line_view(song: &Song, line: &Line) -> LineView {
@@ -256,7 +267,8 @@ pub fn performance_key_choices() -> Vec<String> {
 mod tests {
     use super::*;
     use tonic_domain::{
-        parse_chord, ChordToken, Key, LineToken, LyricToken, Section, SectionLabel, SongId,
+        parse_chord, ChordToken, Key, LineToken, LyricToken, Section, SectionLabel, Song,
+        SongId,
     };
 
     #[test]
@@ -285,5 +297,41 @@ mod tests {
         song.set_performance_key(Some(Key::parse("C").unwrap()));
         let reset = SongView::from_song(&song);
         assert_eq!(reset.sections[0].lines[0].chords[0].symbol, "C");
+    }
+
+    #[test]
+    fn display_key_prefers_performance_then_original_then_inference() {
+        let line = tonic_domain::Line::new(vec![
+            LineToken::Chord(ChordToken::new(parse_chord("G"))),
+            LineToken::Lyric(LyricToken::new("Hi")),
+        ]);
+        let section = Section::new(SectionLabel::Verse { number: None }, vec![line]);
+
+        let with_performance = Song::builder(SongId::new("perf"), "Demo")
+            .original_key(Key::parse("C").unwrap())
+            .performance_key(Key::parse("D").unwrap())
+            .section(section.clone())
+            .build();
+        assert_eq!(
+            SongView::from_song(&with_performance).display_key.as_deref(),
+            Some("D")
+        );
+
+        let original_only = Song::builder(SongId::new("orig"), "Demo")
+            .original_key(Key::parse("C").unwrap())
+            .section(section.clone())
+            .build();
+        assert_eq!(
+            SongView::from_song(&original_only).display_key.as_deref(),
+            Some("C")
+        );
+
+        let inferred = Song::builder(SongId::new("inf"), "Demo")
+            .section(section)
+            .build();
+        assert_eq!(
+            SongView::from_song(&inferred).display_key.as_deref(),
+            Some("G")
+        );
     }
 }

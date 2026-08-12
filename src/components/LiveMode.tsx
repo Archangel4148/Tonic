@@ -66,6 +66,7 @@ export function LiveMode({
   const liveScaleRef = useRef<TypeScale>(DEFAULT_LIVE_SCALE);
   const speedRef = useRef(28);
   const [chromeVisible, setChromeVisible] = useState(true);
+  const [chromePinned, setChromePinned] = useState(false);
   const [controlsLocked, setControlsLocked] = useState(false);
   const [playing, setPlaying] = useState(false);
   const [speed, setSpeed] = useState(() =>
@@ -82,8 +83,8 @@ export function LiveMode({
   const setlist = session.setlist;
   const canPrev = Boolean(setlist && setlist.index > 0);
   const canNext = Boolean(setlist && setlist.index + 1 < setlist.total);
-  const selectValue =
-    session.song.performanceKey ?? session.song.originalKey ?? "";
+  const selectValue = session.song.displayKey ?? "";
+  const chromeShown = chromeVisible || chromePinned;
 
   speedRef.current = speed;
   liveScaleRef.current = liveScale;
@@ -171,7 +172,7 @@ export function LiveMode({
   }, [session.song.id, session.setlist?.entryId]);
 
   useEffect(() => {
-    if (!chromeVisible || controlsLocked) {
+    if (!chromeShown || controlsLocked || chromePinned) {
       return;
     }
     const timer = window.setTimeout(
@@ -180,13 +181,27 @@ export function LiveMode({
     );
     return () => window.clearTimeout(timer);
   }, [
-    chromeVisible,
+    chromeShown,
+    chromePinned,
     controlsLocked,
     playing,
     speed,
     hideMeta,
     session.song.id,
   ]);
+
+  const pinChrome = useCallback(() => {
+    setChromePinned(true);
+    setChromeVisible(true);
+  }, []);
+
+  const releaseChromePin = useCallback((container: HTMLElement | null) => {
+    requestAnimationFrame(() => {
+      if (!container?.contains(document.activeElement)) {
+        setChromePinned(false);
+      }
+    });
+  }, []);
 
   useEffect(() => {
     if (!playing) {
@@ -449,7 +464,7 @@ export function LiveMode({
       className={
         controlsLocked
           ? "live-shell live-shell--locked"
-          : chromeVisible
+          : chromeShown
             ? "live-shell live-shell--chrome"
             : "live-shell"
       }
@@ -495,8 +510,10 @@ export function LiveMode({
 
       <div
         className="live-chrome"
-        aria-hidden={controlsLocked || !chromeVisible}
-        {...(controlsLocked || !chromeVisible
+        aria-hidden={controlsLocked || !chromeShown}
+        onFocusCapture={pinChrome}
+        onBlurCapture={(event) => releaseChromePin(event.currentTarget)}
+        {...(controlsLocked || !chromeShown
           ? ({ inert: true } as { inert: boolean })
           : {})}
       >
@@ -596,6 +613,7 @@ export function LiveMode({
             <select
               value={selectValue}
               disabled={busy || keys.length === 0}
+              onMouseDown={pinChrome}
               onChange={(event) => onSelectKey(event.target.value)}
             >
               {!selectValue && <option value="">Key</option>}

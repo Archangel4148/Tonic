@@ -1512,7 +1512,7 @@ fn ensure_original_key(song: &mut Song) -> Key {
     inferred
 }
 
-fn infer_key(song: &Song) -> Key {
+pub(crate) fn infer_key_from_content(song: &Song) -> Option<Key> {
     if let Some(score) = song.score() {
         for part in &score.parts {
             for measure in &part.measures {
@@ -1521,7 +1521,7 @@ fn infer_key(song: &Song) -> Key {
                     .as_ref()
                     .and_then(|attributes| attributes.key)
                 {
-                    return key;
+                    return Some(key);
                 }
             }
         }
@@ -1534,15 +1534,19 @@ fn infer_key(song: &Song) -> Key {
                     continue;
                 }
                 if let Some(root) = chord.root() {
-                    return match chord.quality() {
+                    return Some(match chord.quality() {
                         Quality::Minor => Key::minor(root),
                         _ => Key::major(root),
-                    };
+                    });
                 }
             }
         }
     }
-    Key::parse("C").expect("C is a valid key")
+    None
+}
+
+fn infer_key(song: &Song) -> Key {
+    infer_key_from_content(song).unwrap_or_else(|| Key::parse("C").expect("C is a valid key"))
 }
 
 fn steps_from_song(song: &Song) -> i32 {
@@ -1648,6 +1652,17 @@ mod tests {
         assert_eq!(reset.semitone_offset, 0);
         assert_eq!(reset.song.performance_key.as_deref(), Some("C"));
         assert_eq!(reset.song.sections[0].lines[0].chords[0].symbol, "C");
+    }
+
+    #[test]
+    fn import_without_key_metadata_exposes_inferred_display_key() {
+        let services = AppServices::new();
+        let imported = services
+            .import_text("{title: X}\n[G]Hi there", ImportMode::ChordPro)
+            .unwrap();
+        assert!(imported.song.original_key.is_none());
+        assert!(imported.song.performance_key.is_none());
+        assert_eq!(imported.song.display_key.as_deref(), Some("G"));
     }
 
     #[test]

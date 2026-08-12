@@ -28,8 +28,8 @@ export default defineConfig(async () => ({
         }
       : undefined,
     watch: {
-      // 3. tell Vite to ignore watching `src-tauri`
-      ignored: ["**/src-tauri/**"],
+      // 3. ignore Rust/Tauri paths so Cargo file locks don't crash Vite on Windows
+      ignored: ["**/src-tauri/**", "**/target/**"],
     },
   },
 }));
