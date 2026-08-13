@@ -6,11 +6,13 @@
 //! inline on the lyric line (ChordPro layout).
 
 use serde_json::Value;
-use tonic_domain::{Key, SectionLabel, SongId, SongSource};
+use tonic_domain::{parse_chord, Key, ParseStatus, SectionLabel, SongId, SongSource};
 
 use crate::chordpro::import_chordpro;
 use crate::plain::import_plain_text;
-use crate::section::{is_chart_annotation, is_repeat_marker, split_leading_section_header};
+use crate::section::{
+    is_chart_annotation, is_inline_capo_line, is_repeat_marker, split_leading_section_header,
+};
 use crate::warning::{ImportWarning, WarningKind};
 use crate::{ImportResult, WebImportError};
 
@@ -105,21 +107,10 @@ pub fn parse_ultimate_guitar_html(
     let uses_tab_blocks = body.to_ascii_lowercase().contains("[tab]");
 
     let mut result = if uses_tab_blocks {
-        let plain = ug_tab_content_to_plain(
-            &body,
-            song_name,
-            artist_name,
-            tonality,
-        );
+        let plain = ug_tab_content_to_plain(&body, song_name, artist_name, tonality);
         import_plain_text(&plain, id)
     } else {
-        let chart = ug_inline_content_to_chordpro(
-            &body,
-            song_name,
-            artist_name,
-            tonality,
-            capo,
-        );
+        let chart = ug_inline_content_to_chordpro(&body, song_name, artist_name, tonality, capo);
         import_chordpro(&chart, id)
     };
 
@@ -243,12 +234,18 @@ fn ug_tab_content_to_plain(
     out.push('\n');
 
     let expanded = expand_ug_tab_blocks(content);
+    let raw_lines: Vec<&str> = expanded.lines().collect();
+    let appendix_from = ug_appendix_line_index(&raw_lines);
     let mut seen_section = false;
     let mut preamble: Vec<String> = Vec::new();
 
-    for line in expanded.lines() {
+    for (idx, line) in raw_lines.iter().enumerate() {
         let trimmed = line.trim();
         if trimmed.is_empty() {
+            continue;
+        }
+        if appendix_from.is_some_and(|start| idx >= start) {
+            emit_plain_note(&mut out, line);
             continue;
         }
         if let Some((label, rest)) = split_leading_section_header(trimmed) {
@@ -272,13 +269,18 @@ fn ug_tab_content_to_plain(
             continue;
         }
         if !seen_section {
-            for part in normalize_ug_plain_line(line.trim_end()) {
-                let text = part.trim();
-                if !text.is_empty() {
-                    preamble.push(text.to_string());
+            if looks_like_ug_chart_line(line) {
+                flush_preamble_notes(&mut out, &mut preamble);
+                seen_section = true;
+            } else {
+                for part in normalize_ug_plain_line(line.trim_end()) {
+                    let text = part.trim();
+                    if !text.is_empty() {
+                        preamble.push(text.to_string());
+                    }
                 }
+                continue;
             }
-            continue;
         }
         if is_chart_annotation(trimmed) {
             out.push_str(trimmed);
@@ -301,6 +303,147 @@ fn flush_preamble_notes(out: &mut String, preamble: &mut Vec<String>) {
         out.push_str(&note);
         out.push('\n');
     }
+}
+
+fn emit_plain_note(out: &mut String, line: &str) {
+    let text = appendix_plain_text(line);
+    if !text.is_empty() {
+        out.push_str("note: ");
+        out.push_str(&text);
+        out.push('\n');
+    }
+}
+
+fn ug_appendix_line_index(lines: &[&str]) -> Option<usize> {
+    let first_chart = lines.iter().position(|line| {
+        let trimmed = line.trim();
+        !trimmed.is_empty()
+            && (split_leading_section_header(trimmed).is_some() || looks_like_ug_chart_line(line))
+    })?;
+    let mut start = None;
+    for (i, line) in lines.iter().enumerate().skip(first_chart + 1) {
+        if line.trim().is_empty() {
+            continue;
+        }
+        if looks_like_ug_appendix_start(line) {
+            start = Some(i);
+            break;
+        }
+    }
+    let mut idx = start?;
+    while idx > first_chart {
+        let prev = lines[idx - 1];
+        if prev.trim().is_empty() || looks_like_appendix_heading(prev) {
+            idx -= 1;
+            continue;
+        }
+        break;
+    }
+    if idx <= first_chart {
+        start
+    } else {
+        Some(idx)
+    }
+}
+
+fn looks_like_appendix_heading(line: &str) -> bool {
+    let plain = appendix_plain_text(line);
+    looks_like_alternates_header(&plain)
+        || looks_like_open_key_variant(&plain)
+        || is_inline_capo_line(&plain)
+}
+
+/// Transcriber appendix after the sung chart: footnotes, capo maps, `Am = F#m`.
+fn looks_like_ug_appendix_start(line: &str) -> bool {
+    let plain = appendix_plain_text(line);
+    looks_like_ug_footnote(&plain)
+        || looks_like_alternates_header(&plain)
+        || looks_like_chord_equivalence(&plain)
+        || looks_like_open_key_variant(&plain)
+        || looks_like_ug_transcriber_sig(&plain)
+}
+
+fn appendix_plain_text(line: &str) -> String {
+    strip_ug_chord_markers(line)
+        .chars()
+        .filter(|c| *c != '[' && *c != ']')
+        .collect::<String>()
+        .trim()
+        .to_string()
+}
+
+fn looks_like_ug_footnote(line: &str) -> bool {
+    let trimmed = line.trim();
+    let stars = trimmed.bytes().take_while(|&b| b == b'*').count();
+    if stars == 0 {
+        return false;
+    }
+    let after_stars = &trimmed[stars..];
+    if !after_stars.starts_with(|c: char| c.is_whitespace()) {
+        return false;
+    }
+    let rest = after_stars.trim();
+    !rest.is_empty() && (looks_like_alternates_header(rest) || rest.len() >= 8)
+}
+
+fn looks_like_alternates_header(line: &str) -> bool {
+    let lower = line
+        .trim()
+        .trim_end_matches(':')
+        .trim()
+        .to_ascii_lowercase();
+    lower == "alternate"
+        || lower == "alternates"
+        || lower.starts_with("alternate chord")
+        || lower.starts_with("alternate capo")
+}
+
+fn looks_like_open_key_variant(line: &str) -> bool {
+    let lower = line.trim().to_ascii_lowercase();
+    lower.starts_with("open")
+        && (lower.contains("original key") || lower.contains("not in the original"))
+}
+
+fn looks_like_ug_transcriber_sig(line: &str) -> bool {
+    let lower = line.trim().to_ascii_lowercase();
+    lower.strip_prefix("set").is_some_and(|digits| {
+        !digits.is_empty() && digits.len() <= 4 && digits.chars().all(|c| c.is_ascii_digit())
+    })
+}
+
+fn looks_like_chord_equivalence(line: &str) -> bool {
+    let trimmed = line.trim();
+    let Some((left, right)) = trimmed.split_once('=') else {
+        return false;
+    };
+    let left = left.trim();
+    let right = right.trim();
+    if left.is_empty() || right.is_empty() || left.split_whitespace().count() != 1 {
+        return false;
+    }
+    chord_like_token(left)
+        && right.split_whitespace().any(|token| {
+            chord_like_token(token.trim_matches(|c: char| matches!(c, '(' | ')' | ',' | ';' | '*')))
+        })
+}
+
+fn chord_like_token(token: &str) -> bool {
+    let cleaned = token
+        .trim()
+        .trim_matches(|c: char| matches!(c, '(' | ')' | ',' | ';' | '*'));
+    if cleaned.is_empty() {
+        return false;
+    }
+    parse_chord(cleaned).status() == ParseStatus::FullyRecognized
+}
+
+fn looks_like_ug_chart_line(line: &str) -> bool {
+    let stripped = strip_ug_chord_markers(line);
+    let trimmed = stripped.trim();
+    if trimmed.is_empty() {
+        return false;
+    }
+    split_leading_section_header(trimmed).is_some() || crate::plain::is_chord_line(trimmed)
 }
 
 fn normalize_ug_plain_line(line: &str) -> Vec<String> {
@@ -478,11 +621,20 @@ fn ug_inline_content_to_chordpro(
         .replace("<br />", "\n")
         .replace("<br>", "\n");
 
+    let raw_lines: Vec<&str> = normalized.lines().collect();
+    let appendix_from = ug_appendix_line_index(&raw_lines);
     let mut seen_section = false;
     let mut preamble: Vec<String> = Vec::new();
-    for line in normalized.lines() {
+    for (idx, line) in raw_lines.iter().enumerate() {
         let trimmed = line.trim();
         if trimmed.is_empty() {
+            continue;
+        }
+        if appendix_from.is_some_and(|start| idx >= start) {
+            let text = appendix_plain_text(line);
+            if !text.is_empty() {
+                out.push_str(&format!("{{notes: {text}}}\n"));
+            }
             continue;
         }
         if split_leading_section_header(trimmed).is_some()
@@ -502,8 +654,15 @@ fn ug_inline_content_to_chordpro(
             continue;
         }
         if !seen_section {
-            preamble.push(strip_ug_chord_markers(trimmed));
-            continue;
+            if looks_like_ug_chart_line(line) {
+                for note in preamble.drain(..) {
+                    out.push_str(&format!("{{notes: {note}}}\n"));
+                }
+                seen_section = true;
+            } else {
+                preamble.push(strip_ug_chord_markers(trimmed));
+                continue;
+            }
         }
         out.push_str(line);
         out.push('\n');
@@ -591,7 +750,10 @@ mod tests {
 
     #[test]
     fn decodes_numeric_html_entities() {
-        assert_eq!(decode_html_entities("summer&#039;s evenin&#39;"), "summer's evenin'");
+        assert_eq!(
+            decode_html_entities("summer&#039;s evenin&#39;"),
+            "summer's evenin'"
+        );
         assert_eq!(decode_html_entities("&amp;amp;"), "&");
     }
 
@@ -657,7 +819,9 @@ mod tests {
             Some("Jeff Buckley"),
             Some("C"),
         );
-        assert!(plain.contains("note: Capo 5 for the original studio version  https://example.com/a"));
+        assert!(
+            plain.contains("note: Capo 5 for the original studio version  https://example.com/a")
+        );
         assert!(plain.contains("note: Capo 6 for the official video  https://example.com/b"));
         assert!(plain.contains("[Verse 1]"));
         let verse_idx = plain.find("[Verse 1]").unwrap();
@@ -681,8 +845,100 @@ mod tests {
     }
 
     #[test]
+    fn unlabeled_chart_starts_at_first_chord_line() {
+        let plain = ug_tab_content_to_plain(
+            "Fly Me To The Moon chords\nhttps://example.com/wiki\n\n[tab][ch]Am[/ch]          [ch]Dm7[/ch]\nFly me to the moon[/tab]",
+            Some("Fly Me To The Moon"),
+            Some("Frank Sinatra"),
+            Some("C"),
+        );
+        assert!(plain.contains("note: Fly Me To The Moon chords"));
+        assert!(plain.contains("note: https://example.com/wiki"));
+        assert!(plain.contains("Am          Dm7"));
+        assert!(plain.contains("Fly me to the moon"));
+        let chord_idx = plain.find("Am          Dm7").unwrap();
+        let note_idx = plain.find("note: Fly Me To The Moon chords").unwrap();
+        assert!(note_idx < chord_idx);
+    }
+
+    #[test]
+    fn trailing_transcriber_appendix_becomes_notes() {
+        let plain = ug_tab_content_to_plain(
+            "[tab]   [ch]Dm7[/ch]          [ch]G[/ch] [ch]G7[/ch]   [ch]C[/ch]\nIn other words  I love you![/tab]\n\n*    It has been suggested that Am7, Dm7 and Fmaj7 could be used as an option\n**   It has been suggested that instead of ending with Cmaj7 try ending with C then Cmaj7\n\n***  Alternates:\n\nCapo III\n\n[ch]Am[/ch]    = [ch]F#m[/ch]\n[ch]Dm7[/ch]   = [ch]Bm7[/ch] ****\n[ch]Cmaj7[/ch] = [ch]G[/ch] (or [ch]Gmaj7[/ch])\n\nOpen (These chords are not in the original key)\n\n[ch]Am[/ch]    = [ch]Bm[/ch]\n\nSet8",
+            Some("Fly Me To The Moon"),
+            Some("Frank Sinatra"),
+            Some("C"),
+        );
+        assert!(plain.contains("In other words  I love you!"));
+        assert!(plain.contains(
+            "note: *    It has been suggested that Am7, Dm7 and Fmaj7 could be used as an option"
+        ));
+        assert!(plain.contains("note: Am    = F#m"));
+        assert!(plain.contains("note: Capo III"));
+        assert!(plain.contains("note: Open (These chords are not in the original key)"));
+        assert!(plain.contains("note: Set8"));
+        let lyric_idx = plain.find("I love you!").unwrap();
+        for line in plain[lyric_idx..].lines().skip(1) {
+            if line.contains("It has been suggested")
+                || line.contains("Am    = F#m")
+                || line.contains("Capo III")
+                || line.contains("Set8")
+            {
+                assert!(
+                    line.trim_start().starts_with("note:"),
+                    "appendix line should be a note: {line}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn capo_heading_before_chord_map_is_pulled_into_notes() {
+        let plain = ug_tab_content_to_plain(
+            "[tab][ch]C[/ch]\nHello[/tab]\n\nCapo V\n[ch]Am[/ch]    = [ch]Em[/ch]\n[ch]G7[/ch]    = [ch]D7[/ch]",
+            Some("Example"),
+            Some("Artist"),
+            Some("C"),
+        );
+        assert!(plain.contains("Hello"));
+        assert!(plain.contains("note: Capo V"));
+        assert!(plain.contains("note: Am    = Em"));
+        assert!(!plain.lines().any(|line| line.trim() == "Capo V"));
+    }
+
+    #[test]
+    fn starred_adlib_lyric_is_not_an_appendix() {
+        let plain = ug_tab_content_to_plain(
+            "[tab][ch]C[/ch]\n*whoa*[/tab]\n[tab][ch]G[/ch]\nmore lyrics[/tab]",
+            Some("Example"),
+            Some("Artist"),
+            Some("C"),
+        );
+        assert!(plain.contains("*whoa*"));
+        assert!(!plain.contains("note: *whoa*"));
+        assert!(plain.contains("more lyrics"));
+    }
+
+    #[test]
+    fn parenthesized_chord_groups_stay_on_the_chord_line() {
+        let plain = ug_tab_content_to_plain(
+            "[Intro]\n( [ch]Am[/ch] [ch]Dm[/ch] [ch]G[/ch] ) [ch]C[/ch]",
+            Some("Example"),
+            Some("Artist"),
+            Some("C"),
+        );
+        assert!(plain.contains("[Intro]"));
+        assert!(
+            plain.contains("( Am Dm G ) C")
+                || plain.contains("(Am Dm G) C")
+                || plain.contains("( Am Dm G )")
+        );
+    }
+
+    #[test]
     fn normalizes_inline_chord_progression_with_repeat() {
-        let parts = normalize_ug_plain_line("[ch]Am[/ch]   [ch]E7[/ch]   [ch]G[/ch]   [ch]D[/ch]   x2");
+        let parts =
+            normalize_ug_plain_line("[ch]Am[/ch]   [ch]E7[/ch]   [ch]G[/ch]   [ch]D[/ch]   x2");
         assert_eq!(parts[0], "Am   E7   G   D");
         assert_eq!(parts[1], "Repeat 2×");
     }

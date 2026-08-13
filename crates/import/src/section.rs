@@ -79,8 +79,8 @@ pub fn is_no_chord_mark(token: &str) -> bool {
 pub fn is_layout_marker(inner: &str) -> bool {
     matches!(
         inner.trim(),
-        "" | "|" | "-" | "/" | ":" | "." | "||" | "||:" | ":||"
-    )         || is_no_chord_mark(inner)
+        "" | "|" | "-" | "/" | ":" | "." | "||" | "||:" | ":||" | "(" | ")" | "*" | "**" | "***"
+    ) || is_no_chord_mark(inner)
         || is_capo_fragment(inner)
         || is_repeat_marker(inner)
 }
@@ -170,8 +170,13 @@ pub fn is_inline_capo_line(line: &str) -> bool {
     if !lower.starts_with("capo") {
         return false;
     }
-    lower
-        .chars()
-        .skip(4)
-        .all(|c| c.is_whitespace() || c.is_ascii_digit())
+    let rest = lower[4..].trim();
+    rest.is_empty()
+        || rest
+            .chars()
+            .all(|c| c.is_whitespace() || c.is_ascii_digit())
+        || matches!(
+            rest,
+            "i" | "ii" | "iii" | "iv" | "v" | "vi" | "vii" | "viii" | "ix" | "x" | "xi" | "xii"
+        )
 }

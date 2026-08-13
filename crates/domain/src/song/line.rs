@@ -272,6 +272,10 @@ impl ChordToken {
         &self.chord
     }
 
+    pub fn chord_mut(&mut self) -> &mut Chord {
+        &mut self.chord
+    }
+
     #[must_use]
     pub fn lyric_index(&self) -> Option<u32> {
         self.lyric_index

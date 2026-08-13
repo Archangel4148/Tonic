@@ -245,7 +245,7 @@ fn apply_metadata(
     }
 }
 
-fn is_chord_line(line: &str) -> bool {
+pub(crate) fn is_chord_line(line: &str) -> bool {
     let tokens: Vec<&str> = line.split_whitespace().collect();
     if tokens.is_empty() {
         return false;
@@ -298,7 +298,8 @@ fn parse_chord_positions(
 ) -> Vec<(tonic_domain::Chord, u32)> {
     let chars: Vec<char> = line.chars().collect();
     let mut i = 0;
-    let mut out = Vec::new();
+    let mut out: Vec<(tonic_domain::Chord, u32)> = Vec::new();
+    let mut pending_leading = false;
     while i < chars.len() {
         if chars[i].is_whitespace() {
             i += 1;
@@ -310,6 +311,18 @@ fn parse_chord_positions(
             j += 1;
         }
         let token: String = chars[i..j].iter().collect();
+        if token == "(" {
+            pending_leading = true;
+            i = j;
+            continue;
+        }
+        if token == ")" {
+            if let Some((chord, _)) = out.last_mut() {
+                chord.add_trailing_paren();
+            }
+            i = j;
+            continue;
+        }
         if is_layout_marker(&token) || is_repeat_marker(&token) || is_no_chord_mark(&token) {
             i = j;
             continue;
@@ -323,7 +336,11 @@ fn parse_chord_positions(
             i = j;
             continue;
         }
-        let chord = parse_chord(cleaned);
+        let mut chord = parse_chord(cleaned);
+        if pending_leading {
+            chord.add_leading_paren();
+            pending_leading = false;
+        }
         match chord.status() {
             ParseStatus::FullyRecognized => {}
             ParseStatus::PartiallyRecognized => warnings.push(ImportWarning::new(

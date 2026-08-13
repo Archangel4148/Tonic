@@ -460,8 +460,27 @@ fn parse_chordpro_line(line: &str, line_no: u32) -> (Line, Vec<ImportWarning>) {
     let mut tokens = Vec::new();
     let mut warnings = Vec::new();
     let mut rest = line.trim_end();
+    let mut pending_leading = false;
 
     while !rest.is_empty() {
+        if rest.starts_with('(') {
+            let after = rest[1..].trim_start();
+            if after.starts_with('[') {
+                pending_leading = true;
+                rest = &rest[1..];
+                continue;
+            }
+        }
+        if rest.starts_with(')') {
+            if let Some(token) = tokens.iter_mut().rev().find_map(|token| match token {
+                LineToken::Chord(chord) => Some(chord),
+                _ => None,
+            }) {
+                token.chord_mut().add_trailing_paren();
+                rest = &rest[1..];
+                continue;
+            }
+        }
         if let Some(stripped) = rest.strip_prefix('[') {
             match stripped.find(']') {
                 None => {
@@ -478,7 +497,11 @@ fn parse_chordpro_line(line: &str, line_no: u32) -> (Line, Vec<ImportWarning>) {
                     if is_layout_marker(chord_text) {
                         // Bar lines, N.C., empty `[]` — keep lyrics flowing.
                     } else {
-                        let chord = parse_chord(chord_text);
+                        let mut chord = parse_chord(chord_text);
+                        if pending_leading {
+                            chord.add_leading_paren();
+                            pending_leading = false;
+                        }
                         match chord.status() {
                             ParseStatus::FullyRecognized => {}
                             ParseStatus::PartiallyRecognized => warnings.push(ImportWarning::new(

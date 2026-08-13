@@ -160,6 +160,12 @@ pub struct Chord {
     /// Distinct from alteration groups like `C7(b9)`.
     #[serde(default)]
     parenthesized: bool,
+    /// `(` attached to this chord as part of a parenthesized group (`(Am`).
+    #[serde(default)]
+    leading_paren: bool,
+    /// `)` attached to this chord as part of a parenthesized group (`G)`).
+    #[serde(default)]
+    trailing_paren: bool,
 }
 
 impl Chord {
@@ -179,6 +185,8 @@ impl Chord {
             source_text,
             status: ParseStatus::Unrecognized,
             parenthesized: false,
+            leading_paren: false,
+            trailing_paren: false,
         }
     }
 
@@ -210,6 +218,8 @@ impl Chord {
             status,
             unparsed_tail: unparsed_tail.into(),
             parenthesized: false,
+            leading_paren: false,
+            trailing_paren: false,
         }
     }
 
@@ -217,6 +227,30 @@ impl Chord {
     pub fn with_parenthesized(mut self, parenthesized: bool) -> Self {
         self.parenthesized = parenthesized;
         self
+    }
+
+    #[must_use]
+    pub fn with_edge_parens(mut self, leading: bool, trailing: bool) -> Self {
+        self.leading_paren = leading;
+        self.trailing_paren = trailing;
+        if leading && trailing {
+            self.parenthesized = true;
+        }
+        self
+    }
+
+    pub fn add_leading_paren(&mut self) {
+        self.leading_paren = true;
+        if self.trailing_paren {
+            self.parenthesized = true;
+        }
+    }
+
+    pub fn add_trailing_paren(&mut self) {
+        self.trailing_paren = true;
+        if self.leading_paren {
+            self.parenthesized = true;
+        }
     }
 
     #[must_use]
@@ -261,7 +295,17 @@ impl Chord {
 
     #[must_use]
     pub fn parenthesized(&self) -> bool {
-        self.parenthesized
+        self.parenthesized || (self.leading_paren && self.trailing_paren)
+    }
+
+    #[must_use]
+    pub fn leading_paren(&self) -> bool {
+        self.parenthesized || self.leading_paren
+    }
+
+    #[must_use]
+    pub fn trailing_paren(&self) -> bool {
+        self.parenthesized || self.trailing_paren
     }
 
     #[must_use]
@@ -346,8 +390,14 @@ impl Chord {
             out.push('/');
             out.push_str(&bass.symbol());
         }
-        if self.parenthesized {
+        let leading = self.parenthesized || self.leading_paren;
+        let trailing = self.parenthesized || self.trailing_paren;
+        if leading && trailing {
             format!("({out})")
+        } else if leading {
+            format!("({out}")
+        } else if trailing {
+            format!("{out})")
         } else {
             out
         }

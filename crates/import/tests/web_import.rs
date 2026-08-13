@@ -344,6 +344,43 @@ fn preamble_before_first_section_becomes_song_notes() {
 }
 
 #[test]
+fn unlabeled_ug_chart_is_not_swallowed_as_notes() {
+    let html = include_str!("../fixtures/web/ultimate_guitar_unlabeled_chart.html");
+    let result = import_web_html(
+        "https://tabs.ultimate-guitar.com/tab/frank-sinatra/fly-me-to-the-moon-chords-335196",
+        html,
+        SongId::new("song-unlabeled"),
+    )
+    .expect("unlabeled fixture should parse");
+
+    assert_eq!(result.song.title(), "Fly Me To The Moon");
+    assert_eq!(result.song.artist(), Some("Frank Sinatra"));
+    let notes = result.song.notes().unwrap_or("");
+    assert!(notes.contains("Fly Me To The Moon chords"), "{notes}");
+    assert!(notes.contains("wikipedia.org"), "{notes}");
+
+    let has_lyric = result.song.sections().iter().any(|section| {
+        section
+            .lines()
+            .iter()
+            .any(|line| line.lyric_text().contains("Fly me to the moon"))
+    });
+    assert!(has_lyric, "expected lyric lines, notes={notes:?}");
+
+    let intro = result
+        .song
+        .sections()
+        .iter()
+        .find(|section| matches!(section.label(), SectionLabel::Intro))
+        .expect("intro from parenthesized group");
+    let symbols: Vec<_> = intro.lines()[0]
+        .chord_tokens()
+        .map(|token| token.chord().symbol())
+        .collect();
+    assert_eq!(symbols, vec!["(Am", "Dm", "G)", "C"]);
+}
+
+#[test]
 fn rejects_pages_without_js_store() {
     let err = import_web_html(
         "https://tabs.ultimate-guitar.com/tab/x/y-chords-1",
@@ -352,4 +389,27 @@ fn rejects_pages_without_js_store() {
     )
     .unwrap_err();
     assert!(err.to_string().contains("Could not find song data"));
+}
+
+#[test]
+fn ellipsis_in_lyrics_does_not_crash_import() {
+    let html = include_str!("../fixtures/web/ultimate_guitar_ellipsis.html");
+    let result = import_web_html(
+        "https://tabs.ultimate-guitar.com/tab/three-dog-night/joy-to-the-world-chords-692363",
+        html,
+        SongId::new("song-ellipsis"),
+    )
+    .expect("ellipsis fixture should parse");
+    assert_eq!(result.song.title(), "Joy To The World");
+    assert!(
+        result
+            .song
+            .sections()
+            .iter()
+            .any(|section| section
+                .lines()
+                .iter()
+                .any(|line| line.lyric_text().contains("Joy to the world"))),
+        "expected chorus lyrics"
+    );
 }

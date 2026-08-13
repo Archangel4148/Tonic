@@ -133,6 +133,37 @@ fn bar_lines_in_chord_progressions_are_not_warnings() {
 }
 
 #[test]
+fn parenthesized_chord_groups_are_recognized_and_keep_parens() {
+    let input = "[Intro]\n( Am Dm G ) C\n";
+    let result = import(input, ImportFormat::PlainText, "paren-groups");
+    let intro = result
+        .song
+        .sections()
+        .iter()
+        .find(|section| matches!(section.label(), SectionLabel::Intro))
+        .expect("intro");
+    let symbols: Vec<_> = intro.lines()[0]
+        .chord_tokens()
+        .map(|token| token.chord().symbol())
+        .collect();
+    assert_eq!(symbols, vec!["(Am", "Dm", "G)", "C"]);
+    assert!(
+        intro
+            .lines()[0]
+            .chord_tokens()
+            .all(|token| token.chord().status() == ParseStatus::FullyRecognized)
+    );
+    assert!(
+        !result
+            .warnings
+            .iter()
+            .any(|warning| warning.kind == WarningKind::UnrecognizedChord),
+        "{:?}",
+        result.warnings
+    );
+}
+
+#[test]
 fn auto_detects_plain_text_fixture() {
     let result = import_auto(AMAZING, "auto-txt");
     assert_eq!(result.song.title(), "Amazing Grace");

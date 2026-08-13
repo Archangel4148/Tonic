@@ -12,8 +12,8 @@ use crate::note::Note;
 pub fn parse_chord(input: &str) -> Chord {
     let original = input.to_string();
     let trimmed_input = input.trim();
-    let trimmed = unwrap_outer_parens(trimmed_input);
-    let parenthesized = trimmed != trimmed_input;
+    let (trimmed, leading_paren, trailing_paren) = strip_edge_group_parens(trimmed_input);
+    let parenthesized = leading_paren && trailing_paren;
     if trimmed.is_empty() {
         return Chord::unrecognized(original);
     }
@@ -77,24 +77,47 @@ pub fn parse_chord(input: &str) -> Chord {
         status,
     )
     .with_parenthesized(parenthesized)
+    .with_edge_parens(leading_paren, trailing_paren)
 }
 
-/// Strip one or more layers of parentheses that wrap the entire symbol.
+/// Strip grouping parentheses that wrap a chord or sit on a group edge.
 ///
-/// Chart authors often write optional/echoed chords as `(Eb)` or `(G)`. Alteration
-/// groups like `C7(b9)` are not fully wrapped, so they are left alone.
-fn unwrap_outer_parens(input: &str) -> &str {
+/// `(Eb)` and `(Am` / `G)` are grouping markup. Alteration groups like `C7(b9)`
+/// are left intact because their parentheses are balanced inside the symbol.
+fn strip_edge_group_parens(input: &str) -> (&str, bool, bool) {
     let mut s = input;
-    while s.len() >= 2 && s.starts_with('(') && s.ends_with(')') {
-        let inner = &s[1..s.len() - 1];
-        // Only unwrap when the outer pair matches (no earlier close).
-        if matching_outer_parens(s) {
-            s = inner.trim();
-        } else {
-            break;
+    let mut leading = false;
+    let mut trailing = false;
+
+    while matching_outer_parens(s) {
+        leading = true;
+        trailing = true;
+        s = s[1..s.len() - 1].trim();
+    }
+
+    while s.starts_with('(') && !matching_outer_parens(s) {
+        leading = true;
+        s = s[1..].trim_start();
+    }
+
+    while s.ends_with(')') && paren_balance(s) < 0 {
+        trailing = true;
+        s = s[..s.len() - 1].trim_end();
+    }
+
+    (s, leading, trailing)
+}
+
+fn paren_balance(s: &str) -> i32 {
+    let mut depth = 0i32;
+    for ch in s.chars() {
+        match ch {
+            '(' => depth += 1,
+            ')' => depth -= 1,
+            _ => {}
         }
     }
-    s
+    depth
 }
 
 fn matching_outer_parens(s: &str) -> bool {
@@ -437,7 +460,10 @@ impl<'a> Cursor<'a> {
 
     fn try_str_ci(&mut self, token: &str) -> bool {
         let rest = self.rest();
-        if rest.len() >= token.len() && rest[..token.len()].eq_ignore_ascii_case(token) {
+        let Some(prefix) = rest.get(..token.len()) else {
+            return false;
+        };
+        if prefix.eq_ignore_ascii_case(token) {
             self.pos += token.len();
             true
         } else {
@@ -519,8 +545,12 @@ mod tests {
         assert_full("(C7b9)", "(C7b9)");
         assert_full("C7-9", "C7b9");
         assert_full("C7(-9)", "C7b9");
+        assert_full("(Am", "(Am");
+        assert_full("G)", "G)");
         assert!(!parse_chord("C7(b9)").parenthesized());
         assert!(parse_chord("(Eb)").parenthesized());
+        assert!(parse_chord("(Am").leading_paren());
+        assert!(parse_chord("G)").trailing_paren());
     }
 
     #[test]
@@ -568,6 +598,14 @@ mod tests {
         let cfoo = parse_chord("Cxyz");
         assert_eq!(cfoo.status(), ParseStatus::PartiallyRecognized);
         assert_eq!(cfoo.symbol(), "C");
+
+        // Multi-byte punctuation after a note must not panic (UG `&hellip;` → `…`).
+        let ellipsis = parse_chord("D…");
+        assert_eq!(ellipsis.status(), ParseStatus::PartiallyRecognized);
+        assert_eq!(ellipsis.symbol(), "D");
+        let _ = parse_chord("Singin'…");
+        let _ = parse_chord("All…");
+        let _ = parse_chord("Cadd…");
     }
 
     #[test]
