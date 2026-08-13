@@ -89,6 +89,17 @@ pub fn concert_key(played: Key, capo: Capo) -> Key {
     }
 }
 
+/// Fret that makes `played` shapes sound in `concert` (same mode). `0` is unison.
+#[must_use]
+pub fn fret_between(played: Key, concert: Key) -> Option<u8> {
+    if played.mode() != concert.mode() {
+        return None;
+    }
+    let delta = (i32::from(concert.pitch_class().value()) - i32::from(played.pitch_class().value()))
+        .rem_euclid(12) as u8;
+    Capo::new(delta).ok().map(Capo::fret)
+}
+
 /// Played key/shapes implied by a sounding key under a capo.
 #[must_use]
 pub fn played_key(concert: Key, capo: Capo) -> Key {
@@ -115,6 +126,15 @@ mod tests {
         let sounding_key = Key::parse("A").unwrap();
         assert_eq!(played_key(sounding_key, capo).symbol(), "G");
         assert_eq!(concert_key(Key::parse("G").unwrap(), capo).symbol(), "A");
+    }
+
+    #[test]
+    fn fret_between_g_shapes_sounding_a_is_2() {
+        let g = Key::parse("G").unwrap();
+        let a = Key::parse("A").unwrap();
+        assert_eq!(fret_between(g, a), Some(2));
+        assert_eq!(fret_between(g, g), Some(0));
+        assert_eq!(fret_between(g, Key::parse("Am").unwrap()), None);
     }
 
     #[test]

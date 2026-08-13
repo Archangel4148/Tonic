@@ -93,6 +93,25 @@ function buildAriaLabel(line: LineView): string | undefined {
   return `${line.lyrics}. Chords: ${chordText}`;
 }
 
+function chordTitle(chord: ChordView): string {
+  const statusLabel =
+    chord.status === "unrecognized"
+      ? "unrecognized"
+      : chord.status === "partiallyRecognized"
+        ? "partially recognized"
+        : null;
+  if (statusLabel) {
+    return `${chord.symbol} (${statusLabel})`;
+  }
+  if (chord.symbol !== chord.written) {
+    return `${chord.symbol} (written ${chord.written})`;
+  }
+  if (chord.sounding && chord.sounding !== chord.symbol) {
+    return `${chord.symbol} (sounds ${chord.sounding})`;
+  }
+  return chord.symbol;
+}
+
 function ChordMark({ chord }: { chord: ChordView }) {
   const unusual =
     chord.status === "unrecognized" || chord.status === "partiallyRecognized";
@@ -105,13 +124,7 @@ function ChordMark({ chord }: { chord: ChordView }) {
   return (
     <span
       className={unusual ? `chord chord--${chord.status}` : "chord"}
-      title={
-        chord.symbol === chord.written
-          ? statusLabel
-            ? `${chord.symbol} (${statusLabel})`
-            : chord.symbol
-          : `${chord.symbol} (written ${chord.written})`
-      }
+      title={chordTitle(chord)}
     >
       {chord.symbol}
       {statusLabel && <span className="sr-only"> ({statusLabel})</span>}

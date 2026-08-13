@@ -41,6 +41,7 @@ import {
   setPerformanceKey,
   toggleFavorite,
   transposeSong,
+  setTransposeMode,
   updateMetadata,
   updateSetlistEntry,
   updateSetlistMeta,
@@ -388,6 +389,7 @@ function App() {
         }
         onSelectKey={(key) => void runAction(() => setPerformanceKey(key))}
         onResetKey={() => void runAction(() => resetPerformanceKey())}
+        onModeChange={(mode) => void runAction(() => setTransposeMode(mode))}
       />
     );
   }
@@ -700,6 +702,8 @@ function App() {
                     displayKey={session.song.displayKey}
                     semitoneOffset={session.semitoneOffset}
                     keys={keys}
+                    mode={session.transposeMode}
+                    capoFret={session.capoFret}
                     disabled={busy}
                     onTranspose={(semitones) =>
                       void runAction(() => transposeSong(semitones))
@@ -708,6 +712,9 @@ function App() {
                       void runAction(() => setPerformanceKey(key))
                     }
                     onReset={() => void runAction(() => resetPerformanceKey())}
+                    onModeChange={(mode) =>
+                      void runAction(() => setTransposeMode(mode))
+                    }
                   />
                 )}
               </div>

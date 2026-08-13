@@ -102,6 +102,14 @@ fn reset_performance_key(
 }
 
 #[tauri::command]
+fn set_transpose_mode(
+    services: tauri::State<'_, AppServices>,
+    mode: String,
+) -> Result<SongSessionView, String> {
+    services.set_transpose_mode(&mode)
+}
+
+#[tauri::command]
 fn clear_song(services: tauri::State<'_, AppServices>) -> Result<(), String> {
     services.close_song()
 }
@@ -432,6 +440,7 @@ pub fn run() {
             transpose_song,
             set_performance_key,
             reset_performance_key,
+            set_transpose_mode,
             clear_song,
             library_list,
             library_open,

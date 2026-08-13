@@ -13,7 +13,9 @@ mod score;
 mod song;
 mod transpose;
 
-pub use capo::{concert_key, concert_pitch, played_key, played_shape, Capo, CapoError};
+pub use capo::{
+    concert_key, concert_pitch, fret_between, played_key, played_shape, Capo, CapoError,
+};
 pub use chord::{
     AddedTone, Alteration, Chord, Extension, ParseStatus, Quality, Seventh, Suspension,
 };

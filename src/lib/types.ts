@@ -13,9 +13,12 @@ export type ImportFormat = "auto" | "chordPro" | "plainText" | "musicXml";
 export type ChordStatus =
   "fullyRecognized" | "partiallyRecognized" | "unrecognized";
 
+export type TransposeMode = "chords" | "capo";
+
 export type ChordView = {
   symbol: string;
   written: string;
+  sounding: string;
   lyricIndex: number;
   column: number | null;
   status: ChordStatus | string;
@@ -62,6 +65,9 @@ export type SongSession = {
   favorite: boolean;
   tags: string[];
   setlist: SetlistContext | null;
+  transposeMode: TransposeMode;
+  capoFret: number | null;
+  playedKey: string | null;
   sheetMusicXml: string | null;
 };
 

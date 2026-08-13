@@ -13,7 +13,7 @@ use std::path::Path;
 
 pub use file::FileLibrary;
 pub use memory::MemoryLibrary;
-pub use record::StoredSong;
+pub use record::{StoredSong, TransposeMode};
 pub use setlist::{SetlistEntry, SetlistSnapshot, StoredSetlist};
 
 /// Recoverable persistence failure.
@@ -116,6 +116,8 @@ mod tests {
             tags: vec!["gospel".into()],
             last_opened_at: Some(10),
             last_modified_at: Some(20),
+            transpose_mode: crate::TransposeMode::Chords,
+            capo_fret: None,
         };
         library.save(&record).unwrap();
         library.save_next_id(2).unwrap();
@@ -142,6 +144,7 @@ mod tests {
                 performance_key: Some("Bb".into()),
                 capo_fret: Some(2),
                 notes: Some("slow intro".into()),
+                transpose_mode: crate::TransposeMode::Chords,
             }],
             updated_at: Some(30),
         };
@@ -167,6 +170,8 @@ mod tests {
                 tags: vec![],
                 last_opened_at: None,
                 last_modified_at: None,
+                transpose_mode: crate::TransposeMode::Chords,
+                capo_fret: None,
             })
             .unwrap();
         let (_, songs) = library.load_all().unwrap();

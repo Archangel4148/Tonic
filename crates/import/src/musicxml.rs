@@ -28,18 +28,18 @@ pub fn import_musicxml_bytes(
 ) -> ImportResult {
     match decode_score_text(bytes, file_name) {
         Ok(xml) => import_musicxml(&xml, id),
-        Err(message) => ImportResult {
-            song: Song::builder(id, "Untitled score")
+        Err(message) => ImportResult::new(
+            Song::builder(id, "Untitled score")
                 .source(SongSource::music_xml(
                     String::from_utf8_lossy(bytes).into_owned(),
                 ))
                 .build(),
-            warnings: vec![ImportWarning::new(
+            vec![ImportWarning::new(
                 WarningKind::MalformedInput,
                 message,
                 None,
             )],
-        },
+        ),
     }
 }
 
@@ -142,12 +142,12 @@ fn parse_musicxml(input: &str, id: SongId) -> ImportResult {
                 format!("MusicXML could not be parsed: {error}"),
                 None,
             ));
-            return ImportResult {
-                song: Song::builder(id, "Untitled score")
+            return ImportResult::new(
+                Song::builder(id, "Untitled score")
                     .source(SongSource::music_xml(input.to_string()))
                     .build(),
                 warnings,
-            };
+            );
         }
     };
     let root = document.root_element();
@@ -158,12 +158,12 @@ fn parse_musicxml(input: &str, id: SongId) -> ImportResult {
             format!("Expected a MusicXML score, found <{root_name}>."),
             None,
         ));
-        return ImportResult {
-            song: Song::builder(id, "Untitled score")
+        return ImportResult::new(
+            Song::builder(id, "Untitled score")
                 .source(SongSource::music_xml(input.to_string()))
                 .build(),
             warnings,
-        };
+        );
     }
 
     let mut unsupported = HashSet::new();
@@ -219,10 +219,7 @@ fn parse_musicxml(input: &str, id: SongId) -> ImportResult {
     if let Some(tempo) = tempo {
         builder = builder.tempo(tempo);
     }
-    ImportResult {
-        song: builder.build(),
-        warnings,
-    }
+    ImportResult::new(builder.build(), warnings)
 }
 
 fn parse_parts(

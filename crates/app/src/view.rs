@@ -7,6 +7,7 @@ use tonic_domain::{
 use tonic_import::{
     ImportWarning, WarningKind, UNRECOGNIZED_CONTENT_MESSAGE, UNSUPPORTED_MUSICXML_MESSAGE,
 };
+use tonic_persist::TransposeMode;
 
 use crate::infer_key_from_content;
 use crate::setlist::SetlistContextView;
@@ -22,6 +23,12 @@ pub struct SongSessionView {
     pub favorite: bool,
     pub tags: Vec<String>,
     pub setlist: Option<SetlistContextView>,
+    /// How the performance key is realized: rewrite chords, or keep shapes + capo.
+    pub transpose_mode: TransposeMode,
+    /// Capo fret when using capo transpose (library or setlist).
+    pub capo_fret: Option<u8>,
+    /// Fingered key when a capo is in use (written shapes).
+    pub played_key: Option<String>,
     /// Derived MusicXML for OSMD. `None` when the song has no score.
     pub sheet_music_xml: Option<String>,
 }
@@ -64,10 +71,12 @@ pub struct LineView {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ChordView {
-    /// Performance-key spelling to show.
+    /// Performance-key spelling, or written shape when using capo transpose.
     pub symbol: String,
     /// Written (authoritative) symbol from the song document.
     pub written: String,
+    /// Concert/sounding spelling (same as `symbol` unless capo mode).
+    pub sounding: String,
     pub lyric_index: u32,
     pub column: Option<u32>,
     pub status: String,
@@ -90,15 +99,21 @@ impl SongSessionView {
         favorite: bool,
         tags: Vec<String>,
         setlist: Option<SetlistContextView>,
+        transpose_mode: TransposeMode,
+        capo_fret: Option<u8>,
+        played_key: Option<String>,
     ) -> Self {
         Self {
-            song: SongView::from_song(song),
+            song: SongView::from_song(song, transpose_mode),
             warnings: warnings.iter().map(WarningView::from).collect(),
             summary_message: summary_from_warnings(warnings),
             semitone_offset,
             favorite,
             tags,
             setlist,
+            transpose_mode,
+            capo_fret,
+            played_key,
             sheet_music_xml: sheet_music_xml(song, semitone_offset),
         }
     }
@@ -106,7 +121,7 @@ impl SongSessionView {
 
 impl SongView {
     #[must_use]
-    pub fn from_song(song: &Song) -> Self {
+    pub fn from_song(song: &Song, transpose_mode: TransposeMode) -> Self {
         Self {
             id: song.id().as_str().to_string(),
             title: song.title().to_string(),
@@ -128,7 +143,7 @@ impl SongView {
                     lines: section
                         .lines()
                         .iter()
-                        .map(|line| line_view(song, line))
+                        .map(|line| line_view(song, line, transpose_mode))
                         .collect(),
                 })
                 .collect(),
@@ -153,15 +168,21 @@ fn display_key(song: &Song) -> Option<String> {
         .map(|key| key.symbol())
 }
 
-fn line_view(song: &Song, line: &Line) -> LineView {
+fn line_view(song: &Song, line: &Line, transpose_mode: TransposeMode) -> LineView {
     let chords = line
         .chord_lyric_alignments()
         .into_iter()
         .map(|alignment| {
-            let display = song.display_chord(&alignment.chord);
+            let sounding = song.display_chord(&alignment.chord);
+            let keep_shapes = matches!(transpose_mode, TransposeMode::Capo);
             ChordView {
-                symbol: display.symbol(),
+                symbol: if keep_shapes {
+                    alignment.chord.source_text().to_string()
+                } else {
+                    sounding.symbol()
+                },
                 written: alignment.chord.source_text().to_string(),
+                sounding: sounding.symbol(),
                 lyric_index: alignment.lyric_index,
                 column: alignment.column,
                 status: parse_status_name(alignment.chord.status()).to_string(),
@@ -267,8 +288,7 @@ pub fn performance_key_choices() -> Vec<String> {
 mod tests {
     use super::*;
     use tonic_domain::{
-        parse_chord, ChordToken, Key, LineToken, LyricToken, Section, SectionLabel, Song,
-        SongId,
+        parse_chord, ChordToken, Key, LineToken, LyricToken, Section, SectionLabel, Song, SongId,
     };
 
     #[test]
@@ -288,15 +308,23 @@ mod tests {
             ))
             .build();
 
-        let view = SongView::from_song(&song);
+        let view = SongView::from_song(&song, TransposeMode::Chords);
         assert_eq!(view.sections[0].lines[0].chords[0].symbol, "D");
         assert_eq!(view.sections[0].lines[0].chords[0].written, "C");
         assert_eq!(view.sections[0].lines[0].chords[1].symbol, "A");
         assert_eq!(view.sections[0].lines[0].lyrics, "Hi there");
 
         song.set_performance_key(Some(Key::parse("C").unwrap()));
-        let reset = SongView::from_song(&song);
+        let reset = SongView::from_song(&song, TransposeMode::Chords);
         assert_eq!(reset.sections[0].lines[0].chords[0].symbol, "C");
+
+        song.set_performance_key(Some(Key::parse("D").unwrap()));
+        let capo = SongView::from_song(&song, TransposeMode::Capo);
+        assert_eq!(capo.sections[0].lines[0].chords[0].symbol, "C");
+        assert_eq!(capo.sections[0].lines[0].chords[0].written, "C");
+        assert_eq!(capo.sections[0].lines[0].chords[0].sounding, "D");
+        assert_eq!(capo.sections[0].lines[0].chords[1].symbol, "G");
+        assert_eq!(capo.sections[0].lines[0].chords[1].sounding, "A");
     }
 
     #[test]
@@ -313,7 +341,9 @@ mod tests {
             .section(section.clone())
             .build();
         assert_eq!(
-            SongView::from_song(&with_performance).display_key.as_deref(),
+            SongView::from_song(&with_performance, TransposeMode::Chords)
+                .display_key
+                .as_deref(),
             Some("D")
         );
 
@@ -322,7 +352,9 @@ mod tests {
             .section(section.clone())
             .build();
         assert_eq!(
-            SongView::from_song(&original_only).display_key.as_deref(),
+            SongView::from_song(&original_only, TransposeMode::Chords)
+                .display_key
+                .as_deref(),
             Some("C")
         );
 
@@ -330,7 +362,9 @@ mod tests {
             .section(section)
             .build();
         assert_eq!(
-            SongView::from_song(&inferred).display_key.as_deref(),
+            SongView::from_song(&inferred, TransposeMode::Chords)
+                .display_key
+                .as_deref(),
             Some("G")
         );
     }

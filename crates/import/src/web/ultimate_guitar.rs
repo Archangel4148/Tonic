@@ -11,7 +11,8 @@ use tonic_domain::{parse_chord, Key, ParseStatus, SectionLabel, SongId, SongSour
 use crate::chordpro::import_chordpro;
 use crate::plain::import_plain_text;
 use crate::section::{
-    is_chart_annotation, is_inline_capo_line, is_repeat_marker, split_leading_section_header,
+    is_chart_annotation, is_inline_capo_line, is_repeat_marker, parse_capo_fret,
+    split_leading_section_header,
 };
 use crate::warning::{ImportWarning, WarningKind};
 use crate::{ImportResult, WebImportError};
@@ -110,9 +111,12 @@ pub fn parse_ultimate_guitar_html(
         let plain = ug_tab_content_to_plain(&body, song_name, artist_name, tonality);
         import_plain_text(&plain, id)
     } else {
-        let chart = ug_inline_content_to_chordpro(&body, song_name, artist_name, tonality, capo);
+        let chart = ug_inline_content_to_chordpro(&body, song_name, artist_name, tonality);
         import_chordpro(&chart, id)
     };
+    if result.capo_fret.is_none() {
+        result.capo_fret = capo_fret_from_meta(capo);
+    }
 
     result.song.set_source(SongSource::web(
         url.trim(),
@@ -592,12 +596,16 @@ fn strip_ug_chord_markers(input: &str) -> String {
     out
 }
 
+fn capo_fret_from_meta(capo: Option<u64>) -> Option<u8> {
+    let fret = u8::try_from(capo?).ok()?;
+    parse_capo_fret(&fret.to_string())
+}
+
 fn ug_inline_content_to_chordpro(
     content: &str,
     title: Option<&str>,
     artist: Option<&str>,
     key: Option<&str>,
-    capo: Option<u64>,
 ) -> String {
     let mut out = String::new();
     if let Some(title) = title {
@@ -608,9 +616,6 @@ fn ug_inline_content_to_chordpro(
     }
     if let Some(key) = key {
         out.push_str(&format!("{{key: {key}}}\n"));
-    }
-    if let Some(capo) = capo.filter(|value| *value > 0) {
-        out.push_str(&format!("{{capo: {capo}}}\n"));
     }
     out.push('\n');
 
@@ -804,7 +809,6 @@ mod tests {
             Some("Amazing Grace"),
             Some("Traditional"),
             Some("G"),
-            Some(0),
         );
         assert!(chart.contains("{title: Amazing Grace}"));
         assert!(chart.contains("[G]Amazing [D]grace"));
@@ -941,5 +945,25 @@ mod tests {
             normalize_ug_plain_line("[ch]Am[/ch]   [ch]E7[/ch]   [ch]G[/ch]   [ch]D[/ch]   x2");
         assert_eq!(parts[0], "Am   E7   G   D");
         assert_eq!(parts[1], "Repeat 2×");
+    }
+
+    #[test]
+    fn listed_ug_capo_is_captured_as_import_fret() {
+        let html = r#"<div class="js-store" data-content="{&quot;store&quot;:{&quot;page&quot;:{&quot;data&quot;:{&quot;tab&quot;:{&quot;song_name&quot;:&quot;Demo&quot;,&quot;artist_name&quot;:&quot;A&quot;},&quot;tab_view&quot;:{&quot;meta&quot;:{&quot;capo&quot;:2,&quot;tonality&quot;:&quot;G&quot;},&quot;wiki_tab&quot;:{&quot;content&quot;:&quot;[tab][ch]G[/ch]\nHello[/tab]&quot;}}}}}}"></div>"#;
+        let result = parse_ultimate_guitar_html(
+            "https://tabs.ultimate-guitar.com/tab/a/demo-chords-1",
+            html,
+            SongId::new("song-1"),
+        )
+        .expect("parse");
+        assert_eq!(result.capo_fret, Some(2));
+        assert_eq!(
+            result
+                .song
+                .original_key()
+                .map(|key| key.symbol())
+                .as_deref(),
+            Some("G")
+        );
     }
 }

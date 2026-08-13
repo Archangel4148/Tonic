@@ -27,6 +27,7 @@ const session: SongSession = {
               {
                 symbol: "D",
                 written: "C",
+                sounding: "D",
                 lyricIndex: 0,
                 column: 0,
                 status: "fullyRecognized",
@@ -34,6 +35,7 @@ const session: SongSession = {
               {
                 symbol: "Xyz",
                 written: "Xyz",
+                sounding: "Xyz",
                 lyricIndex: 6,
                 column: 6,
                 status: "unrecognized",
@@ -57,6 +59,9 @@ const session: SongSession = {
   favorite: false,
   tags: ["demo"],
   setlist: null,
+  transposeMode: "chords",
+  capoFret: null,
+  playedKey: null,
   sheetMusicXml: null,
 };
 
@@ -74,6 +79,25 @@ describe("SongViewer", () => {
     expect(
       screen.getByText("Some content could not be recognized."),
     ).toBeInTheDocument();
+  });
+
+  it("shows a capo badge next to the title", () => {
+    render(
+      <SongViewer
+        session={{
+          ...session,
+          transposeMode: "capo",
+          capoFret: 2,
+          playedKey: "C",
+        }}
+      />,
+    );
+
+    expect(screen.getByRole("heading", { name: "Demo" })).toBeInTheDocument();
+    expect(
+      screen.getByTitle("Capo 2, play C shapes"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("play C")).toBeInTheDocument();
   });
 
   it("renders sheet music when derived MusicXML is present", () => {

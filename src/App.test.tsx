@@ -55,6 +55,7 @@ const demoSession: SongSession = {
               {
                 symbol: "G",
                 written: "G",
+                sounding: "G",
                 lyricIndex: 0,
                 column: null,
                 status: "fullyRecognized",
@@ -62,6 +63,7 @@ const demoSession: SongSession = {
               {
                 symbol: "D",
                 written: "D",
+                sounding: "D",
                 lyricIndex: "Amazing grace, how ".length,
                 column: null,
                 status: "fullyRecognized",
@@ -79,6 +81,9 @@ const demoSession: SongSession = {
   favorite: false,
   tags: ["hymn"],
   setlist: null,
+  transposeMode: "chords",
+  capoFret: null,
+  playedKey: null,
   sheetMusicXml: null,
 };
 
@@ -99,6 +104,7 @@ const transposedSession: SongSession = {
               {
                 symbol: "A",
                 written: "G",
+                sounding: "A",
                 lyricIndex: 0,
                 column: null,
                 status: "fullyRecognized",
@@ -106,6 +112,7 @@ const transposedSession: SongSession = {
               {
                 symbol: "E",
                 written: "D",
+                sounding: "E",
                 lyricIndex: "Amazing grace, how ".length,
                 column: null,
                 status: "fullyRecognized",
@@ -257,6 +264,67 @@ describe("App", () => {
     expect(mockedInvoke).toHaveBeenCalledWith("transpose_song", {
       semitones: 1,
     });
+  });
+
+  it("switches transpose to capo without rewriting chord names", async () => {
+    const capoSession: SongSession = {
+      ...transposedSession,
+      transposeMode: "capo",
+      capoFret: 2,
+      playedKey: "G",
+      song: {
+        ...transposedSession.song,
+        sections: [
+          {
+            label: "Verse 1",
+            lines: [
+              {
+                lyrics: "Amazing grace, how sweet the sound",
+                chords: [
+                  {
+                    symbol: "G",
+                    written: "G",
+                    sounding: "A",
+                    lyricIndex: 0,
+                    column: null,
+                    status: "fullyRecognized",
+                  },
+                  {
+                    symbol: "D",
+                    written: "D",
+                    sounding: "E",
+                    lyricIndex: "Amazing grace, how ".length,
+                    column: null,
+                    status: "fullyRecognized",
+                  },
+                ],
+                annotations: [],
+              },
+            ],
+          },
+        ],
+      },
+    };
+    mockIpc({
+      app_info: appInfo,
+      current_song: transposedSession,
+      editor_state: null,
+      library_list: emptyLibrary,
+      set_transpose_mode: capoSession,
+    });
+
+    render(<App />);
+    expect(
+      await screen.findByRole("heading", { name: "Amazing Grace" }),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Capo" }));
+    expect(
+      await screen.findByTitle("Capo 2, play G shapes"),
+    ).toBeInTheDocument();
+    expect(mockedInvoke).toHaveBeenCalledWith("set_transpose_mode", {
+      mode: "capo",
+    });
+    expect(screen.getByTitle("G (sounds A)")).toBeInTheDocument();
   });
 
   it("opens a library song from the sidebar", async () => {

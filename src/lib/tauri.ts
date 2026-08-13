@@ -65,6 +65,12 @@ export async function resetPerformanceKey(): Promise<SongSession> {
   return invoke<SongSession>("reset_performance_key");
 }
 
+export async function setTransposeMode(
+  mode: "chords" | "capo",
+): Promise<SongSession> {
+  return invoke<SongSession>("set_transpose_mode", { mode });
+}
+
 export async function clearSong(): Promise<void> {
   return invoke<void>("clear_song");
 }

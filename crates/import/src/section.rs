@@ -1,6 +1,19 @@
 //! Shared section-header and layout-marker helpers.
 
-use tonic_domain::SectionLabel;
+use tonic_domain::{Capo, SectionLabel};
+
+/// First capo fret (`1..=12`) mentioned in `value` (`2`, `2nd fret`, …).
+#[must_use]
+pub fn parse_capo_fret(value: &str) -> Option<u8> {
+    let digits: String = value
+        .chars()
+        .skip_while(|c| !c.is_ascii_digit())
+        .take_while(|c| c.is_ascii_digit())
+        .collect();
+    let fret = digits.parse().ok()?;
+    let capo = Capo::new(fret).ok()?;
+    (capo.fret() > 0).then_some(capo.fret())
+}
 
 /// If `line` starts with `[Intro]` / `[Chorus]` / …, return that label and the rest.
 #[must_use]

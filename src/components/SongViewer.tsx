@@ -1,3 +1,4 @@
+import { CapoBadge } from "./CapoBadge";
 import { ChartLine } from "./ChartLine";
 import { SheetMusic } from "./SheetMusic";
 import type { SongSession } from "../lib/types";
@@ -45,7 +46,7 @@ export function SongViewer({
               </>
             )}
           </p>
-          {onCapoChange && (
+          {onCapoChange && session.transposeMode !== "capo" && (
             <label className="field-label">
               Capo
               <select
@@ -74,10 +75,15 @@ export function SongViewer({
         </aside>
       )}
       <header className="song-header">
-        <h2 id="song-title">
-          {favorite && !hideMeta ? "★ " : ""}
-          {song.title}
-        </h2>
+        <div className="song-title-row">
+          <h2 id="song-title">
+            {favorite && !hideMeta ? "★ " : ""}
+            {song.title}
+          </h2>
+          {session.transposeMode === "capo" && session.capoFret != null && (
+            <CapoBadge fret={session.capoFret} playedKey={session.playedKey} />
+          )}
+        </div>
         {!hideMeta && song.artist && (
           <p className="song-artist">{song.artist}</p>
         )}

@@ -168,6 +168,7 @@ fn parses_intro_progression_and_repeat_markers() {
     let notes = result.song.notes().unwrap_or("");
     assert!(notes.contains("Tabbed by: Emrldeyzs"), "{notes}");
     assert!(notes.contains("Capo 2"), "{notes}");
+    assert_eq!(result.capo_fret, Some(2));
 
     let harmonies = result
         .song

@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { CapoBadge } from "./CapoBadge";
 import { SongViewer } from "./SongViewer";
+import { TransposeModeToggle } from "./TransposeBar";
 import {
   advanceScroll,
   clampScrollSpeed,
@@ -22,7 +24,12 @@ import {
   toggleStageFullscreen,
 } from "../lib/stage";
 import { applyTheme, applyTypeScale, clampScale } from "../lib/theme";
-import type { SongSession, ThemePreference, TypeScale } from "../lib/types";
+import type {
+  SongSession,
+  ThemePreference,
+  TransposeMode,
+  TypeScale,
+} from "../lib/types";
 
 type Props = {
   session: SongSession;
@@ -37,6 +44,7 @@ type Props = {
   onTranspose: (semitones: number) => void;
   onSelectKey: (key: string) => void;
   onResetKey: () => void;
+  onModeChange: (mode: TransposeMode) => void;
 };
 
 const CHROME_IDLE_MS = 2800;
@@ -55,6 +63,7 @@ export function LiveMode({
   onTranspose,
   onSelectKey,
   onResetKey,
+  onModeChange,
 }: Props) {
   const scrollerRef = useRef<HTMLDivElement>(null);
   const swipeStart = useRef<{ x: number; y: number } | null>(null);
@@ -527,8 +536,23 @@ export function LiveMode({
               {session.song.performanceKey
                 ? ` · ${session.song.performanceKey}`
                 : ""}
-              {setlist?.capoFret != null ? ` · capo ${setlist.capoFret}` : ""}
-              {setlist?.playedKey ? ` · played ${setlist.playedKey}` : ""}
+              {session.transposeMode === "capo" && session.capoFret != null ? (
+                <>
+                  {" · "}
+                  <CapoBadge
+                    fret={session.capoFret}
+                    playedKey={session.playedKey}
+                  />
+                </>
+              ) : setlist?.capoFret != null ? (
+                <>
+                  {" · "}
+                  <CapoBadge
+                    fret={setlist.capoFret}
+                    playedKey={setlist.playedKey}
+                  />
+                </>
+              ) : null}
             </p>
           </div>
           <button
@@ -599,11 +623,23 @@ export function LiveMode({
           <button type="button" className="text-button" onClick={scrollToTop}>
             Top
           </button>
+          <TransposeModeToggle
+            mode={session.transposeMode}
+            disabled={busy}
+            onChange={onModeChange}
+          />
           <button
             type="button"
             className="icon-button"
-            aria-label="Transpose down a semitone"
-            disabled={busy}
+            aria-label={
+              session.transposeMode === "capo"
+                ? "Move capo down a fret"
+                : "Transpose down a semitone"
+            }
+            disabled={
+              busy ||
+              (session.transposeMode === "capo" && (session.capoFret ?? 0) <= 0)
+            }
             onClick={() => onTranspose(-1)}
           >
             −
@@ -630,8 +666,15 @@ export function LiveMode({
           <button
             type="button"
             className="icon-button"
-            aria-label="Transpose up a semitone"
-            disabled={busy}
+            aria-label={
+              session.transposeMode === "capo"
+                ? "Move capo up a fret"
+                : "Transpose up a semitone"
+            }
+            disabled={
+              busy ||
+              (session.transposeMode === "capo" && (session.capoFret ?? 0) >= 12)
+            }
             onClick={() => onTranspose(1)}
           >
             +

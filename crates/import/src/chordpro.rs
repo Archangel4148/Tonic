@@ -6,7 +6,8 @@ use tonic_domain::{
 };
 
 use crate::section::{
-    extract_capo_directive, is_layout_marker, is_prose_annotation, split_leading_section_header,
+    extract_capo_directive, is_layout_marker, is_prose_annotation, parse_capo_fret,
+    split_leading_section_header,
 };
 use crate::warning::{ImportWarning, WarningKind};
 use crate::ImportResult;
@@ -20,6 +21,7 @@ pub fn import_chordpro(input: &str, id: impl Into<SongId>) -> ImportResult {
     let mut tempo: Option<Tempo> = None;
     let mut time_signature: Option<TimeSignature> = None;
     let mut note_lines: Vec<String> = Vec::new();
+    let mut capo_fret: Option<u8> = None;
 
     let mut sections: Vec<Section> = Vec::new();
     let mut current_label = SectionLabel::Verse { number: None };
@@ -61,10 +63,23 @@ pub fn import_chordpro(input: &str, id: impl Into<SongId>) -> ImportResult {
                         ));
                     }
                     let name = normalize_name(&name);
+                    if name == "capo" {
+                        if let Some(fret) = parse_capo_fret(&value) {
+                            capo_fret = Some(fret);
+                            continue;
+                        }
+                    }
                     if matches!(name.as_str(), "meta") {
                         let (meta_key, meta_val) = split_meta(&value);
+                        let meta_name = normalize_name(meta_key);
+                        if meta_name == "capo" {
+                            if let Some(fret) = parse_capo_fret(meta_val) {
+                                capo_fret = Some(fret);
+                                continue;
+                            }
+                        }
                         apply_directive(
-                            &normalize_name(meta_key),
+                            &meta_name,
                             meta_val,
                             line_no,
                             &mut title,
@@ -183,6 +198,7 @@ pub fn import_chordpro(input: &str, id: impl Into<SongId>) -> ImportResult {
     ImportResult {
         song: builder.build(),
         warnings,
+        capo_fret,
     }
 }
 

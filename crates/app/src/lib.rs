@@ -14,7 +14,8 @@ use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
 use tonic_domain::{
-    engine_name, engine_version, Key, Line, ParseStatus, Quality, Section, Song, SongId, Timestamp,
+    engine_name, engine_version, fret_between, Capo, Key, Line, ParseStatus, Quality, Section,
+    Song, SongId, Timestamp,
 };
 use tonic_import::{
     import, import_auto, import_bytes, import_web_html, recognize_web_url, supported_web_sites,
@@ -23,6 +24,7 @@ use tonic_import::{
 use tonic_persist::{
     FileLibrary, MemoryLibrary, SetlistEntry, SongLibrary, StoredSetlist, StoredSong,
 };
+pub use tonic_persist::{PersistError, TransposeMode};
 
 use editor::{
     apply_meta, editor_view, line_mut, parse_chord_symbol, parse_label, refresh_chord_warnings,
@@ -33,11 +35,12 @@ pub use editor::{
     EditorChordView, EditorLineView, EditorMetaUpdate, EditorSaveResult, EditorSectionView,
     EditorSessionView, SectionLabelInput,
 };
-pub use library::{LibraryInfoView, LibraryListView, LibraryQuery, LibrarySongSummary, MetadataUpdate};
+pub use library::{
+    LibraryInfoView, LibraryListView, LibraryQuery, LibrarySongSummary, MetadataUpdate,
+};
 pub use setlist::{
     SetlistContextView, SetlistEntryView, SetlistMetaUpdate, SetlistSummaryView, SetlistView,
 };
-pub use tonic_persist::PersistError;
 pub use view::{
     performance_key_choices, ChordView, LineView, SectionView, SongSessionView, SongView,
     WarningView,
@@ -211,9 +214,7 @@ impl AppServices {
         ensure_no_dirty_editor(&state)?;
         let song_ids: Vec<String> = state.songs.keys().cloned().collect();
         for id in &song_ids {
-            self.library
-                .delete(id)
-                .map_err(|error| error.to_string())?;
+            self.library.delete(id).map_err(|error| error.to_string())?;
         }
         let setlist_ids: Vec<String> = state.setlists.keys().cloned().collect();
         for id in &setlist_ids {
@@ -332,18 +333,38 @@ impl AppServices {
             song.set_created_at(Some(Timestamp::now()));
         }
         song.set_updated_at(Some(Timestamp::now()));
+        let mut transpose_mode = TransposeMode::Chords;
+        let mut capo_fret = None;
+        let mut steps = 0;
+        if let Some(fret) = result
+            .capo_fret
+            .filter(|fret| (1..=Capo::MAX_FRET).contains(fret))
+        {
+            if song.original_key().is_none() {
+                let inferred = infer_key(&song);
+                song.set_original_key(Some(inferred));
+            }
+            if let Some(original) = song.original_key() {
+                song.set_performance_key(Some(original.transpose_semitones(i32::from(fret))));
+            }
+            transpose_mode = TransposeMode::Capo;
+            capo_fret = Some(fret);
+            steps = i32::from(fret);
+        }
         let record = StoredSong {
             song,
             favorite: false,
             tags: Vec::new(),
             last_opened_at: Some(now),
             last_modified_at: Some(now),
+            transpose_mode,
+            capo_fret,
         };
         self.persist_record(&record, Some(state.next_id))?;
         let song_id = record.song.id().as_str().to_string();
         state.songs.insert(song_id.clone(), record);
         state.warnings = result.warnings;
-        state.steps = 0;
+        state.steps = steps;
         state.session_id = Some(song_id);
         Ok(session_view(state))
     }
@@ -373,15 +394,20 @@ impl AppServices {
         self.persist_record(&persisted, None)?;
         state.warnings.clear();
         state.steps = steps_from_song(&persisted.song);
+        if persisted.transpose_mode == TransposeMode::Capo {
+            state.steps = i32::from(persisted.capo_fret.unwrap_or(0));
+        }
         state.session_id = Some(id.to_string());
         Ok(session_view(&state))
     }
 
     /// Shift performance key by `semitones`. Infers original key if missing.
     ///
+    /// In capo mode this moves the capo (0–12) and keeps written chord shapes.
+    ///
     /// # Errors
     ///
-    /// No song loaded, or persist failure.
+    /// No song loaded, capo out of range, or persist failure.
     pub fn transpose_by(&self, semitones: i32) -> Result<SongSessionView, String> {
         let mut state = self.lock();
         ensure_no_dirty_editor(&state)?;
@@ -394,14 +420,76 @@ impl AppServices {
                 ensure_original_key(song);
             }
         }
-        if setlist_session {
+        if session_transpose_mode(&state) == TransposeMode::Capo {
+            let next = i32::from(session_capo_fret(&state).unwrap_or(0)) + semitones;
+            if next < 0 {
+                return Err(
+                    "A capo can only raise the pitch. Switch to New chords to go lower."
+                        .to_string(),
+                );
+            }
+            if next > i32::from(Capo::MAX_FRET) {
+                return Err("Capo only goes up to fret 12.".to_string());
+            }
+            state.steps = next;
+            apply_capo_arrangement(&mut state, next as u8)?;
+        } else if setlist_session {
             self.persist_song_document(&state)?;
             state.steps += semitones;
             apply_setlist_steps(&mut state)?;
             self.persist_open_setlist(&mut state)?;
+            return Ok(session_view(&state));
         } else {
             state.steps += semitones;
             apply_steps(&mut state);
+            self.persist_open(&mut state)?;
+            return Ok(session_view(&state));
+        }
+        if setlist_session {
+            self.persist_song_document(&state)?;
+            self.persist_open_setlist(&mut state)?;
+        } else {
+            self.persist_open(&mut state)?;
+        }
+        Ok(session_view(&state))
+    }
+
+    /// Choose whether transpose rewrites chord names or moves a capo.
+    ///
+    /// # Errors
+    ///
+    /// No song loaded, current key is below the written shapes, or persist failure.
+    pub fn set_transpose_mode(&self, mode: &str) -> Result<SongSessionView, String> {
+        let mode = parse_transpose_mode(mode)?;
+        let mut state = self.lock();
+        ensure_no_dirty_editor(&state)?;
+        let setlist_session = state.session_setlist_id.is_some();
+        {
+            let song = open_song_mut(&mut state)?;
+            if setlist_session {
+                ensure_original_key_only(song);
+            } else {
+                ensure_original_key(song);
+            }
+        }
+        if mode == TransposeMode::Capo {
+            let original = open_song_mut(&mut state)?
+                .original_key()
+                .ok_or_else(|| "No original key.".to_string())?;
+            let sounding = session_sounding_key(&state).unwrap_or(original);
+            let fret = fret_between(original, sounding).ok_or_else(|| {
+                "Capo transpose needs the same major/minor as the original key.".to_string()
+            })?;
+            state.steps = i32::from(fret);
+            apply_capo_arrangement(&mut state, fret)?;
+        } else {
+            set_session_transpose_mode(&mut state, TransposeMode::Chords)?;
+            set_session_capo_fret(&mut state, None)?;
+        }
+        if setlist_session {
+            self.persist_song_document(&state)?;
+            self.persist_open_setlist(&mut state)?;
+        } else {
             self.persist_open(&mut state)?;
         }
         Ok(session_view(&state))
@@ -426,6 +514,20 @@ impl AppServices {
             }
         };
         state.steps = signed_pitch_delta(original, target);
+        if session_transpose_mode(&state) == TransposeMode::Capo {
+            let fret = fret_between(original, target).ok_or_else(|| {
+                "Capo transpose needs the same major/minor as the original key.".to_string()
+            })?;
+            state.steps = i32::from(fret);
+            apply_capo_arrangement(&mut state, fret)?;
+            if setlist_session {
+                self.persist_song_document(&state)?;
+                self.persist_open_setlist(&mut state)?;
+            } else {
+                self.persist_open(&mut state)?;
+            }
+            return Ok(session_view(&state));
+        }
         if setlist_session {
             self.persist_song_document(&state)?;
             set_open_entry_key(&mut state, Some(target.symbol()))?;
@@ -445,6 +547,16 @@ impl AppServices {
     pub fn reset_performance_key(&self) -> Result<SongSessionView, String> {
         let mut state = self.lock();
         ensure_no_dirty_editor(&state)?;
+        if session_transpose_mode(&state) == TransposeMode::Capo {
+            state.steps = 0;
+            apply_capo_arrangement(&mut state, 0)?;
+            if state.session_setlist_id.is_some() {
+                self.persist_open_setlist(&mut state)?;
+            } else {
+                self.persist_open(&mut state)?;
+            }
+            return Ok(session_view(&state));
+        }
         if state.session_setlist_id.is_some() {
             set_open_entry_key(&mut state, None)?;
             if let Some(song_id) = state.session_id.as_deref() {
@@ -558,13 +670,19 @@ impl AppServices {
             tags: source.tags,
             last_opened_at: Some(now.as_secs()),
             last_modified_at: Some(now.as_secs()),
+            transpose_mode: source.transpose_mode,
+            capo_fret: source.capo_fret,
         };
         self.persist_record(&record, Some(state.next_id))?;
         state.songs.insert(new_id.clone(), record);
         state.warnings.clear();
         state.steps = 0;
         if let Some(copy) = state.songs.get(&new_id) {
-            state.steps = steps_from_song(&copy.song);
+            state.steps = if copy.transpose_mode == TransposeMode::Capo {
+                i32::from(copy.capo_fret.unwrap_or(0))
+            } else {
+                steps_from_song(&copy.song)
+            };
         }
         state.session_id = Some(new_id);
         Ok(session_view(&state))
@@ -716,6 +834,7 @@ impl AppServices {
                 performance_key: entry.performance_key,
                 capo_fret: entry.capo_fret,
                 notes: entry.notes,
+                transpose_mode: entry.transpose_mode,
             });
         }
         let setlist = StoredSetlist {
@@ -751,6 +870,7 @@ impl AppServices {
             performance_key: None,
             capo_fret: None,
             notes: None,
+            transpose_mode: TransposeMode::Chords,
         });
         setlist.updated_at = Some(Timestamp::now().as_secs());
         let persisted = setlist.clone();
@@ -904,6 +1024,9 @@ impl AppServices {
         state.session_setlist_id = Some(setlist_id.to_string());
         state.session_entry_id = Some(entry_id.to_string());
         state.steps = entry_steps(&persisted.song, &setlist, entry_id);
+        if entry.transpose_mode == TransposeMode::Capo {
+            state.steps = i32::from(entry.capo_fret.unwrap_or(0));
+        }
         Ok(session_view(&state))
     }
 
@@ -1038,12 +1161,19 @@ impl AppServices {
             .get(&song_id)
             .and_then(|record| record.last_opened_at)
             .or(Some(now.as_secs()));
+        let (transpose_mode, capo_fret) = state
+            .songs
+            .get(&song_id)
+            .map(|record| (record.transpose_mode, record.capo_fret))
+            .unwrap_or_default();
         let record = StoredSong {
             song: song.clone(),
             favorite,
             tags,
             last_opened_at: last_opened,
             last_modified_at: Some(now.as_secs()),
+            transpose_mode,
+            capo_fret,
         };
         self.persist_record(&record, None)?;
         state.songs.insert(song_id.clone(), record);
@@ -1478,6 +1608,11 @@ fn session_view(state: &AppState) -> SongSessionView {
             }
         }
     }
+    let (transpose_mode, capo_fret) = session_arrangement(state);
+    let played_key = match transpose_mode {
+        TransposeMode::Capo => song.original_key().map(|key| key.symbol()),
+        TransposeMode::Chords => setlist_ctx.as_ref().and_then(|ctx| ctx.played_key.clone()),
+    };
     SongSessionView::from_parts(
         &song,
         &state.warnings,
@@ -1485,6 +1620,9 @@ fn session_view(state: &AppState) -> SongSessionView {
         record.favorite,
         record.tags.clone(),
         setlist_ctx,
+        transpose_mode,
+        capo_fret,
+        played_key,
     )
 }
 
@@ -1523,6 +1661,125 @@ fn fetch_web_page(url: &str) -> Result<String, String> {
 fn clear_setlist_session(state: &mut AppState) {
     state.session_setlist_id = None;
     state.session_entry_id = None;
+}
+
+fn parse_transpose_mode(value: &str) -> Result<TransposeMode, String> {
+    match value.trim().to_ascii_lowercase().as_str() {
+        "chords" | "chord" => Ok(TransposeMode::Chords),
+        "capo" => Ok(TransposeMode::Capo),
+        other => Err(format!("Unknown transpose mode '{other}'.")),
+    }
+}
+
+fn session_arrangement(state: &AppState) -> (TransposeMode, Option<u8>) {
+    if let Some(entry) = open_entry(state) {
+        return (entry.transpose_mode, entry.capo_fret);
+    }
+    if let Some(id) = state.session_id.as_deref() {
+        if let Some(record) = state.songs.get(id) {
+            return (record.transpose_mode, record.capo_fret);
+        }
+    }
+    (TransposeMode::Chords, None)
+}
+
+fn session_transpose_mode(state: &AppState) -> TransposeMode {
+    session_arrangement(state).0
+}
+
+fn session_capo_fret(state: &AppState) -> Option<u8> {
+    session_arrangement(state).1
+}
+
+fn session_sounding_key(state: &AppState) -> Option<Key> {
+    if let Some(entry) = open_entry(state) {
+        if let Some(key) = entry.performance_key.as_deref().and_then(Key::parse) {
+            return Some(key);
+        }
+    }
+    state
+        .session_id
+        .as_deref()
+        .and_then(|id| state.songs.get(id))
+        .and_then(|record| record.song.performance_key().or(record.song.original_key()))
+}
+
+fn open_entry(state: &AppState) -> Option<&SetlistEntry> {
+    let setlist_id = state.session_setlist_id.as_deref()?;
+    let entry_id = state.session_entry_id.as_deref()?;
+    state
+        .setlists
+        .get(setlist_id)?
+        .entries
+        .iter()
+        .find(|entry| entry.id == entry_id)
+}
+
+fn apply_capo_arrangement(state: &mut AppState, fret: u8) -> Result<(), String> {
+    Capo::new(fret).map_err(|error| error.to_string())?;
+    let original = open_song_mut(state)?
+        .original_key()
+        .ok_or_else(|| "No original key.".to_string())?;
+    let sounding = original.transpose_semitones(i32::from(fret));
+    let capo = (fret > 0).then_some(fret);
+    if state.session_setlist_id.is_some() {
+        set_open_entry_key(state, Some(sounding.symbol()))?;
+        set_session_capo_fret(state, capo)?;
+        set_session_transpose_mode(state, TransposeMode::Capo)?;
+    } else {
+        open_song_mut(state)?.set_performance_key(Some(sounding));
+        set_session_capo_fret(state, capo)?;
+        set_session_transpose_mode(state, TransposeMode::Capo)?;
+    }
+    Ok(())
+}
+
+fn set_session_transpose_mode(state: &mut AppState, mode: TransposeMode) -> Result<(), String> {
+    if let Some(entry) = open_entry_mut(state) {
+        entry.transpose_mode = mode;
+        return Ok(());
+    }
+    let id = state
+        .session_id
+        .clone()
+        .ok_or_else(|| "No song is loaded.".to_string())?;
+    let record = state
+        .songs
+        .get_mut(&id)
+        .ok_or_else(|| "No song is loaded.".to_string())?;
+    record.transpose_mode = mode;
+    Ok(())
+}
+
+fn set_session_capo_fret(state: &mut AppState, capo_fret: Option<u8>) -> Result<(), String> {
+    if let Some(fret) = capo_fret {
+        Capo::new(fret).map_err(|error| error.to_string())?;
+    }
+    if let Some(entry) = open_entry_mut(state) {
+        entry.capo_fret = capo_fret;
+        return Ok(());
+    }
+    let id = state
+        .session_id
+        .clone()
+        .ok_or_else(|| "No song is loaded.".to_string())?;
+    let record = state
+        .songs
+        .get_mut(&id)
+        .ok_or_else(|| "No song is loaded.".to_string())?;
+    record.capo_fret = capo_fret;
+    Ok(())
+}
+
+fn open_entry_mut(state: &mut AppState) -> Option<&mut SetlistEntry> {
+    let setlist_id = state.session_setlist_id.clone()?;
+    let entry_id = state.session_entry_id.clone()?;
+    state
+        .setlists
+        .get_mut(&setlist_id)?
+        .entries
+        .iter_mut()
+        .find(|entry| entry.id == entry_id)
 }
 
 fn apply_setlist_steps(state: &mut AppState) -> Result<(), String> {
@@ -1778,10 +2035,65 @@ mod tests {
     }
 
     #[test]
+    fn capo_mode_keeps_written_shapes_and_moves_capo() {
+        let services = AppServices::new();
+        let _imported = services
+            .import_text(
+                "{title: Demo}\n{key: C}\n[C]Hi [G]there",
+                ImportMode::ChordPro,
+            )
+            .unwrap();
+
+        let capo = services.set_transpose_mode("capo").unwrap();
+        assert_eq!(capo.transpose_mode, TransposeMode::Capo);
+        assert_eq!(capo.song.sections[0].lines[0].chords[0].symbol, "C");
+
+        let up = services.transpose_by(2).unwrap();
+        assert_eq!(up.song.performance_key.as_deref(), Some("D"));
+        assert_eq!(up.capo_fret, Some(2));
+        assert_eq!(up.played_key.as_deref(), Some("C"));
+        assert_eq!(up.semitone_offset, 2);
+        let line = &up.song.sections[0].lines[0];
+        assert_eq!(line.chords[0].symbol, "C");
+        assert_eq!(line.chords[0].written, "C");
+        assert_eq!(line.chords[0].sounding, "D");
+        assert_eq!(line.chords[1].symbol, "G");
+        assert_eq!(line.chords[1].sounding, "A");
+
+        assert!(services
+            .transpose_by(-3)
+            .unwrap_err()
+            .contains("raise the pitch"));
+
+        let chords = services.set_transpose_mode("chords").unwrap();
+        assert_eq!(chords.transpose_mode, TransposeMode::Chords);
+        assert_eq!(chords.capo_fret, None);
+        assert_eq!(chords.song.sections[0].lines[0].chords[0].symbol, "D");
+        assert_eq!(chords.song.sections[0].lines[0].chords[0].written, "C");
+    }
+
+    #[test]
+    fn imported_capo_directive_enters_capo_mode() {
+        let services = AppServices::new();
+        let session = services
+            .import_text(
+                "{title: Demo}\n{key: G}\n{capo: 2}\n[G]Hi [C]there",
+                ImportMode::ChordPro,
+            )
+            .unwrap();
+        assert_eq!(session.transpose_mode, TransposeMode::Capo);
+        assert_eq!(session.capo_fret, Some(2));
+        assert_eq!(session.played_key.as_deref(), Some("G"));
+        assert_eq!(session.song.original_key.as_deref(), Some("G"));
+        assert_eq!(session.song.performance_key.as_deref(), Some("A"));
+        assert_eq!(session.song.sections[0].lines[0].chords[0].symbol, "G");
+        assert_eq!(session.song.sections[0].lines[0].chords[0].sounding, "A");
+    }
+
+    #[test]
     fn transpose_updates_bar_progression_intro_chords() {
         let services = AppServices::new();
-        let html =
-            include_str!("../../import/fixtures/web/ultimate_guitar_bar_progressions.html");
+        let html = include_str!("../../import/fixtures/web/ultimate_guitar_bar_progressions.html");
         let imported = services
             .import_web_html(
                 "https://tabs.ultimate-guitar.com/tab/example/song-chords-18688",
@@ -1847,8 +2159,7 @@ mod tests {
     #[test]
     fn import_ultimate_guitar_html_fixture() {
         let services = AppServices::new();
-        let html =
-            include_str!("../../import/fixtures/web/ultimate_guitar_amazing_grace.html");
+        let html = include_str!("../../import/fixtures/web/ultimate_guitar_amazing_grace.html");
         let session = services
             .import_web_html(
                 "https://tabs.ultimate-guitar.com/tab/traditional/amazing-grace-chords-1080922",
@@ -1860,15 +2171,16 @@ mod tests {
         assert_eq!(session.song.source_format, "web");
         assert_eq!(session.song.original_key.as_deref(), Some("G"));
         assert_eq!(session.song.display_key.as_deref(), Some("G"));
-        assert_eq!(services.list_library(LibraryQuery::default()).songs.len(), 1);
+        assert_eq!(
+            services.list_library(LibraryQuery::default()).songs.len(),
+            1
+        );
     }
 
     #[test]
     fn import_url_rejects_unsupported_host() {
         let services = AppServices::new();
-        let err = services
-            .import_url("https://example.com/song")
-            .unwrap_err();
+        let err = services.import_url("https://example.com/song").unwrap_err();
         assert!(err.contains("supported website"));
     }
 

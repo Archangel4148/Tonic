@@ -18,9 +18,7 @@ pub use musicxml::{import_musicxml, import_musicxml_bytes};
 pub use warning::{
     ImportWarning, WarningKind, UNRECOGNIZED_CONTENT_MESSAGE, UNSUPPORTED_MUSICXML_MESSAGE,
 };
-pub use web::{
-    import_web_html, recognize_web_url, supported_web_sites, WebImportError, WebSite,
-};
+pub use web::{import_web_html, recognize_web_url, supported_web_sites, WebImportError, WebSite};
 
 use tonic_domain::{Song, SongId};
 
@@ -41,9 +39,20 @@ pub enum ImportFormat {
 pub struct ImportResult {
     pub song: Song,
     pub warnings: Vec<ImportWarning>,
+    /// Song-level capo from `{capo}` / UG `meta.capo`. Not a written chord.
+    pub capo_fret: Option<u8>,
 }
 
 impl ImportResult {
+    #[must_use]
+    pub fn new(song: Song, warnings: Vec<ImportWarning>) -> Self {
+        Self {
+            song,
+            warnings,
+            capo_fret: None,
+        }
+    }
+
     #[must_use]
     pub fn has_issues(&self) -> bool {
         !self.warnings.is_empty()

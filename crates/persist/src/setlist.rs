@@ -2,6 +2,8 @@
 
 use serde::{Deserialize, Serialize};
 
+use crate::record::TransposeMode;
+
 /// One performance slot in a setlist.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -14,6 +16,8 @@ pub struct SetlistEntry {
     pub capo_fret: Option<u8>,
     #[serde(default)]
     pub notes: Option<String>,
+    #[serde(default)]
+    pub transpose_mode: TransposeMode,
 }
 
 /// Named ordered list of song references plus optional event notes.
