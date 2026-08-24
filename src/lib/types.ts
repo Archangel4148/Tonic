@@ -209,7 +209,19 @@ export type LibraryReloadResult = {
   editor: EditorSession | null;
 };
 
-export type ThemePreference = "dark" | "light" | "system";
+export type ThemePreference =
+  | "dark"
+  | "light"
+  | "system"
+  | "ink"
+  | "forest"
+  | "ocean"
+  | "slate"
+  | "wine"
+  | "amethyst"
+  | "frost"
+  | "moss"
+  | "stone";
 
 export type TypeScale = {
   lyric: number;

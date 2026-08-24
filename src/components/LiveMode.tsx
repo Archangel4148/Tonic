@@ -1,5 +1,19 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { CapoBadge } from "./CapoBadge";
+import {
+  IconChevronLeft,
+  IconChevronRight,
+  IconExit,
+  IconEye,
+  IconEyeOff,
+  IconFullscreen,
+  IconLock,
+  IconPause,
+  IconPlay,
+  IconToTop,
+  IconUnlock,
+  IconWindowed,
+} from "./icons";
 import { SongViewer } from "./SongViewer";
 import { TransposeModeToggle } from "./TransposeBar";
 import {
@@ -123,7 +137,6 @@ export function LiveMode({
 
   useEffect(() => {
     document.documentElement.setAttribute("data-live", "true");
-    applyTheme("dark", false);
     applyTypeScale(liveScale);
     void setStageFullscreen(true);
     setFullscreen(true);
@@ -501,19 +514,21 @@ export function LiveMode({
         className="live-scroller"
         onPointerDown={showChrome}
       >
-        <SongViewer session={session} hideMeta={hideMeta} live />
+        <div key={session.song.id} className="song-stage song-stage--live">
+          <SongViewer session={session} hideMeta={hideMeta} live />
+        </div>
       </div>
 
       {controlsLocked && (
         <button
           type="button"
-          className="live-lock"
+          className="live-lock icon-button"
           aria-pressed={true}
           aria-label="Unlock controls"
           title="Unlock controls (L)"
           onClick={toggleLock}
         >
-          Unlock
+          <IconUnlock />
         </button>
       )}
 
@@ -557,7 +572,7 @@ export function LiveMode({
           </div>
           <button
             type="button"
-            className="text-button"
+            className="icon-button"
             aria-pressed={fullscreen}
             aria-label={fullscreen ? "Exit fullscreen" : "Enter fullscreen"}
             title={
@@ -567,20 +582,26 @@ export function LiveMode({
             }
             onClick={() => void toggleStageFullscreen().then(setFullscreen)}
           >
-            {fullscreen ? "Windowed" : "Fullscreen"}
+            {fullscreen ? <IconWindowed /> : <IconFullscreen />}
           </button>
           <button
             type="button"
-            className="text-button"
+            className="icon-button"
             aria-pressed={false}
             aria-label="Lock controls"
             title="Lock controls (L)"
             onClick={toggleLock}
           >
-            Lock
+            <IconLock />
           </button>
-          <button type="button" className="text-button" onClick={onExit}>
-            Exit live
+          <button
+            type="button"
+            className="icon-button"
+            aria-label="Exit live"
+            title="Exit live (Esc)"
+            onClick={onExit}
+          >
+            <IconExit />
           </button>
         </div>
 
@@ -593,19 +614,23 @@ export function LiveMode({
         <div className="live-chrome-bar live-chrome-bar--bottom">
           <button
             type="button"
-            className="text-button"
+            className="icon-button"
+            aria-label="Previous"
+            title="Previous song"
             disabled={!canPrev || busy}
             onClick={onPrev}
           >
-            Previous
+            <IconChevronLeft />
           </button>
           <button
             type="button"
-            className="text-button"
+            className="icon-button"
             aria-pressed={playing}
+            aria-label={playing ? "Pause scroll" : "Auto-scroll"}
+            title={playing ? "Pause auto-scroll" : "Start auto-scroll"}
             onClick={() => setPlaying((value) => !value)}
           >
-            {playing ? "Pause scroll" : "Auto-scroll"}
+            {playing ? <IconPause /> : <IconPlay />}
           </button>
           <label className="live-speed">
             Speed {speed}
@@ -620,8 +645,14 @@ export function LiveMode({
               }
             />
           </label>
-          <button type="button" className="text-button" onClick={scrollToTop}>
-            Top
+          <button
+            type="button"
+            className="icon-button"
+            aria-label="Jump to top"
+            title="Jump to top"
+            onClick={scrollToTop}
+          >
+            <IconToTop />
           </button>
           <TransposeModeToggle
             mode={session.transposeMode}
@@ -689,11 +720,13 @@ export function LiveMode({
           </button>
           <button
             type="button"
-            className="text-button"
+            className="icon-button"
             aria-pressed={hideMeta}
+            aria-label={hideMeta ? "Show info" : "Hide info"}
+            title={hideMeta ? "Show song info" : "Hide song info"}
             onClick={() => setHideMeta((value) => !value)}
           >
-            {hideMeta ? "Show info" : "Hide info"}
+            {hideMeta ? <IconEye /> : <IconEyeOff />}
           </button>
           <button
             type="button"
@@ -713,11 +746,13 @@ export function LiveMode({
           </button>
           <button
             type="button"
-            className="text-button"
+            className="icon-button"
+            aria-label="Next"
+            title="Next song"
             disabled={!canNext || busy}
             onClick={onNext}
           >
-            Next
+            <IconChevronRight />
           </button>
         </div>
       </div>

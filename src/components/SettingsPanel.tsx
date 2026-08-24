@@ -12,7 +12,7 @@ import {
   persistLiveScale,
   persistScrollSpeed,
 } from "../lib/livePrefs";
-import { DEFAULT_TYPE_SCALE } from "../lib/theme";
+import { DEFAULT_TYPE_SCALE, THEME_OPTIONS } from "../lib/theme";
 import type {
   AppInfo,
   LibraryInfo,
@@ -80,6 +80,11 @@ export function SettingsPanel({
         event.preventDefault();
         onClose();
       }}
+      onClick={(event) => {
+        if (event.target === event.currentTarget) {
+          onClose();
+        }
+      }}
     >
       <form method="dialog" className="settings-dialog__inner panel">
         <header className="settings-dialog__header">
@@ -98,21 +103,50 @@ export function SettingsPanel({
 
         <section className="settings-section">
           <h3 className="settings-section__title">Appearance</h3>
-          <label className="field-label" htmlFor="settings-theme">
-            Theme
-          </label>
-          <select
-            id="settings-theme"
-            className="settings-select"
-            value={theme}
-            onChange={(event) =>
-              onThemeChange(event.target.value as ThemePreference)
-            }
+          <p className="field-label" id="settings-theme-label">
+            Palette
+          </p>
+          <div
+            className="palette-picker"
+            role="radiogroup"
+            aria-labelledby="settings-theme-label"
           >
-            <option value="dark">Dark</option>
-            <option value="light">Light</option>
-            <option value="system">System</option>
-          </select>
+            {(
+              [
+                ["auto", "Automatic"],
+                ["dark", "Dark"],
+                ["light", "Light"],
+              ] as const
+            ).map(([group, label]) => (
+              <div key={group} className="palette-group">
+                <p className="palette-group__label">{label}</p>
+                <div className="palette-grid">
+                  {THEME_OPTIONS.filter((option) => option.group === group).map(
+                    (option) => (
+                      <button
+                        key={option.id}
+                        type="button"
+                        className="palette-option"
+                        role="radio"
+                        aria-checked={theme === option.id}
+                        onClick={() => onThemeChange(option.id)}
+                      >
+                        <span className="palette-swatch" aria-hidden="true">
+                          <span
+                            style={{ backgroundColor: option.swatch.bg }}
+                          />
+                          <span
+                            style={{ backgroundColor: option.swatch.accent }}
+                          />
+                        </span>
+                        {option.label}
+                      </button>
+                    ),
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
         </section>
 
         <section className="settings-section">

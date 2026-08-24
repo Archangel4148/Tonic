@@ -150,6 +150,7 @@ describe("App", () => {
   beforeEach(() => {
     mockedInvoke.mockReset();
     localStorage.clear();
+    document.documentElement.removeAttribute("data-theme");
   });
 
   it("keeps import closed until requested", async () => {
@@ -175,6 +176,19 @@ describe("App", () => {
     ).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Settings" }));
     expect(await screen.findByText(/tonic-domain v1\.0\.0/i)).toBeInTheDocument();
+    expect(
+      screen.getByRole("radiogroup", { name: "Palette" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "Ember" })).toHaveAttribute(
+      "aria-checked",
+      "true",
+    );
+    expect(screen.getByRole("radio", { name: "Parchment" })).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "Harbor" })).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "Amethyst" })).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "System" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("radio", { name: "Harbor" }));
+    expect(document.documentElement.getAttribute("data-theme")).toBe("ocean");
     expect(screen.getByText(/library healthy/i)).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "Open save folder" }),
@@ -182,6 +196,9 @@ describe("App", () => {
     expect(
       screen.getByRole("button", { name: "Rescan folder" }),
     ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("dialog", { name: "Settings" }));
+    expect(screen.queryByRole("dialog", { name: "Settings" })).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Import chart" }));
     expect(screen.getByLabelText(/chart text/i)).toBeInTheDocument();

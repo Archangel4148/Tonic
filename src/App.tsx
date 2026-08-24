@@ -722,70 +722,74 @@ function App() {
           {boot.status === "ready" && (
             <>
               <div className="toolbar">
-                <button
-                  type="button"
-                  className={importOpen ? "text-button text-button--active" : "text-button"}
-                  aria-expanded={importOpen}
-                  aria-controls="import-panel"
-                  onClick={() => setImportOpen((open) => !open)}
-                >
-                  {importOpen ? "Hide import" : "Import"}
-                </button>
-                {session && !editor && (
+                <div className="toolbar-actions">
                   <button
                     type="button"
-                    className="text-button"
-                    onClick={() => void enterLive()}
+                    className={importOpen ? "text-button text-button--active" : "text-button"}
+                    aria-expanded={importOpen}
+                    aria-controls="import-panel"
+                    onClick={() => setImportOpen((open) => !open)}
                   >
-                    Live
+                    {importOpen ? "Hide import" : "Import"}
                   </button>
-                )}
-                {session && !editor && (
-                  <button
-                    type="button"
-                    className="text-button"
-                    onClick={() =>
-                      void (async () => {
-                        setBusy(true);
-                        setActionError(null);
-                        try {
-                          const next = await beginEdit(session.song.id);
-                          setEditor(next);
-                          setImportOpen(false);
-                        } catch (error: unknown) {
-                          setActionError(
-                            error instanceof Error
-                              ? error.message
-                              : "Something went wrong.",
-                          );
-                        } finally {
-                          setBusy(false);
-                        }
-                      })()
-                    }
-                  >
-                    Edit song
-                  </button>
-                )}
-                {(session || editor) && (
-                  <button
-                    type="button"
-                    className="text-button"
-                    onClick={async () => {
-                      if (!(await confirmLeaveEditor())) {
-                        return;
+                  {session && !editor && (
+                    <button
+                      type="button"
+                      className="text-button"
+                      onClick={() => void enterLive()}
+                    >
+                      Live
+                    </button>
+                  )}
+                  {session && !editor && (
+                    <button
+                      type="button"
+                      className="text-button"
+                      aria-label="Edit song"
+                      onClick={() =>
+                        void (async () => {
+                          setBusy(true);
+                          setActionError(null);
+                          try {
+                            const next = await beginEdit(session.song.id);
+                            setEditor(next);
+                            setImportOpen(false);
+                          } catch (error: unknown) {
+                            setActionError(
+                              error instanceof Error
+                                ? error.message
+                                : "Something went wrong.",
+                            );
+                          } finally {
+                            setBusy(false);
+                          }
+                        })()
                       }
-                      await clearSong();
-                      setSession(null);
-                      setEditor(null);
-                      setDetailsDirty(false);
-                      setImportOpen(false);
-                      setActionError(null);
-                    }}
-                  >
-                    Close song
-                  </button>
-                )}
+                    >
+                      Edit
+                    </button>
+                  )}
+                  {(session || editor) && (
+                    <button
+                      type="button"
+                      className="text-button"
+                      aria-label="Close song"
+                      onClick={async () => {
+                        if (!(await confirmLeaveEditor())) {
+                          return;
+                        }
+                        await clearSong();
+                        setSession(null);
+                        setEditor(null);
+                        setDetailsDirty(false);
+                        setImportOpen(false);
+                        setActionError(null);
+                      }}
+                    >
+                      Close
+                    </button>
+                  )}
+                </div>
                 {session && !editor && (
                   <TransposeBar
                     displayKey={session.song.displayKey}
@@ -907,47 +911,49 @@ function App() {
                 />
               ) : session ? (
                 <>
-                  <SongViewer
-                    session={session}
-                    disabled={busy}
-                    onCapoChange={
-                      session.setlist
-                        ? (fret) =>
-                            void (async () => {
-                              if (!session.setlist) {
-                                return;
-                              }
-                              setBusy(true);
-                              setActionError(null);
-                              try {
-                                await updateSetlistEntry(
-                                  session.setlist.setlistId,
-                                  session.setlist.entryId,
-                                  session.song.performanceKey,
-                                  fret,
-                                  session.setlist.entryNotes,
-                                );
-                                const current = await getCurrentSong();
-                                if (current) {
-                                  setSession(current);
+                  <div key={session.song.id} className="song-stage">
+                    <SongViewer
+                      session={session}
+                      disabled={busy}
+                      onCapoChange={
+                        session.setlist
+                          ? (fret) =>
+                              void (async () => {
+                                if (!session.setlist) {
+                                  return;
                                 }
-                                await refreshOpenSetlist(
-                                  session.setlist.setlistId,
-                                );
-                                await refreshSetlists();
-                              } catch (error: unknown) {
-                                setActionError(
-                                  error instanceof Error
-                                    ? error.message
-                                    : "Something went wrong.",
-                                );
-                              } finally {
-                                setBusy(false);
-                              }
-                            })()
-                        : undefined
-                    }
-                  />
+                                setBusy(true);
+                                setActionError(null);
+                                try {
+                                  await updateSetlistEntry(
+                                    session.setlist.setlistId,
+                                    session.setlist.entryId,
+                                    session.song.performanceKey,
+                                    fret,
+                                    session.setlist.entryNotes,
+                                  );
+                                  const current = await getCurrentSong();
+                                  if (current) {
+                                    setSession(current);
+                                  }
+                                  await refreshOpenSetlist(
+                                    session.setlist.setlistId,
+                                  );
+                                  await refreshSetlists();
+                                } catch (error: unknown) {
+                                  setActionError(
+                                    error instanceof Error
+                                      ? error.message
+                                      : "Something went wrong.",
+                                  );
+                                } finally {
+                                  setBusy(false);
+                                }
+                              })()
+                          : undefined
+                      }
+                    />
+                  </div>
                   <SongDetails
                     session={session}
                     disabled={busy}

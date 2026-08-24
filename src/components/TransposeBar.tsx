@@ -29,10 +29,11 @@ export function TransposeModeToggle({
         className="text-button"
         aria-pressed={mode === "chords"}
         disabled={disabled}
+        aria-label="New chords"
         title="Rewrite chord names into the new key"
         onClick={() => onChange("chords")}
       >
-        New chords
+        Chords
       </button>
       <button
         type="button"
