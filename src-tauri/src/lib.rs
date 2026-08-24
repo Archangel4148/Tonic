@@ -6,8 +6,8 @@
 use serde::Serialize;
 use tonic_app::{
     performance_key_choices, AppServices, EditorMetaUpdate, EditorSaveResult, EditorSessionView,
-    ImportMode, LibraryInfoView, LibraryListView, LibraryQuery, MetadataUpdate, SectionLabelInput,
-    SetlistMetaUpdate, SetlistSummaryView, SetlistView, SongSessionView,
+    ImportMode, LibraryInfoView, LibraryListView, LibraryQuery, MetadataUpdate, SetlistMetaUpdate,
+    SetlistSummaryView, SetlistView, SongSessionView,
 };
 
 #[derive(Serialize)]
@@ -199,117 +199,11 @@ fn editor_update_meta(
 }
 
 #[tauri::command]
-fn editor_add_section(
+fn editor_parse_body(
     services: tauri::State<'_, AppServices>,
-    label: SectionLabelInput,
+    text: String,
 ) -> Result<EditorSessionView, String> {
-    services.editor_add_section(label)
-}
-
-#[tauri::command]
-fn editor_set_section_label(
-    services: tauri::State<'_, AppServices>,
-    index: usize,
-    label: SectionLabelInput,
-) -> Result<EditorSessionView, String> {
-    services.editor_set_section_label(index, label)
-}
-
-#[tauri::command]
-fn editor_remove_section(
-    services: tauri::State<'_, AppServices>,
-    index: usize,
-) -> Result<EditorSessionView, String> {
-    services.editor_remove_section(index)
-}
-
-#[tauri::command]
-fn editor_move_section(
-    services: tauri::State<'_, AppServices>,
-    from: usize,
-    to: usize,
-) -> Result<EditorSessionView, String> {
-    services.editor_move_section(from, to)
-}
-
-#[tauri::command]
-fn editor_add_line(
-    services: tauri::State<'_, AppServices>,
-    section: usize,
-) -> Result<EditorSessionView, String> {
-    services.editor_add_line(section)
-}
-
-#[tauri::command]
-fn editor_remove_line(
-    services: tauri::State<'_, AppServices>,
-    section: usize,
-    line: usize,
-) -> Result<EditorSessionView, String> {
-    services.editor_remove_line(section, line)
-}
-
-#[tauri::command]
-fn editor_set_lyrics(
-    services: tauri::State<'_, AppServices>,
-    section: usize,
-    line: usize,
-    lyrics: String,
-) -> Result<EditorSessionView, String> {
-    services.editor_set_lyrics(section, line, lyrics)
-}
-
-#[tauri::command]
-fn editor_tag_chord(
-    services: tauri::State<'_, AppServices>,
-    section: usize,
-    line: usize,
-    lyric_index: u32,
-    symbol: String,
-) -> Result<EditorSessionView, String> {
-    services.editor_tag_chord(section, line, lyric_index, symbol)
-}
-
-#[tauri::command]
-fn editor_untag_chord(
-    services: tauri::State<'_, AppServices>,
-    section: usize,
-    line: usize,
-    chord_index: usize,
-) -> Result<EditorSessionView, String> {
-    services.editor_untag_chord(section, line, chord_index)
-}
-
-#[tauri::command]
-fn editor_replace_chord(
-    services: tauri::State<'_, AppServices>,
-    section: usize,
-    line: usize,
-    chord_index: usize,
-    symbol: String,
-) -> Result<EditorSessionView, String> {
-    services.editor_replace_chord(section, line, chord_index, symbol)
-}
-
-#[tauri::command]
-fn editor_set_chord_index(
-    services: tauri::State<'_, AppServices>,
-    section: usize,
-    line: usize,
-    chord_index: usize,
-    lyric_index: u32,
-) -> Result<EditorSessionView, String> {
-    services.editor_set_chord_index(section, line, chord_index, lyric_index)
-}
-
-#[tauri::command]
-fn editor_set_annotation(
-    services: tauri::State<'_, AppServices>,
-    section: usize,
-    line: usize,
-    text: Option<String>,
-) -> Result<EditorSessionView, String> {
-    services.editor_set_annotation(section, line, text)
+    services.editor_parse_body(&text)
 }
 
 #[tauri::command]
@@ -409,16 +303,6 @@ fn setlist_open_neighbor(
     services.open_setlist_neighbor(delta)
 }
 
-#[tauri::command]
-fn editor_parse_body(
-    services: tauri::State<'_, AppServices>,
-    text: String,
-    format: Option<String>,
-) -> Result<EditorSessionView, String> {
-    let mode = ImportMode::parse(format.as_deref().unwrap_or("auto"))?;
-    services.editor_parse_body(&text, mode)
-}
-
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -454,18 +338,6 @@ pub fn run() {
             editor_save,
             editor_cancel,
             editor_update_meta,
-            editor_add_section,
-            editor_set_section_label,
-            editor_remove_section,
-            editor_move_section,
-            editor_add_line,
-            editor_remove_line,
-            editor_set_lyrics,
-            editor_tag_chord,
-            editor_untag_chord,
-            editor_replace_chord,
-            editor_set_chord_index,
-            editor_set_annotation,
             editor_parse_body,
             setlist_list,
             setlist_get,

@@ -1,13 +1,13 @@
 //! Plain-text chord-over-lyrics → canonical [`Song`].
 
 use tonic_domain::{
-    parse_chord, AnnotationToken, ChordToken, Key, Line, LineToken, ParseStatus, Section,
-    SectionLabel, Song, SongId, SongSource, Tempo, TimeSignature,
+    parse_chord, AnnotationToken, ChordAlignment, ChordToken, Key, Line, LineToken, ParseStatus,
+    Section, SectionLabel, Song, SongId, SongSource, Tempo, TimeSignature,
 };
 
 use crate::section::{
     is_chart_annotation, is_layout_marker, is_no_chord_mark, is_repeat_marker, parse_capo_fret,
-    parse_section_header,
+    parse_section_header, split_leading_section_header,
 };
 use crate::warning::{ImportWarning, WarningKind};
 use crate::ImportResult;
@@ -76,6 +76,21 @@ pub fn import_plain_text(input: &str, id: impl Into<SongId>) -> ImportResult {
             section_explicit = true;
             i += 1;
             continue;
+        }
+
+        if let Some((label, rest)) = split_leading_section_header(trimmed) {
+            if rest.is_empty() {
+                flush_section(
+                    &mut sections,
+                    &mut current_label,
+                    &mut current_lines,
+                    section_explicit,
+                );
+                current_label = label;
+                section_explicit = true;
+                i += 1;
+                continue;
+            }
         }
 
         if is_no_chord_mark(trimmed) || is_chart_annotation(trimmed) {
@@ -158,6 +173,88 @@ pub fn import_plain_text(input: &str, id: impl Into<SongId>) -> ImportResult {
         warnings,
         capo_fret,
     }
+}
+
+/// Canonical song → chord-over-lyrics chart (no title/artist metadata).
+#[must_use]
+pub fn export_plain_text(song: &Song) -> String {
+    let mut out = String::new();
+    for (index, section) in song.sections().iter().enumerate() {
+        if index > 0 {
+            out.push('\n');
+        }
+        out.push('[');
+        out.push_str(&section.label().display_name());
+        out.push_str("]\n");
+        for line in section.lines() {
+            out.push_str(&export_line(line));
+        }
+    }
+    if !out.ends_with('\n') {
+        out.push('\n');
+    }
+    out
+}
+
+fn export_line(line: &Line) -> String {
+    let lyrics = line.lyric_text();
+    let alignments = line.chord_lyric_alignments();
+    let annotations: Vec<&str> = line
+        .tokens()
+        .iter()
+        .filter_map(|token| match token {
+            LineToken::Annotation(annotation) => Some(annotation.text()),
+            _ => None,
+        })
+        .collect();
+
+    if alignments.is_empty() && lyrics.trim().is_empty() && annotations.is_empty() {
+        return String::new();
+    }
+
+    let mut out = String::new();
+    if !alignments.is_empty() {
+        out.push_str(&chord_line_from_alignments(&alignments));
+        out.push('\n');
+    }
+    if !lyrics.is_empty() {
+        out.push_str(&lyrics);
+        out.push('\n');
+    }
+    for annotation in annotations {
+        let text = annotation.trim();
+        if !text.is_empty() {
+            out.push_str(text);
+            out.push('\n');
+        }
+    }
+    out
+}
+
+fn chord_line_from_alignments(alignments: &[ChordAlignment]) -> String {
+    let mut cells: Vec<char> = Vec::new();
+    let mut occupied_until: i32 = -1;
+    for alignment in alignments {
+        let symbol = alignment.chord.source_text();
+        if symbol.trim().is_empty() {
+            continue;
+        }
+        let desired = alignment.column.unwrap_or(alignment.lyric_index) as usize;
+        let mut start = desired;
+        if occupied_until >= 0 && (start as i32) <= occupied_until + 1 {
+            start = (occupied_until + 2) as usize;
+        }
+        let chars: Vec<char> = symbol.chars().collect();
+        let end = start + chars.len();
+        if cells.len() < end {
+            cells.resize(end, ' ');
+        }
+        for (offset, ch) in chars.into_iter().enumerate() {
+            cells[start + offset] = ch;
+        }
+        occupied_until = end as i32 - 1;
+    }
+    cells.into_iter().collect::<String>().trim_end().to_string()
 }
 
 fn metadata_prefix(line: &str) -> Option<(&str, &str)> {
@@ -292,7 +389,11 @@ fn trim_layout_edges(token: &str) -> &str {
 
 fn looks_like_lyrics(line: &str) -> bool {
     let trimmed = line.trim();
-    if trimmed.is_empty() || parse_section_header(trimmed).is_some() || is_chord_line(trimmed) {
+    if trimmed.is_empty()
+        || parse_section_header(trimmed).is_some()
+        || split_leading_section_header(trimmed).is_some_and(|(_, rest)| rest.is_empty())
+        || is_chord_line(trimmed)
+    {
         return false;
     }
     trimmed.chars().any(|c| c.is_lowercase()) || trimmed.chars().count() > 12

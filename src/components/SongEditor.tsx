@@ -1,24 +1,6 @@
 import { useEffect, useState } from "react";
-import {
-  editorAddLine,
-  editorAddSection,
-  editorMoveSection,
-  editorParseBody,
-  editorRemoveLine,
-  editorRemoveSection,
-  editorReplaceChord,
-  editorSetAnnotation,
-  editorSetLyrics,
-  editorSetSectionLabel,
-  editorTagChord,
-  editorUntagChord,
-  editorUpdateMeta,
-} from "../lib/tauri";
-import type {
-  EditorMetaUpdate,
-  EditorSession,
-  ImportFormat,
-} from "../lib/types";
+import { editorParseBody, editorUpdateMeta } from "../lib/tauri";
+import type { EditorMetaUpdate, EditorSession } from "../lib/types";
 
 type Props = {
   editor: EditorSession;
@@ -27,19 +9,8 @@ type Props = {
   onChange: (next: EditorSession) => void;
   onSave: () => Promise<void>;
   onCancel: () => void;
+  onBodyDirtyChange?: (dirty: boolean) => void;
 };
-
-const SECTION_KINDS = [
-  { value: "intro", label: "Intro" },
-  { value: "verse", label: "Verse" },
-  { value: "preChorus", label: "Pre-Chorus" },
-  { value: "chorus", label: "Chorus" },
-  { value: "bridge", label: "Bridge" },
-  { value: "instrumental", label: "Instrumental" },
-  { value: "solo", label: "Solo" },
-  { value: "outro", label: "Outro" },
-  { value: "custom", label: "Custom" },
-] as const;
 
 export function SongEditor({
   editor,
@@ -48,6 +19,7 @@ export function SongEditor({
   onChange,
   onSave,
   onCancel,
+  onBodyDirtyChange,
 }: Props) {
   const [title, setTitle] = useState(editor.title);
   const [artist, setArtist] = useState(editor.artist ?? "");
@@ -59,12 +31,7 @@ export function SongEditor({
   );
   const [notes, setNotes] = useState(editor.notes ?? "");
   const [tags, setTags] = useState(editor.tags.join(", "));
-  const [pasteText, setPasteText] = useState("");
-  const [pasteFormat, setPasteFormat] = useState<ImportFormat>("auto");
-  const [newSectionKind, setNewSectionKind] = useState("verse");
-  const [tagSymbol, setTagSymbol] = useState<Record<string, string>>({});
-  const [carets, setCarets] = useState<Record<string, number>>({});
-  const [lyricsDraft, setLyricsDraft] = useState<Record<string, string>>({});
+  const [chart, setChart] = useState(editor.chartText);
 
   useEffect(() => {
     setTitle(editor.title);
@@ -75,14 +42,11 @@ export function SongEditor({
     setTimeSignature(editor.timeSignature ?? "");
     setNotes(editor.notes ?? "");
     setTags(editor.tags.join(", "));
-    const nextLyrics: Record<string, string> = {};
-    editor.sections.forEach((section, sectionIndex) => {
-      section.lines.forEach((line, lineIndex) => {
-        nextLyrics[`${sectionIndex}:${lineIndex}`] = line.lyrics;
-      });
-    });
-    setLyricsDraft(nextLyrics);
-  }, [editor]);
+    setChart(editor.chartText);
+    onBodyDirtyChange?.(false);
+    // Rehydrate only when switching songs so typing isn't overwritten by parse round-trips.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- songId is the intentional gate
+  }, [editor.songId]);
 
   function currentMeta(): EditorMetaUpdate {
     const bpm = tempo.trim() === "" ? null : Number(tempo);
@@ -109,13 +73,21 @@ export function SongEditor({
     return editorUpdateMeta(currentMeta());
   }
 
+  function updateChart(value: string) {
+    setChart(value);
+    onBodyDirtyChange?.(value !== editor.chartText);
+  }
+
   return (
     <article className="song-editor panel">
       <header className="editor-header">
         <h2>{editor.isNew ? "New song" : "Edit song"}</h2>
         <p className="hint">
-          {editor.dirty ? "Unsaved changes." : "Saved draft."} Chords are parsed
-          by the engine, not the UI.
+          {editor.dirty || chart !== editor.chartText
+            ? "Unsaved changes."
+            : "Saved draft."}{" "}
+          Type chords on one line and lyrics on the next. Spaces line chords up
+          with the words.
         </p>
         <div className="editor-toolbar">
           <button
@@ -124,8 +96,10 @@ export function SongEditor({
             disabled={disabled}
             onClick={() =>
               void (async () => {
+                onChange(await editorParseBody(chart));
                 onChange(await flushMeta());
                 await onSave();
+                onBodyDirtyChange?.(false);
               })()
             }
           >
@@ -249,345 +223,33 @@ export function SongEditor({
         </label>
       </div>
 
-      {editor.sections.map((section, sectionIndex) => (
-        <section
-          key={`${section.kind}-${sectionIndex}`}
-          className="editor-section"
-          aria-label={`Edit ${section.label}`}
-        >
-          <div className="editor-section-bar">
-            <label className="field-label">
-              Section
-              <select
-                value={section.kind}
-                disabled={disabled}
-                onChange={(event) =>
-                  void run(() =>
-                    editorSetSectionLabel(sectionIndex, {
-                      kind: event.target.value,
-                      number: section.number,
-                      customName: section.customName,
-                    }),
-                  )
-                }
-              >
-                {SECTION_KINDS.map((kind) => (
-                  <option key={kind.value} value={kind.value}>
-                    {kind.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            {(section.kind === "verse" || section.kind === "chorus") && (
-              <label className="field-label">
-                Number
-                <input
-                  inputMode="numeric"
-                  value={section.number ?? ""}
-                  disabled={disabled}
-                  onChange={(event) => {
-                    const value = event.target.value.trim();
-                    const number = value === "" ? null : Number(value);
-                    void run(() =>
-                      editorSetSectionLabel(sectionIndex, {
-                        kind: section.kind,
-                        number:
-                          number !== null && Number.isFinite(number)
-                            ? number
-                            : null,
-                        customName: null,
-                      }),
-                    );
-                  }}
-                />
-              </label>
-            )}
-            {section.kind === "custom" && (
-              <label className="field-label">
-                Name
-                <input
-                  value={section.customName ?? ""}
-                  disabled={disabled}
-                  onBlur={(event) =>
-                    void run(() =>
-                      editorSetSectionLabel(sectionIndex, {
-                        kind: "custom",
-                        number: null,
-                        customName: event.target.value || "Custom",
-                      }),
-                    )
-                  }
-                  onChange={(event) =>
-                    void run(() =>
-                      editorSetSectionLabel(sectionIndex, {
-                        kind: "custom",
-                        number: null,
-                        customName: event.target.value || "Custom",
-                      }),
-                    )
-                  }
-                />
-              </label>
-            )}
-            <button
-              type="button"
-              className="text-button"
-              disabled={disabled || sectionIndex === 0}
-              onClick={() =>
-                void run(() =>
-                  editorMoveSection(sectionIndex, sectionIndex - 1),
-                )
-              }
-            >
-              Up
-            </button>
-            <button
-              type="button"
-              className="text-button"
-              disabled={disabled || sectionIndex === editor.sections.length - 1}
-              onClick={() =>
-                void run(() =>
-                  editorMoveSection(sectionIndex, sectionIndex + 1),
-                )
-              }
-            >
-              Down
-            </button>
-            <button
-              type="button"
-              className="text-button"
-              disabled={disabled || editor.sections.length <= 1}
-              onClick={() => void run(() => editorRemoveSection(sectionIndex))}
-            >
-              Remove section
-            </button>
-          </div>
-
-          {section.lines.map((line, lineIndex) => {
-            const key = `${sectionIndex}:${lineIndex}`;
-            return (
-              <div key={key} className="editor-line">
-                <div className="editor-chords" aria-label="Chord tags">
-                  {line.chords.map((chord, chordIndex) => (
-                    <span
-                      key={`${chord.symbol}-${chord.lyricIndex}-${chordIndex}`}
-                      className={`chord-tag chord-tag--${chord.status}`}
-                    >
-                      <input
-                        aria-label={`Chord ${chordIndex + 1}`}
-                        defaultValue={chord.symbol}
-                        disabled={disabled}
-                        onBlur={(event) => {
-                          const next = event.target.value.trim();
-                          if (!next || next === chord.symbol) {
-                            return;
-                          }
-                          void run(() =>
-                            editorReplaceChord(
-                              sectionIndex,
-                              lineIndex,
-                              chordIndex,
-                              next,
-                            ),
-                          );
-                        }}
-                      />
-                      <span className="chord-index">@{chord.lyricIndex}</span>
-                      <button
-                        type="button"
-                        className="icon-button icon-button--small"
-                        aria-label={`Remove chord ${chord.symbol}`}
-                        disabled={disabled}
-                        onClick={() =>
-                          void run(() =>
-                            editorUntagChord(
-                              sectionIndex,
-                              lineIndex,
-                              chordIndex,
-                            ),
-                          )
-                        }
-                      >
-                        ×
-                      </button>
-                    </span>
-                  ))}
-                </div>
-                <label className="field-label">
-                  Lyrics
-                  <input
-                    value={lyricsDraft[key] ?? line.lyrics}
-                    disabled={disabled}
-                    onSelect={(event) =>
-                      setCarets((current) => ({
-                        ...current,
-                        [key]: event.currentTarget.selectionStart ?? 0,
-                      }))
-                    }
-                    onChange={(event) =>
-                      setLyricsDraft((current) => ({
-                        ...current,
-                        [key]: event.target.value,
-                      }))
-                    }
-                    onBlur={(event) =>
-                      void run(() =>
-                        editorSetLyrics(
-                          sectionIndex,
-                          lineIndex,
-                          event.target.value,
-                        ),
-                      )
-                    }
-                  />
-                </label>
-                <div className="editor-line-tools">
-                  <input
-                    aria-label={`Chord symbol for ${section.label} line ${lineIndex + 1}`}
-                    placeholder="G"
-                    value={tagSymbol[key] ?? ""}
-                    disabled={disabled}
-                    onChange={(event) =>
-                      setTagSymbol((current) => ({
-                        ...current,
-                        [key]: event.target.value,
-                      }))
-                    }
-                  />
-                  <button
-                    type="button"
-                    className="text-button"
-                    disabled={disabled || !(tagSymbol[key] ?? "").trim()}
-                    onClick={() =>
-                      void run(async () => {
-                        const next = await editorTagChord(
-                          sectionIndex,
-                          lineIndex,
-                          carets[key] ?? 0,
-                          (tagSymbol[key] ?? "").trim(),
-                        );
-                        setTagSymbol((current) => ({ ...current, [key]: "" }));
-                        return next;
-                      })
-                    }
-                  >
-                    Tag chord at caret
-                  </button>
-                  <input
-                    aria-label={`Annotation for ${section.label} line ${lineIndex + 1}`}
-                    placeholder="Annotation"
-                    defaultValue={line.annotation ?? ""}
-                    disabled={disabled}
-                    onBlur={(event) =>
-                      void run(() =>
-                        editorSetAnnotation(
-                          sectionIndex,
-                          lineIndex,
-                          event.target.value.trim() || null,
-                        ),
-                      )
-                    }
-                  />
-                  <button
-                    type="button"
-                    className="text-button"
-                    disabled={disabled}
-                    onClick={() => void run(() => editorAddLine(sectionIndex))}
-                  >
-                    Add line
-                  </button>
-                  <button
-                    type="button"
-                    className="text-button"
-                    disabled={disabled || section.lines.length <= 1}
-                    onClick={() =>
-                      void run(() => editorRemoveLine(sectionIndex, lineIndex))
-                    }
-                  >
-                    Remove line
-                  </button>
-                </div>
-              </div>
-            );
-          })}
-        </section>
-      ))}
-
-      <div className="editor-toolbar">
-        <label className="field-label">
-          Add section
-          <select
-            value={newSectionKind}
-            disabled={disabled}
-            onChange={(event) => setNewSectionKind(event.target.value)}
-          >
-            {SECTION_KINDS.map((kind) => (
-              <option key={kind.value} value={kind.value}>
-                {kind.label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <button
-          type="button"
-          className="text-button"
+      <label className="field-label editor-chart-label">
+        Chart
+        <textarea
+          className="editor-chart"
+          aria-label="Chord and lyric chart"
+          spellCheck={false}
+          autoCapitalize="off"
+          autoCorrect="off"
+          wrap="off"
+          rows={18}
+          value={chart}
           disabled={disabled}
-          onClick={() =>
-            void run(() =>
-              editorAddSection({
-                kind: newSectionKind,
-                number: null,
-                customName: newSectionKind === "custom" ? "Custom" : null,
-              }),
-            )
-          }
-        >
-          Add section
-        </button>
-      </div>
-
-      <details className="editor-paste">
-        <summary>Paste chart to replace body</summary>
-        <p className="hint">
-          Parser correction: paste ChordPro or chord-over-lyrics. Metadata
-          already filled in is kept.
-        </p>
-        <label className="field-label">
-          Format
-          <select
-            value={pasteFormat}
-            onChange={(event) =>
-              setPasteFormat(event.target.value as ImportFormat)
-            }
-          >
-            <option value="auto">Auto</option>
-            <option value="chordPro">ChordPro</option>
-            <option value="plainText">Plain text</option>
-          </select>
-        </label>
-        <label className="field-label">
-          Chart text
-          <textarea
-            value={pasteText}
-            rows={6}
-            onChange={(event) => setPasteText(event.target.value)}
-          />
-        </label>
-        <button
-          type="button"
-          className="text-button"
-          disabled={disabled || !pasteText.trim()}
-          onClick={() =>
+          placeholder={"[Verse]\nG          C\nType lyrics under the chords"}
+          onChange={(event) => updateChart(event.target.value)}
+          onBlur={() =>
             void run(async () => {
-              const next = await editorParseBody(pasteText, pasteFormat);
-              setPasteText("");
+              const next = await editorParseBody(chart);
+              onBodyDirtyChange?.(false);
               return next;
             })
           }
-        >
-          Replace chart
-        </button>
-      </details>
+        />
+      </label>
+      <p className="hint">
+        Section headers look like [Verse], [Chorus 2], or [Bridge]. Chord-only
+        lines (intros, riffs) are fine without lyrics underneath.
+      </p>
     </article>
   );
 }

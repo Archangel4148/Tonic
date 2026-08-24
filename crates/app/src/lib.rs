@@ -26,15 +26,9 @@ use tonic_persist::{
 };
 pub use tonic_persist::{PersistError, TransposeMode};
 
-use editor::{
-    apply_meta, editor_view, line_mut, parse_chord_symbol, parse_label, refresh_chord_warnings,
-    EditorSession,
-};
+use editor::{apply_meta, editor_view, refresh_chord_warnings, EditorSession};
 
-pub use editor::{
-    EditorChordView, EditorLineView, EditorMetaUpdate, EditorSaveResult, EditorSectionView,
-    EditorSessionView, SectionLabelInput,
-};
+pub use editor::{EditorMetaUpdate, EditorSaveResult, EditorSessionView};
 pub use library::{
     LibraryInfoView, LibraryListView, LibraryQuery, LibrarySongSummary, MetadataUpdate,
 };
@@ -1213,285 +1207,19 @@ impl AppServices {
         Ok(editor_view(editor))
     }
 
-    /// # Errors
+    /// Replace the draft chart by parsing chord-over-lyrics plain text.
     ///
-    /// Editor closed or invalid section label.
-    pub fn editor_add_section(
-        &self,
-        label: SectionLabelInput,
-    ) -> Result<EditorSessionView, String> {
-        let parsed = parse_label(&label)?;
-        let mut state = self.lock();
-        let editor = editor_mut(&mut state)?;
-        editor
-            .draft
-            .sections_mut()
-            .push(Section::new(parsed, vec![Line::lyrics("")]));
-        editor.dirty = true;
-        Ok(editor_view(editor))
-    }
-
-    /// # Errors
-    ///
-    /// Editor closed, unknown section, or invalid label.
-    pub fn editor_set_section_label(
-        &self,
-        index: usize,
-        label: SectionLabelInput,
-    ) -> Result<EditorSessionView, String> {
-        let parsed = parse_label(&label)?;
-        let mut state = self.lock();
-        let editor = editor_mut(&mut state)?;
-        let section = editor
-            .draft
-            .sections_mut()
-            .get_mut(index)
-            .ok_or_else(|| "That section was not found.".to_string())?;
-        section.set_label(parsed);
-        editor.dirty = true;
-        Ok(editor_view(editor))
-    }
-
-    /// # Errors
-    ///
-    /// Editor closed, unknown section, or last remaining section.
-    pub fn editor_remove_section(&self, index: usize) -> Result<EditorSessionView, String> {
-        let mut state = self.lock();
-        let editor = editor_mut(&mut state)?;
-        if editor.draft.sections().len() <= 1 {
-            return Err("A song needs at least one section.".to_string());
-        }
-        if index >= editor.draft.sections().len() {
-            return Err("That section was not found.".to_string());
-        }
-        editor.draft.sections_mut().remove(index);
-        editor.dirty = true;
-        refresh_chord_warnings(editor);
-        Ok(editor_view(editor))
-    }
-
-    /// # Errors
-    ///
-    /// Editor closed or unknown section.
-    pub fn editor_move_section(&self, from: usize, to: usize) -> Result<EditorSessionView, String> {
-        let mut state = self.lock();
-        let editor = editor_mut(&mut state)?;
-        let len = editor.draft.sections().len();
-        if from >= len || to >= len {
-            return Err("That section was not found.".to_string());
-        }
-        if from != to {
-            let section = editor.draft.sections_mut().remove(from);
-            editor.draft.sections_mut().insert(to, section);
-            editor.dirty = true;
-        }
-        Ok(editor_view(editor))
-    }
-
-    /// # Errors
-    ///
-    /// Editor closed or unknown section.
-    pub fn editor_add_line(&self, section: usize) -> Result<EditorSessionView, String> {
-        let mut state = self.lock();
-        let editor = editor_mut(&mut state)?;
-        editor
-            .draft
-            .sections_mut()
-            .get_mut(section)
-            .ok_or_else(|| "That section was not found.".to_string())?
-            .lines_mut()
-            .push(Line::lyrics(""));
-        editor.dirty = true;
-        Ok(editor_view(editor))
-    }
-
-    /// # Errors
-    ///
-    /// Editor closed, unknown line, or last remaining line.
-    pub fn editor_remove_line(
-        &self,
-        section: usize,
-        line: usize,
-    ) -> Result<EditorSessionView, String> {
-        let mut state = self.lock();
-        let editor = editor_mut(&mut state)?;
-        let lines = editor
-            .draft
-            .sections_mut()
-            .get_mut(section)
-            .ok_or_else(|| "That section was not found.".to_string())?
-            .lines_mut();
-        if lines.len() <= 1 {
-            return Err("A section needs at least one line.".to_string());
-        }
-        if line >= lines.len() {
-            return Err("That line was not found.".to_string());
-        }
-        lines.remove(line);
-        editor.dirty = true;
-        refresh_chord_warnings(editor);
-        Ok(editor_view(editor))
-    }
-
-    /// # Errors
-    ///
-    /// Editor closed or unknown line.
-    pub fn editor_set_lyrics(
-        &self,
-        section: usize,
-        line: usize,
-        lyrics: String,
-    ) -> Result<EditorSessionView, String> {
-        let mut state = self.lock();
-        let editor = editor_mut(&mut state)?;
-        line_mut(&mut editor.draft, section, line)?.set_lyrics(lyrics);
-        editor.dirty = true;
-        Ok(editor_view(editor))
-    }
-
-    /// # Errors
-    ///
-    /// Editor closed, unknown line, or empty symbol.
-    pub fn editor_tag_chord(
-        &self,
-        section: usize,
-        line: usize,
-        lyric_index: u32,
-        symbol: String,
-    ) -> Result<EditorSessionView, String> {
-        let chord = parse_chord_symbol(&symbol)?;
-        let mut state = self.lock();
-        let editor = editor_mut(&mut state)?;
-        line_mut(&mut editor.draft, section, line)?.tag_chord(chord, lyric_index);
-        editor.dirty = true;
-        refresh_chord_warnings(editor);
-        Ok(editor_view(editor))
-    }
-
-    /// # Errors
-    ///
-    /// Editor closed or unknown chord.
-    pub fn editor_untag_chord(
-        &self,
-        section: usize,
-        line: usize,
-        chord_index: usize,
-    ) -> Result<EditorSessionView, String> {
-        let mut state = self.lock();
-        let editor = editor_mut(&mut state)?;
-        line_mut(&mut editor.draft, section, line)?.untag_chord(chord_index)?;
-        editor.dirty = true;
-        refresh_chord_warnings(editor);
-        Ok(editor_view(editor))
-    }
-
-    /// Correct a tagged chord symbol (parser correction).
+    /// Title, artist, and other metadata fields are left alone.
     ///
     /// # Errors
     ///
-    /// Editor closed, unknown chord, or empty symbol.
-    pub fn editor_replace_chord(
-        &self,
-        section: usize,
-        line: usize,
-        chord_index: usize,
-        symbol: String,
-    ) -> Result<EditorSessionView, String> {
-        let chord = parse_chord_symbol(&symbol)?;
-        let mut state = self.lock();
-        let editor = editor_mut(&mut state)?;
-        line_mut(&mut editor.draft, section, line)?.replace_chord(chord_index, chord)?;
-        editor.dirty = true;
-        refresh_chord_warnings(editor);
-        Ok(editor_view(editor))
-    }
-
-    /// # Errors
-    ///
-    /// Editor closed or unknown chord.
-    pub fn editor_set_chord_index(
-        &self,
-        section: usize,
-        line: usize,
-        chord_index: usize,
-        lyric_index: u32,
-    ) -> Result<EditorSessionView, String> {
-        let mut state = self.lock();
-        let editor = editor_mut(&mut state)?;
-        line_mut(&mut editor.draft, section, line)?
-            .set_chord_lyric_index(chord_index, lyric_index)?;
-        editor.dirty = true;
-        Ok(editor_view(editor))
-    }
-
-    /// # Errors
-    ///
-    /// Editor closed or unknown line.
-    pub fn editor_set_annotation(
-        &self,
-        section: usize,
-        line: usize,
-        text: Option<String>,
-    ) -> Result<EditorSessionView, String> {
-        let mut state = self.lock();
-        let editor = editor_mut(&mut state)?;
-        line_mut(&mut editor.draft, section, line)?.set_annotation(text);
-        editor.dirty = true;
-        Ok(editor_view(editor))
-    }
-
-    /// Replace the draft chart body by parsing pasted ChordPro or plain text.
-    ///
-    /// # Errors
-    ///
-    /// Editor closed or unknown import format.
-    pub fn editor_parse_body(
-        &self,
-        text: &str,
-        mode: ImportMode,
-    ) -> Result<EditorSessionView, String> {
+    /// Editor closed.
+    pub fn editor_parse_body(&self, text: &str) -> Result<EditorSessionView, String> {
         let mut state = self.lock();
         let editor = editor_mut(&mut state)?;
         let id = SongId::new(editor.draft.id().as_str());
-        let parsed = match mode {
-            ImportMode::Auto => import_auto(text, id),
-            ImportMode::ChordPro => import(text, ImportFormat::ChordPro, id),
-            ImportMode::PlainText => import(text, ImportFormat::PlainText, id),
-            ImportMode::MusicXml => import(text, ImportFormat::MusicXml, id),
-        };
-        if editor.draft.title() == "Untitled" && parsed.song.title() != "Untitled" {
-            editor.draft.set_title(parsed.song.title());
-        }
-        if editor.draft.artist().is_none() {
-            if let Some(artist) = parsed.song.artist() {
-                editor.draft.set_artist(Some(artist.to_string()));
-            }
-        }
-        if editor.draft.original_key().is_none() {
-            editor.draft.set_original_key(parsed.song.original_key());
-            if editor.draft.performance_key().is_none() {
-                editor
-                    .draft
-                    .set_performance_key(parsed.song.performance_key());
-            }
-        }
-        if editor.draft.tempo().is_none() {
-            editor.draft.set_tempo(parsed.song.tempo());
-        }
-        if editor.draft.time_signature().is_none() {
-            editor
-                .draft
-                .set_time_signature(parsed.song.time_signature());
-        }
-        if editor.draft.notes().is_none() {
-            if let Some(notes) = parsed.song.notes() {
-                editor.draft.set_notes(Some(notes.to_string()));
-            }
-        }
+        let parsed = import(text, ImportFormat::PlainText, id);
         *editor.draft.sections_mut() = parsed.song.sections().to_vec();
-        if let Some(score) = parsed.song.score().cloned() {
-            editor.draft.set_score(Some(score));
-        }
         if editor.draft.sections().is_empty() {
             editor.draft.sections_mut().push(Section::new(
                 tonic_domain::SectionLabel::Verse { number: None },
@@ -2447,24 +2175,8 @@ mod tests {
                 })
                 .unwrap();
             services
-                .editor_set_lyrics(0, 0, "Hello world".into())
+                .editor_parse_body("[Verse]\nG\nHello world\n\n[Chorus]\nC\nSing it\n")
                 .unwrap();
-            let tagged = services.editor_tag_chord(0, 0, 0, "G".into()).unwrap();
-            assert_eq!(tagged.sections[0].lines[0].chords[0].symbol, "G");
-            assert_eq!(
-                tagged.sections[0].lines[0].chords[0].status,
-                "fullyRecognized"
-            );
-
-            services
-                .editor_add_section(SectionLabelInput {
-                    kind: "chorus".into(),
-                    number: None,
-                    custom_name: None,
-                })
-                .unwrap();
-            services.editor_set_lyrics(1, 0, "Sing it".into()).unwrap();
-            services.editor_tag_chord(1, 0, 0, "C".into()).unwrap();
 
             let saved = services.save_edit().unwrap();
             assert!(!saved.editor.dirty);
@@ -2516,7 +2228,7 @@ mod tests {
             .import_text("{title: Keep}\n{key: C}\n[C]Hi", ImportMode::ChordPro)
             .unwrap();
         services.begin_edit("song-1").unwrap();
-        services.editor_set_lyrics(0, 0, "Changed".into()).unwrap();
+        services.editor_parse_body("[Verse]\nChanged\n").unwrap();
         assert!(services.editor_state().unwrap().dirty);
         let session = services.cancel_edit().unwrap();
         assert_eq!(session.song.sections[0].lines[0].lyrics, "Hi");
@@ -2530,24 +2242,30 @@ mod tests {
             .import_text("{title: Fix}\n[C]Hi [Xyz]there", ImportMode::ChordPro)
             .unwrap();
         let editing = services.begin_edit("song-1").unwrap();
-        assert!(editing.sections[0].lines[0]
-            .chords
+        assert!(editing
+            .warnings
             .iter()
-            .any(|chord| chord.status == "unrecognized"));
-
-        let corrected = services.editor_replace_chord(0, 0, 1, "G".into()).unwrap();
-        assert_eq!(corrected.sections[0].lines[0].chords[1].symbol, "G");
-        assert_eq!(
-            corrected.sections[0].lines[0].chords[1].status,
-            "fullyRecognized"
+            .any(|warning| warning.message.contains("Xyz")));
+        assert!(
+            editing.chart_text.contains("Hi there"),
+            "{}",
+            editing.chart_text
         );
 
         let parsed = services
-            .editor_parse_body("[Am]Hello [E]world", ImportMode::ChordPro)
+            .editor_parse_body("Am        E\nHello world\n")
             .unwrap();
-        assert_eq!(parsed.sections[0].lines[0].lyrics, "Hello world");
-        assert_eq!(parsed.sections[0].lines[0].chords[0].symbol, "Am");
+        assert!(
+            parsed.chart_text.contains("Hello world"),
+            "{}",
+            parsed.chart_text
+        );
+        assert!(parsed.chart_text.contains("Am"), "{}", parsed.chart_text);
         assert_eq!(parsed.title, "Fix");
+        assert!(parsed
+            .warnings
+            .iter()
+            .all(|warning| !warning.message.contains("Xyz")));
     }
 
     #[test]

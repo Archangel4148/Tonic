@@ -168,3 +168,38 @@ fn auto_detects_plain_text_fixture() {
     let result = import_auto(AMAZING, "auto-txt");
     assert_eq!(result.song.title(), "Amazing Grace");
 }
+
+#[test]
+fn custom_bracket_headings_become_sections() {
+    let result = import(
+        "[Hook]\nC     G\nwait for it\n",
+        ImportFormat::PlainText,
+        "hook",
+    );
+    assert_eq!(
+        result.song.sections()[0].label(),
+        &SectionLabel::Custom {
+            name: "Hook".into()
+        }
+    );
+    assert_eq!(result.song.sections()[0].lines()[0].lyric_text(), "wait for it");
+}
+
+#[test]
+fn export_round_trips_chord_columns() {
+    let result = import(AMAZING, ImportFormat::PlainText, "ag-txt");
+    let chart = tonic_import::export_plain_text(&result.song);
+    assert!(chart.contains("[Verse 1]"), "{chart}");
+    assert!(chart.contains("Amazing grace how sweet"), "{chart}");
+    let again = import(&chart, ImportFormat::PlainText, "ag-round");
+    let first = &result.song.sections()[0].lines()[0];
+    let second = &again.song.sections()[0].lines()[0];
+    assert_eq!(first.lyric_text(), second.lyric_text());
+    let a = first.chord_lyric_alignments();
+    let b = second.chord_lyric_alignments();
+    assert_eq!(a.len(), b.len());
+    assert_eq!(a[0].chord.symbol(), b[0].chord.symbol());
+    assert_eq!(a[1].chord.symbol(), b[1].chord.symbol());
+    assert_eq!(a[0].column, b[0].column);
+    assert_eq!(a[1].column, b[1].column);
+}

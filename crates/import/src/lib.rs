@@ -24,6 +24,7 @@ use tonic_domain::{Song, SongId};
 
 use chordpro::import_chordpro;
 use musicxml::{is_mxl_bytes, looks_like_musicxml};
+pub use plain::export_plain_text;
 use plain::import_plain_text;
 
 /// Supported import formats.

@@ -158,26 +158,6 @@ export type MetadataUpdate = {
   tags: string[];
 };
 
-export type EditorChord = {
-  symbol: string;
-  lyricIndex: number;
-  status: ChordStatus | string;
-};
-
-export type EditorLine = {
-  lyrics: string;
-  chords: EditorChord[];
-  annotation: string | null;
-};
-
-export type EditorSection = {
-  label: string;
-  kind: string;
-  number: number | null;
-  customName: string | null;
-  lines: EditorLine[];
-};
-
 export type EditorSession = {
   songId: string;
   dirty: boolean;
@@ -192,7 +172,7 @@ export type EditorSession = {
   tags: string[];
   warnings: WarningView[];
   summaryMessage: string | null;
-  sections: EditorSection[];
+  chartText: string;
 };
 
 export type EditorMetaUpdate = {
@@ -204,12 +184,6 @@ export type EditorMetaUpdate = {
   timeSignature: string | null;
   notes: string | null;
   tags: string[];
-};
-
-export type SectionLabelInput = {
-  kind: string;
-  number: number | null;
-  customName: string | null;
 };
 
 export type EditorSaveResult = {

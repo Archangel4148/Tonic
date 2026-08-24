@@ -1,6 +1,6 @@
 //! Shared section-header and layout-marker helpers.
 
-use tonic_domain::{Capo, SectionLabel};
+use tonic_domain::{parse_chord, Capo, ParseStatus, SectionLabel};
 
 /// First capo fret (`1..=12`) mentioned in `value` (`2`, `2nd fret`, …).
 #[must_use]
@@ -16,17 +16,41 @@ pub fn parse_capo_fret(value: &str) -> Option<u8> {
 }
 
 /// If `line` starts with `[Intro]` / `[Chorus]` / …, return that label and the rest.
+///
+/// Unknown `[Name]` headings become a custom section so the editor can round-trip
+/// labels the built-in list does not know.
 #[must_use]
 pub fn split_leading_section_header(line: &str) -> Option<(SectionLabel, &str)> {
     let trimmed = line.trim();
     if let Some(stripped) = trimmed.strip_prefix('[') {
         let end = stripped.find(']')?;
         let inner = stripped[..end].trim();
-        if let Some(label) = parse_section_header(inner) {
-            return Some((label, stripped[end + 1..].trim()));
+        if inner.is_empty() {
+            return None;
         }
+        let rest = stripped[end + 1..].trim();
+        if let Some(label) = parse_section_header(inner) {
+            return Some((label, rest));
+        }
+        // ChordPro `[C]lyric` must not become a section named "C".
+        if is_chord_like_bracket(inner) {
+            return None;
+        }
+        return Some((
+            SectionLabel::Custom {
+                name: inner.to_string(),
+            },
+            rest,
+        ));
     }
     parse_section_header(trimmed).map(|label| (label, ""))
+}
+
+fn is_chord_like_bracket(inner: &str) -> bool {
+    if is_layout_marker(inner) || is_no_chord_mark(inner) || is_repeat_marker(inner) {
+        return true;
+    }
+    !matches!(parse_chord(inner).status(), ParseStatus::Unrecognized)
 }
 
 /// `Verse 1`, `[Chorus]`, `[INTRO][:]`, `Pre-Chorus`, …

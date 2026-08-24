@@ -17,28 +17,11 @@ const editor: EditorSession = {
   tags: [],
   warnings: [],
   summaryMessage: null,
-  sections: [
-    {
-      label: "Verse",
-      kind: "verse",
-      number: null,
-      customName: null,
-      lines: [
-        {
-          lyrics: "Hello world",
-          chords: [
-            { symbol: "C", lyricIndex: 0, status: "fullyRecognized" },
-            { symbol: "Xyz", lyricIndex: 6, status: "unrecognized" },
-          ],
-          annotation: null,
-        },
-      ],
-    },
-  ],
+  chartText: "[Verse]\nC       G\nHello world\n",
 };
 
 describe("SongEditor", () => {
-  it("shows lyrics, chord tags, and save/cancel", () => {
+  it("shows a plaintext chart and save/cancel", () => {
     render(
       <SongEditor
         editor={editor}
@@ -52,12 +35,12 @@ describe("SongEditor", () => {
     expect(
       screen.getByRole("heading", { name: "New song" }),
     ).toBeInTheDocument();
-    expect(screen.getByDisplayValue("Hello world")).toBeInTheDocument();
-    expect(screen.getByDisplayValue("C")).toBeInTheDocument();
-    expect(screen.getByDisplayValue("Xyz")).toBeInTheDocument();
+    expect(screen.getByLabelText("Chord and lyric chart")).toHaveValue(
+      "[Verse]\nC       G\nHello world\n",
+    );
     expect(
-      screen.getByRole("button", { name: "Tag chord at caret" }),
-    ).toBeInTheDocument();
+      screen.queryByRole("button", { name: "Tag chord at caret" }),
+    ).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
   });
 });

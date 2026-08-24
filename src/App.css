@@ -856,64 +856,23 @@ button:disabled {
   margin: 0.75rem 0;
 }
 
-.editor-section {
+.editor-chart-label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
   margin-top: 1.1rem;
-  padding-top: 0.85rem;
-  border-top: 1px solid var(--border);
 }
 
-.editor-section-bar,
-.editor-line-tools {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.55rem;
-  align-items: end;
-  margin-bottom: 0.65rem;
-}
-
-.editor-line {
-  display: grid;
-  gap: 0.45rem;
-  margin-bottom: 0.9rem;
-}
-
-.editor-chords {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.45rem;
-}
-
-.chord-tag {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  padding: 0.15rem 0.35rem 0.15rem 0.45rem;
-}
-
-.chord-tag input {
-  width: 4.2rem;
-  padding: 0.2rem 0.35rem;
-}
-
-.chord-index {
-  font-size: 0.75rem;
-  color: var(--subtle);
-}
-
-.chord-tag--unrecognized,
-.chord-tag--partiallyRecognized {
-  border-color: color-mix(in srgb, var(--warning) 55%, var(--border));
-}
-
-.editor-paste {
-  margin-top: 1rem;
-}
-
-.editor-paste summary {
-  cursor: pointer;
-  font-weight: 600;
+.editor-chart {
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  font-size: 0.92rem;
+  line-height: 1.4;
+  tab-size: 4;
+  min-height: 22rem;
+  width: 100%;
+  white-space: pre;
+  overflow: auto;
+  resize: vertical;
 }
 
 :root[data-live] {

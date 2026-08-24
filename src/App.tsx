@@ -102,6 +102,7 @@ function App() {
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [detailsDirty, setDetailsDirty] = useState(false);
+  const [editorBodyDirty, setEditorBodyDirty] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
   const [live, setLive] = useState(false);
   const [theme, setTheme] = useState<ThemePreference>(() =>
@@ -130,7 +131,8 @@ function App() {
     [debouncedSearch, artistFilter, keyFilter, favoritesOnly, tagFilter, sort],
   );
 
-  const hasUnsavedWork = Boolean(editor?.dirty) || detailsDirty;
+  const hasUnsavedWork =
+    Boolean(editor?.dirty) || detailsDirty || editorBodyDirty;
 
   const scheduleSearch = useMemo(
     () =>
@@ -307,6 +309,12 @@ function App() {
     setDetailsDirty(dirty);
   }, []);
 
+  useEffect(() => {
+    if (!editor) {
+      setEditorBodyDirty(false);
+    }
+  }, [editor]);
+
   async function confirmLeaveDetails(): Promise<boolean> {
     if (!detailsDirty) {
       return true;
@@ -325,7 +333,10 @@ function App() {
     if (!editor) {
       return true;
     }
-    if (editor.dirty && !window.confirm("Discard unsaved editor changes?")) {
+    if (
+      (editor.dirty || editorBodyDirty) &&
+      !window.confirm("Discard unsaved editor changes?")
+    ) {
       return false;
     }
     const remaining = await cancelEdit();
@@ -804,7 +815,7 @@ function App() {
                   onCancel={() =>
                     void (async () => {
                       if (
-                        editor.dirty &&
+                        (editor.dirty || editorBodyDirty) &&
                         !window.confirm("Discard unsaved editor changes?")
                       ) {
                         return;
@@ -814,6 +825,7 @@ function App() {
                       setSession(remaining);
                     })()
                   }
+                  onBodyDirtyChange={setEditorBodyDirty}
                 />
               ) : session ? (
                 <>

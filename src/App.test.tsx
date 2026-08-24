@@ -382,15 +382,7 @@ describe("App", () => {
       tags: [],
       warnings: [],
       summaryMessage: null,
-      sections: [
-        {
-          label: "Verse",
-          kind: "verse",
-          number: null,
-          customName: null,
-          lines: [{ lyrics: "", chords: [], annotation: null }],
-        },
-      ],
+      chartText: "[Verse]\n",
     };
     mockIpc({
       app_info: appInfo,
@@ -406,7 +398,7 @@ describe("App", () => {
       await screen.findByRole("heading", { name: "New song" }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "Tag chord at caret" }),
+      screen.getByLabelText("Chord and lyric chart"),
     ).toBeInTheDocument();
     expect(mockedInvoke).toHaveBeenCalledWith("editor_create");
   });
@@ -653,15 +645,7 @@ describe("App", () => {
       tags: [],
       warnings: [],
       summaryMessage: null,
-      sections: [
-        {
-          label: "Verse",
-          kind: "verse",
-          number: null,
-          customName: null,
-          lines: [{ lyrics: "", chords: [], annotation: null }],
-        },
-      ],
+      chartText: "[Verse]\n",
     };
     mockIpc({
       app_info: appInfo,

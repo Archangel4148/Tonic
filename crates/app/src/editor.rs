@@ -1,13 +1,12 @@
 //! Song editor draft DTOs and canonical-model mutations.
 //!
-//! The UI never parses chords. Rust owns the draft until Save or Cancel.
+//! The UI edits metadata plus a chord-over-lyrics chart. Rust parses chords.
 
 use serde::{Deserialize, Serialize};
 use tonic_domain::{
-    parse_chord, Key, Line, ParseStatus, Section, SectionLabel, Song, SongId, SongSource, Tempo,
-    TimeSignature,
+    Key, Line, ParseStatus, Section, SectionLabel, Song, SongId, SongSource, Tempo, TimeSignature,
 };
-use tonic_import::{ImportWarning, WarningKind};
+use tonic_import::{export_plain_text, ImportWarning, WarningKind};
 
 use crate::library;
 use crate::view::summary_from_warnings;
@@ -36,33 +35,7 @@ pub struct EditorSessionView {
     pub tags: Vec<String>,
     pub warnings: Vec<crate::WarningView>,
     pub summary_message: Option<String>,
-    pub sections: Vec<EditorSectionView>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct EditorSectionView {
-    pub label: String,
-    pub kind: String,
-    pub number: Option<u16>,
-    pub custom_name: Option<String>,
-    pub lines: Vec<EditorLineView>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct EditorLineView {
-    pub lyrics: String,
-    pub chords: Vec<EditorChordView>,
-    pub annotation: Option<String>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct EditorChordView {
-    pub symbol: String,
-    pub lyric_index: u32,
-    pub status: String,
+    pub chart_text: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
@@ -76,14 +49,6 @@ pub struct EditorMetaUpdate {
     pub time_signature: Option<String>,
     pub notes: Option<String>,
     pub tags: Vec<String>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct SectionLabelInput {
-    pub kind: String,
-    pub number: Option<u16>,
-    pub custom_name: Option<String>,
 }
 
 pub(crate) struct EditorSession {
@@ -143,43 +108,7 @@ pub(crate) fn editor_view(session: &EditorSession) -> EditorSessionView {
         tags: session.tags.clone(),
         warnings,
         summary_message: summary,
-        sections: session
-            .draft
-            .sections()
-            .iter()
-            .map(|section| EditorSectionView {
-                label: section.label().display_name(),
-                kind: section.label().kind_key().to_string(),
-                number: section.label().number(),
-                custom_name: section.label().custom_name().map(str::to_string),
-                lines: section
-                    .lines()
-                    .iter()
-                    .map(|line| EditorLineView {
-                        lyrics: line.lyric_text(),
-                        chords: line
-                            .chord_lyric_alignments()
-                            .into_iter()
-                            .map(|alignment| EditorChordView {
-                                symbol: alignment.chord.source_text().to_string(),
-                                lyric_index: alignment.lyric_index,
-                                status: parse_status_name(alignment.chord.status()).to_string(),
-                            })
-                            .collect(),
-                        annotation: line
-                            .tokens()
-                            .iter()
-                            .filter_map(|token| match token {
-                                tonic_domain::LineToken::Annotation(annotation) => {
-                                    Some(annotation.text().to_string())
-                                }
-                                _ => None,
-                            })
-                            .next(),
-                    })
-                    .collect(),
-            })
-            .collect(),
+        chart_text: export_plain_text(&session.draft),
     }
 }
 
@@ -255,19 +184,6 @@ pub(crate) fn parse_time_signature(symbol: &str) -> Result<TimeSignature, String
         .ok_or_else(|| format!("Invalid time signature '{symbol}'."))
 }
 
-pub(crate) fn line_mut(song: &mut Song, section: usize, line: usize) -> Result<&mut Line, String> {
-    song.sections_mut()
-        .get_mut(section)
-        .ok_or_else(|| "That section was not found.".to_string())?
-        .lines_mut()
-        .get_mut(line)
-        .ok_or_else(|| "That line was not found.".to_string())
-}
-
-pub(crate) fn parse_label(input: &SectionLabelInput) -> Result<SectionLabel, String> {
-    SectionLabel::parse(&input.kind, input.number, input.custom_name.as_deref())
-}
-
 pub(crate) fn refresh_chord_warnings(session: &mut EditorSession) {
     session.warnings = warnings_from_song(&session.draft);
 }
@@ -302,20 +218,4 @@ pub(crate) fn warnings_from_song(song: &Song) -> Vec<ImportWarning> {
         }
     }
     warnings
-}
-
-pub(crate) fn parse_chord_symbol(symbol: &str) -> Result<tonic_domain::Chord, String> {
-    let trimmed = symbol.trim();
-    if trimmed.is_empty() {
-        return Err("Chord symbol cannot be empty.".to_string());
-    }
-    Ok(parse_chord(trimmed))
-}
-
-fn parse_status_name(status: ParseStatus) -> &'static str {
-    match status {
-        ParseStatus::FullyRecognized => "fullyRecognized",
-        ParseStatus::PartiallyRecognized => "partiallyRecognized",
-        ParseStatus::Unrecognized => "unrecognized",
-    }
 }
