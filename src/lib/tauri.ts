@@ -80,6 +80,10 @@ export async function setTransposeMode(
   return invoke<SongSession>("set_transpose_mode", { mode });
 }
 
+export async function setShapesKey(key: string): Promise<SongSession> {
+  return invoke<SongSession>("set_shapes_key", { key });
+}
+
 export async function clearSong(): Promise<void> {
   return invoke<void>("clear_song");
 }

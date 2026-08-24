@@ -9,6 +9,7 @@ function chord(
 ): ChordView {
   return {
     symbol,
+    written: symbol,
     sounding: symbol,
     lyricIndex,
     column,

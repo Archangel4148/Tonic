@@ -2,6 +2,8 @@ import type { TransposeMode } from "../lib/types";
 
 type Props = {
   displayKey: string | null;
+  originalKey?: string | null;
+  playedKey?: string | null;
   semitoneOffset: number;
   keys: string[];
   mode: TransposeMode;
@@ -9,6 +11,7 @@ type Props = {
   disabled?: boolean;
   onTranspose: (semitones: number) => void;
   onSelectKey: (key: string) => void;
+  onSelectShapesKey?: (key: string) => void;
   onReset: () => void;
   onModeChange: (mode: TransposeMode) => void;
 };
@@ -40,7 +43,7 @@ export function TransposeModeToggle({
         className="text-button"
         aria-pressed={mode === "capo"}
         disabled={disabled}
-        title="Keep these chord shapes and move a capo"
+        title="Choose play shapes and move a capo for the sounding key"
         onClick={() => onChange("capo")}
       >
         Capo
@@ -49,8 +52,44 @@ export function TransposeModeToggle({
   );
 }
 
+function KeySelect({
+  label,
+  value,
+  keys,
+  disabled,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  keys: string[];
+  disabled?: boolean;
+  onChange: (key: string) => void;
+}) {
+  return (
+    <label className="key-select-label">
+      <span className="key-select-caption">{label}</span>
+      <select
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        disabled={disabled || keys.length === 0}
+        aria-label={label}
+      >
+        {!value && <option value="">Key</option>}
+        {value && !keys.includes(value) && <option value={value}>{value}</option>}
+        {keys.map((key) => (
+          <option key={key} value={key}>
+            {key}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
 export function TransposeBar({
   displayKey,
+  originalKey = null,
+  playedKey = null,
   semitoneOffset,
   keys,
   mode,
@@ -58,13 +97,21 @@ export function TransposeBar({
   disabled = false,
   onTranspose,
   onSelectKey,
+  onSelectShapesKey,
   onReset,
   onModeChange,
 }: Props) {
   const selectValue = displayKey ?? "";
+  const shapesValue = playedKey ?? originalKey ?? "";
   const fret = capoFret ?? 0;
-  const capoDownBlocked = mode === "capo" && fret <= 0;
-  const capoUpBlocked = mode === "capo" && fret >= 12;
+  const showPlayAndSound = mode === "capo" && Boolean(onSelectShapesKey);
+  const shapesCustom =
+    mode === "capo" &&
+    shapesValue.length > 0 &&
+    originalKey != null &&
+    shapesValue !== originalKey;
+  const resetBlocked =
+    mode === "capo" ? fret === 0 && !shapesCustom : semitoneOffset === 0;
 
   return (
     <div className="transpose-bar" role="group" aria-label="Transpose">
@@ -73,53 +120,49 @@ export function TransposeBar({
         disabled={disabled}
         onChange={onModeChange}
       />
-      <button
-        type="button"
-        className="icon-button"
-        onClick={() => onTranspose(-1)}
-        disabled={disabled || capoDownBlocked}
-        aria-label={
-          mode === "capo"
-            ? "Move capo down a fret"
-            : "Transpose down a semitone"
-        }
-      >
-        −
-      </button>
-      <label className="key-select-label">
-        <span className="sr-only">Performance key</span>
-        <select
-          value={selectValue}
-          onChange={(event) => onSelectKey(event.target.value)}
-          disabled={disabled || keys.length === 0}
+      {showPlayAndSound && onSelectShapesKey && (
+        <KeySelect
+          label="Play"
+          value={shapesValue}
+          keys={keys}
+          disabled={disabled}
+          onChange={onSelectShapesKey}
+        />
+      )}
+      {!showPlayAndSound && (
+        <button
+          type="button"
+          className="icon-button"
+          onClick={() => onTranspose(-1)}
+          disabled={disabled}
+          aria-label="Transpose down a semitone"
         >
-          {!selectValue && <option value="">Key</option>}
-          {selectValue && !keys.includes(selectValue) && (
-            <option value={selectValue}>{selectValue}</option>
-          )}
-          {keys.map((key) => (
-            <option key={key} value={key}>
-              {key}
-            </option>
-          ))}
-        </select>
-      </label>
-      <button
-        type="button"
-        className="icon-button"
-        onClick={() => onTranspose(1)}
-        disabled={disabled || capoUpBlocked}
-        aria-label={
-          mode === "capo" ? "Move capo up a fret" : "Transpose up a semitone"
-        }
-      >
-        +
-      </button>
+          −
+        </button>
+      )}
+      <KeySelect
+        label={showPlayAndSound ? "Sound" : "Key"}
+        value={selectValue}
+        keys={keys}
+        disabled={disabled}
+        onChange={onSelectKey}
+      />
+      {!showPlayAndSound && (
+        <button
+          type="button"
+          className="icon-button"
+          onClick={() => onTranspose(1)}
+          disabled={disabled}
+          aria-label="Transpose up a semitone"
+        >
+          +
+        </button>
+      )}
       <button
         type="button"
         className="text-button"
         onClick={onReset}
-        disabled={disabled || semitoneOffset === 0}
+        disabled={disabled || resetBlocked}
       >
         Reset
       </button>

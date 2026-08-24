@@ -18,6 +18,9 @@ pub struct SetlistEntry {
     pub notes: Option<String>,
     #[serde(default)]
     pub transpose_mode: TransposeMode,
+    /// Fingered key for capo mode. `None` means use the song's original key.
+    #[serde(default)]
+    pub shapes_key: Option<String>,
 }
 
 /// Named ordered list of song references plus optional event notes.

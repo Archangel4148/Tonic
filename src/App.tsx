@@ -46,9 +46,10 @@ import {
   resetPerformanceKey,
   saveEdit,
   setPerformanceKey,
+  setShapesKey,
+  setTransposeMode,
   toggleFavorite,
   transposeSong,
-  setTransposeMode,
   updateMetadata,
   updateSetlistEntry,
   updateSetlistMeta,
@@ -480,6 +481,7 @@ function App() {
           void runAction(() => transposeSong(semitones))
         }
         onSelectKey={(key) => void runAction(() => setPerformanceKey(key))}
+        onSelectShapesKey={(key) => void runAction(() => setShapesKey(key))}
         onResetKey={() => void runAction(() => resetPerformanceKey())}
         onModeChange={(mode) => void runAction(() => setTransposeMode(mode))}
       />
@@ -891,6 +893,8 @@ function App() {
                 {session && !editor && !importOpen && (
                   <TransposeBar
                     displayKey={session.song.displayKey}
+                    originalKey={session.song.originalKey}
+                    playedKey={session.playedKey}
                     semitoneOffset={session.semitoneOffset}
                     keys={keys}
                     mode={session.transposeMode}
@@ -901,6 +905,9 @@ function App() {
                     }
                     onSelectKey={(key) =>
                       void runAction(() => setPerformanceKey(key))
+                    }
+                    onSelectShapesKey={(key) =>
+                      void runAction(() => setShapesKey(key))
                     }
                     onReset={() => void runAction(() => resetPerformanceKey())}
                     onModeChange={(mode) =>

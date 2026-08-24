@@ -131,12 +131,15 @@ pub fn context(
         .iter()
         .position(|entry| entry.id == entry_id)?;
     let entry = &setlist.entries[index];
-    let played = match (performance_key, entry.capo_fret) {
-        (Some(key), Some(fret)) => Capo::new(fret)
-            .ok()
-            .map(|capo| played_key(key, capo).symbol()),
-        _ => None,
-    };
+    let played = entry
+        .shapes_key
+        .clone()
+        .or_else(|| match (performance_key, entry.capo_fret) {
+            (Some(key), Some(fret)) => Capo::new(fret)
+                .ok()
+                .map(|capo| played_key(key, capo).symbol()),
+            _ => None,
+        });
     Some(SetlistContextView {
         setlist_id: setlist.id.clone(),
         setlist_name: setlist.name.clone(),

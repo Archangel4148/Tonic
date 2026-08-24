@@ -2,7 +2,8 @@
 
 use serde::Serialize;
 use tonic_domain::{
-    transpose_musicxml_text, Line, LineToken, ParseStatus, Song, SourceFormat, Spelling,
+    transpose_musicxml_text, transpose_to_key, Key, Line, LineToken, ParseStatus, Song,
+    SourceFormat, Spelling,
 };
 use tonic_import::{
     ImportWarning, WarningKind, UNRECOGNIZED_CONTENT_MESSAGE, UNSUPPORTED_MUSICXML_MESSAGE,
@@ -102,9 +103,10 @@ impl SongSessionView {
         transpose_mode: TransposeMode,
         capo_fret: Option<u8>,
         played_key: Option<String>,
+        shapes_key: Option<Key>,
     ) -> Self {
         Self {
-            song: SongView::from_song(song, transpose_mode),
+            song: SongView::from_song(song, transpose_mode, shapes_key),
             warnings: warnings.iter().map(WarningView::from).collect(),
             summary_message: summary_from_warnings(warnings),
             semitone_offset,
@@ -121,7 +123,7 @@ impl SongSessionView {
 
 impl SongView {
     #[must_use]
-    pub fn from_song(song: &Song, transpose_mode: TransposeMode) -> Self {
+    pub fn from_song(song: &Song, transpose_mode: TransposeMode, shapes_key: Option<Key>) -> Self {
         Self {
             id: song.id().as_str().to_string(),
             title: song.title().to_string(),
@@ -143,7 +145,7 @@ impl SongView {
                     lines: section
                         .lines()
                         .iter()
-                        .map(|line| line_view(song, line, transpose_mode))
+                        .map(|line| line_view(song, line, transpose_mode, shapes_key))
                         .collect(),
                 })
                 .collect(),
@@ -168,19 +170,30 @@ fn display_key(song: &Song) -> Option<String> {
         .map(|key| key.symbol())
 }
 
-fn line_view(song: &Song, line: &Line, transpose_mode: TransposeMode) -> LineView {
+fn line_view(
+    song: &Song,
+    line: &Line,
+    transpose_mode: TransposeMode,
+    shapes_key: Option<Key>,
+) -> LineView {
     let chords = line
         .chord_lyric_alignments()
         .into_iter()
         .map(|alignment| {
             let sounding = song.display_chord(&alignment.chord);
             let keep_shapes = matches!(transpose_mode, TransposeMode::Capo);
+            let symbol = if keep_shapes {
+                match (song.original_key(), shapes_key) {
+                    (Some(from), Some(to)) if from != to => {
+                        transpose_to_key(&alignment.chord, from, to).symbol()
+                    }
+                    _ => alignment.chord.source_text().to_string(),
+                }
+            } else {
+                sounding.symbol()
+            };
             ChordView {
-                symbol: if keep_shapes {
-                    alignment.chord.source_text().to_string()
-                } else {
-                    sounding.symbol()
-                },
+                symbol,
                 written: alignment.chord.source_text().to_string(),
                 sounding: sounding.symbol(),
                 lyric_index: alignment.lyric_index,
@@ -308,23 +321,33 @@ mod tests {
             ))
             .build();
 
-        let view = SongView::from_song(&song, TransposeMode::Chords);
+        let view = SongView::from_song(&song, TransposeMode::Chords, None);
         assert_eq!(view.sections[0].lines[0].chords[0].symbol, "D");
         assert_eq!(view.sections[0].lines[0].chords[0].written, "C");
         assert_eq!(view.sections[0].lines[0].chords[1].symbol, "A");
         assert_eq!(view.sections[0].lines[0].lyrics, "Hi there");
 
         song.set_performance_key(Some(Key::parse("C").unwrap()));
-        let reset = SongView::from_song(&song, TransposeMode::Chords);
+        let reset = SongView::from_song(&song, TransposeMode::Chords, None);
         assert_eq!(reset.sections[0].lines[0].chords[0].symbol, "C");
 
         song.set_performance_key(Some(Key::parse("D").unwrap()));
-        let capo = SongView::from_song(&song, TransposeMode::Capo);
+        let capo = SongView::from_song(&song, TransposeMode::Capo, None);
         assert_eq!(capo.sections[0].lines[0].chords[0].symbol, "C");
         assert_eq!(capo.sections[0].lines[0].chords[0].written, "C");
         assert_eq!(capo.sections[0].lines[0].chords[0].sounding, "D");
         assert_eq!(capo.sections[0].lines[0].chords[1].symbol, "G");
         assert_eq!(capo.sections[0].lines[0].chords[1].sounding, "A");
+
+        let g_shapes = SongView::from_song(
+            &song,
+            TransposeMode::Capo,
+            Some(Key::parse("G").unwrap()),
+        );
+        assert_eq!(g_shapes.sections[0].lines[0].chords[0].symbol, "G");
+        assert_eq!(g_shapes.sections[0].lines[0].chords[0].sounding, "D");
+        assert_eq!(g_shapes.sections[0].lines[0].chords[1].symbol, "D");
+        assert_eq!(g_shapes.sections[0].lines[0].chords[1].sounding, "A");
     }
 
     #[test]
@@ -341,7 +364,7 @@ mod tests {
             .section(section.clone())
             .build();
         assert_eq!(
-            SongView::from_song(&with_performance, TransposeMode::Chords)
+            SongView::from_song(&with_performance, TransposeMode::Chords, None)
                 .display_key
                 .as_deref(),
             Some("D")
@@ -352,7 +375,7 @@ mod tests {
             .section(section.clone())
             .build();
         assert_eq!(
-            SongView::from_song(&original_only, TransposeMode::Chords)
+            SongView::from_song(&original_only, TransposeMode::Chords, None)
                 .display_key
                 .as_deref(),
             Some("C")
@@ -362,7 +385,7 @@ mod tests {
             .section(section)
             .build();
         assert_eq!(
-            SongView::from_song(&inferred, TransposeMode::Chords)
+            SongView::from_song(&inferred, TransposeMode::Chords, None)
                 .display_key
                 .as_deref(),
             Some("G")

@@ -118,6 +118,7 @@ mod tests {
             last_modified_at: Some(20),
             transpose_mode: crate::TransposeMode::Chords,
             capo_fret: None,
+            shapes_key: None,
         };
         library.save(&record).unwrap();
         library.save_next_id(2).unwrap();
@@ -145,6 +146,7 @@ mod tests {
                 capo_fret: Some(2),
                 notes: Some("slow intro".into()),
                 transpose_mode: crate::TransposeMode::Chords,
+                shapes_key: None,
             }],
             updated_at: Some(30),
         };
@@ -180,6 +182,7 @@ mod tests {
                 last_modified_at: None,
                 transpose_mode: crate::TransposeMode::Chords,
                 capo_fret: None,
+                shapes_key: None,
             })
             .unwrap();
         library.save_next_id(2).unwrap();
@@ -205,6 +208,7 @@ mod tests {
                 last_modified_at: None,
                 transpose_mode: crate::TransposeMode::Chords,
                 capo_fret: None,
+                shapes_key: None,
             })
             .unwrap();
         let (_, songs) = library.load_all().unwrap();

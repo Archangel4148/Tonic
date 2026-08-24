@@ -418,6 +418,21 @@ body {
   color: var(--text);
 }
 
+.key-select-label {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.key-select-caption {
+  font-size: 0.68rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--subtle);
+  line-height: 1;
+}
+
 .key-select-label select {
   width: auto;
   min-width: 4.75rem;

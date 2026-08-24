@@ -57,6 +57,7 @@ type Props = {
   onNext: () => void;
   onTranspose: (semitones: number) => void;
   onSelectKey: (key: string) => void;
+  onSelectShapesKey: (key: string) => void;
   onResetKey: () => void;
   onModeChange: (mode: TransposeMode) => void;
 };
@@ -76,6 +77,7 @@ export function LiveMode({
   onNext,
   onTranspose,
   onSelectKey,
+  onSelectShapesKey,
   onResetKey,
   onModeChange,
 }: Props) {
@@ -659,29 +661,49 @@ export function LiveMode({
             disabled={busy}
             onChange={onModeChange}
           />
-          <button
-            type="button"
-            className="icon-button"
-            aria-label={
-              session.transposeMode === "capo"
-                ? "Move capo down a fret"
-                : "Transpose down a semitone"
-            }
-            disabled={
-              busy ||
-              (session.transposeMode === "capo" && (session.capoFret ?? 0) <= 0)
-            }
-            onClick={() => onTranspose(-1)}
-          >
-            −
-          </button>
+          {session.transposeMode === "capo" && (
+            <label className="key-select-label">
+              <span className="key-select-caption">Play</span>
+              <select
+                value={
+                  session.playedKey ?? session.song.originalKey ?? selectValue
+                }
+                disabled={busy || keys.length === 0}
+                onMouseDown={pinChrome}
+                onChange={(event) => onSelectShapesKey(event.target.value)}
+                aria-label="Play"
+              >
+                {keys.map((key) => (
+                  <option key={key} value={key}>
+                    {key}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+          {session.transposeMode !== "capo" && (
+            <button
+              type="button"
+              className="icon-button"
+              aria-label="Transpose down a semitone"
+              disabled={busy}
+              onClick={() => onTranspose(-1)}
+            >
+              −
+            </button>
+          )}
           <label className="key-select-label">
-            <span className="sr-only">Performance key</span>
+            <span className="key-select-caption">
+              {session.transposeMode === "capo" ? "Sound" : "Key"}
+            </span>
             <select
               value={selectValue}
               disabled={busy || keys.length === 0}
               onMouseDown={pinChrome}
               onChange={(event) => onSelectKey(event.target.value)}
+              aria-label={
+                session.transposeMode === "capo" ? "Sound" : "Performance key"
+              }
             >
               {!selectValue && <option value="">Key</option>}
               {selectValue && !keys.includes(selectValue) && (
@@ -694,22 +716,17 @@ export function LiveMode({
               ))}
             </select>
           </label>
-          <button
-            type="button"
-            className="icon-button"
-            aria-label={
-              session.transposeMode === "capo"
-                ? "Move capo up a fret"
-                : "Transpose up a semitone"
-            }
-            disabled={
-              busy ||
-              (session.transposeMode === "capo" && (session.capoFret ?? 0) >= 12)
-            }
-            onClick={() => onTranspose(1)}
-          >
-            +
-          </button>
+          {session.transposeMode !== "capo" && (
+            <button
+              type="button"
+              className="icon-button"
+              aria-label="Transpose up a semitone"
+              disabled={busy}
+              onClick={() => onTranspose(1)}
+            >
+              +
+            </button>
+          )}
           <button
             type="button"
             className="text-button"

@@ -31,4 +31,7 @@ pub struct StoredSong {
     pub transpose_mode: TransposeMode,
     #[serde(default)]
     pub capo_fret: Option<u8>,
+    /// Fingered key for capo mode. `None` means use the song's original key.
+    #[serde(default)]
+    pub shapes_key: Option<String>,
 }

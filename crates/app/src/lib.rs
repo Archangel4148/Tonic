@@ -14,8 +14,8 @@ use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
 use tonic_domain::{
-    engine_name, engine_version, fret_between, Capo, Key, Line, ParseStatus, Quality, Section,
-    Song, SongId, Timestamp,
+    engine_name, engine_version, fret_between, Capo, Key, Line, ParseStatus, Quality, Section, Song,
+    SongId, Timestamp,
 };
 use tonic_import::{
     import, import_auto, import_bytes, import_web_html, recognize_web_url, supported_web_sites,
@@ -418,6 +418,7 @@ impl AppServices {
             last_modified_at: Some(now),
             transpose_mode,
             capo_fret,
+            shapes_key: None,
         };
         self.persist_record(&record, Some(state.next_id))?;
         let song_id = record.song.id().as_str().to_string();
@@ -532,18 +533,16 @@ impl AppServices {
             }
         }
         if mode == TransposeMode::Capo {
-            let original = open_song_mut(&mut state)?
-                .original_key()
-                .ok_or_else(|| "No original key.".to_string())?;
-            let sounding = session_sounding_key(&state).unwrap_or(original);
-            let fret = fret_between(original, sounding).ok_or_else(|| {
-                "Capo transpose needs the same major/minor as the original key.".to_string()
+            let shapes = session_shapes_key(&state)?;
+            let sounding = session_sounding_key(&state).unwrap_or(shapes);
+            let fret = fret_between(shapes, sounding).ok_or_else(|| {
+                "Capo transpose needs the same major/minor for play and sound keys.".to_string()
             })?;
-            state.steps = i32::from(fret);
             apply_capo_arrangement(&mut state, fret)?;
         } else {
             set_session_transpose_mode(&mut state, TransposeMode::Chords)?;
             set_session_capo_fret(&mut state, None)?;
+            set_session_shapes_key(&mut state, None)?;
         }
         if setlist_session {
             self.persist_song_document(&state)?;
@@ -574,10 +573,10 @@ impl AppServices {
         };
         state.steps = signed_pitch_delta(original, target);
         if session_transpose_mode(&state) == TransposeMode::Capo {
-            let fret = fret_between(original, target).ok_or_else(|| {
-                "Capo transpose needs the same major/minor as the original key.".to_string()
+            let shapes = session_shapes_key(&state)?;
+            let fret = fret_between(shapes, target).ok_or_else(|| {
+                "Capo transpose needs the same major/minor for play and sound keys.".to_string()
             })?;
-            state.steps = i32::from(fret);
             apply_capo_arrangement(&mut state, fret)?;
             if setlist_session {
                 self.persist_song_document(&state)?;
@@ -607,7 +606,7 @@ impl AppServices {
         let mut state = self.lock();
         ensure_no_dirty_editor(&state)?;
         if session_transpose_mode(&state) == TransposeMode::Capo {
-            state.steps = 0;
+            set_session_shapes_key(&mut state, None)?;
             apply_capo_arrangement(&mut state, 0)?;
             if state.session_setlist_id.is_some() {
                 self.persist_open_setlist(&mut state)?;
@@ -632,6 +631,52 @@ impl AppServices {
                 }
             }
             state.steps = 0;
+            self.persist_open(&mut state)?;
+        }
+        Ok(session_view(&state))
+    }
+
+    /// Choose which chord shapes to finger in capo mode (e.g. play G shapes).
+    ///
+    /// Capo fret is derived so the current sounding key is preserved.
+    ///
+    /// # Errors
+    ///
+    /// Not in capo mode, invalid key, mode mismatch, or persist failure.
+    pub fn set_shapes_key(&self, symbol: &str) -> Result<SongSessionView, String> {
+        let shapes = Key::parse(symbol).ok_or_else(|| format!("Unknown key '{symbol}'."))?;
+        let mut state = self.lock();
+        ensure_no_dirty_editor(&state)?;
+        if session_transpose_mode(&state) != TransposeMode::Capo {
+            return Err("Switch to Capo mode to choose play shapes.".to_string());
+        }
+        let setlist_session = state.session_setlist_id.is_some();
+        {
+            let song = open_song_mut(&mut state)?;
+            if setlist_session {
+                ensure_original_key_only(song);
+            } else {
+                ensure_original_key(song);
+            }
+        }
+        let sounding = session_sounding_key(&state).ok_or_else(|| "No sounding key.".to_string())?;
+        let fret = fret_between(shapes, sounding).ok_or_else(|| {
+            "Play and sound keys need the same major/minor quality.".to_string()
+        })?;
+        let original = open_song_mut(&mut state)?
+            .original_key()
+            .ok_or_else(|| "No original key.".to_string())?;
+        let stored = if shapes == original {
+            None
+        } else {
+            Some(shapes.symbol())
+        };
+        set_session_shapes_key(&mut state, stored)?;
+        apply_capo_arrangement(&mut state, fret)?;
+        if setlist_session {
+            self.persist_song_document(&state)?;
+            self.persist_open_setlist(&mut state)?;
+        } else {
             self.persist_open(&mut state)?;
         }
         Ok(session_view(&state))
@@ -731,6 +776,7 @@ impl AppServices {
             last_modified_at: Some(now.as_secs()),
             transpose_mode: source.transpose_mode,
             capo_fret: source.capo_fret,
+            shapes_key: source.shapes_key,
         };
         self.persist_record(&record, Some(state.next_id))?;
         state.songs.insert(new_id.clone(), record);
@@ -894,6 +940,7 @@ impl AppServices {
                 capo_fret: entry.capo_fret,
                 notes: entry.notes,
                 transpose_mode: entry.transpose_mode,
+                shapes_key: entry.shapes_key,
             });
         }
         let setlist = StoredSetlist {
@@ -930,6 +977,7 @@ impl AppServices {
             capo_fret: None,
             notes: None,
             transpose_mode: TransposeMode::Chords,
+            shapes_key: None,
         });
         setlist.updated_at = Some(Timestamp::now().as_secs());
         let persisted = setlist.clone();
@@ -1220,10 +1268,16 @@ impl AppServices {
             .get(&song_id)
             .and_then(|record| record.last_opened_at)
             .or(Some(now.as_secs()));
-        let (transpose_mode, capo_fret) = state
+        let (transpose_mode, capo_fret, shapes_key) = state
             .songs
             .get(&song_id)
-            .map(|record| (record.transpose_mode, record.capo_fret))
+            .map(|record| {
+                (
+                    record.transpose_mode,
+                    record.capo_fret,
+                    record.shapes_key.clone(),
+                )
+            })
             .unwrap_or_default();
         let record = StoredSong {
             song: song.clone(),
@@ -1233,6 +1287,7 @@ impl AppServices {
             last_modified_at: Some(now.as_secs()),
             transpose_mode,
             capo_fret,
+            shapes_key,
         };
         self.persist_record(&record, None)?;
         state.songs.insert(song_id.clone(), record);
@@ -1402,8 +1457,12 @@ fn session_view(state: &AppState) -> SongSessionView {
         }
     }
     let (transpose_mode, capo_fret) = session_arrangement(state);
+    let shapes = match transpose_mode {
+        TransposeMode::Capo => session_shapes_key(state).ok(),
+        TransposeMode::Chords => None,
+    };
     let played_key = match transpose_mode {
-        TransposeMode::Capo => song.original_key().map(|key| key.symbol()),
+        TransposeMode::Capo => shapes.as_ref().map(|key| key.symbol()),
         TransposeMode::Chords => setlist_ctx.as_ref().and_then(|ctx| ctx.played_key.clone()),
     };
     SongSessionView::from_parts(
@@ -1416,6 +1475,7 @@ fn session_view(state: &AppState) -> SongSessionView {
         transpose_mode,
         capo_fret,
         played_key,
+        shapes,
     )
 }
 
@@ -1547,8 +1607,10 @@ fn apply_capo_arrangement(state: &mut AppState, fret: u8) -> Result<(), String> 
     let original = open_song_mut(state)?
         .original_key()
         .ok_or_else(|| "No original key.".to_string())?;
-    let sounding = original.transpose_semitones(i32::from(fret));
+    let shapes = session_shapes_key(state)?;
+    let sounding = shapes.transpose_semitones(i32::from(fret));
     let capo = (fret > 0).then_some(fret);
+    state.steps = signed_pitch_delta(original, sounding);
     if state.session_setlist_id.is_some() {
         set_open_entry_key(state, Some(sounding.symbol()))?;
         set_session_capo_fret(state, capo)?;
@@ -1558,6 +1620,56 @@ fn apply_capo_arrangement(state: &mut AppState, fret: u8) -> Result<(), String> 
         set_session_capo_fret(state, capo)?;
         set_session_transpose_mode(state, TransposeMode::Capo)?;
     }
+    Ok(())
+}
+
+fn session_shapes_key(state: &AppState) -> Result<Key, String> {
+    if let Some(entry) = open_entry(state) {
+        if let Some(symbol) = entry.shapes_key.as_deref() {
+            return Key::parse(symbol)
+                .ok_or_else(|| format!("Unknown play key '{symbol}'."));
+        }
+    } else if let Some(id) = state.session_id.as_deref() {
+        if let Some(symbol) = state
+            .songs
+            .get(id)
+            .and_then(|record| record.shapes_key.as_deref())
+        {
+            return Key::parse(symbol)
+                .ok_or_else(|| format!("Unknown play key '{symbol}'."));
+        }
+    }
+    open_song_ref(state)?
+        .original_key()
+        .ok_or_else(|| "No original key.".to_string())
+}
+
+fn open_song_ref(state: &AppState) -> Result<&Song, String> {
+    let id = state
+        .session_id
+        .as_deref()
+        .ok_or_else(|| "No song is loaded.".to_string())?;
+    state
+        .songs
+        .get(id)
+        .map(|record| &record.song)
+        .ok_or_else(|| "No song is loaded.".to_string())
+}
+
+fn set_session_shapes_key(state: &mut AppState, shapes_key: Option<String>) -> Result<(), String> {
+    if let Some(entry) = open_entry_mut(state) {
+        entry.shapes_key = shapes_key;
+        return Ok(());
+    }
+    let id = state
+        .session_id
+        .clone()
+        .ok_or_else(|| "No song is loaded.".to_string())?;
+    let record = state
+        .songs
+        .get_mut(&id)
+        .ok_or_else(|| "No song is loaded.".to_string())?;
+    record.shapes_key = shapes_key;
     Ok(())
 }
 
@@ -1900,6 +2012,34 @@ mod tests {
     }
 
     #[test]
+    fn capo_mode_custom_shapes_keeps_sounding_and_derives_fret() {
+        let services = AppServices::new();
+        let _imported = services
+            .import_text(
+                "{title: Demo}\n{key: Ab}\n[Ab]Hi [Db]there",
+                ImportMode::ChordPro,
+            )
+            .unwrap();
+
+        services.set_transpose_mode("capo").unwrap();
+        let shapes = services.set_shapes_key("G").unwrap();
+        assert_eq!(shapes.played_key.as_deref(), Some("G"));
+        assert_eq!(shapes.song.performance_key.as_deref(), Some("Ab"));
+        assert_eq!(shapes.capo_fret, Some(1));
+        assert_eq!(shapes.song.sections[0].lines[0].chords[0].symbol, "G");
+        assert_eq!(shapes.song.sections[0].lines[0].chords[0].sounding, "Ab");
+
+        let sound = services.set_performance_key("Eb").unwrap();
+        assert_eq!(sound.played_key.as_deref(), Some("G"));
+        assert_eq!(sound.song.performance_key.as_deref(), Some("Eb"));
+        assert_eq!(sound.capo_fret, Some(8));
+        assert_eq!(sound.song.sections[0].lines[0].chords[0].symbol, "G");
+        assert_eq!(sound.song.sections[0].lines[0].chords[0].sounding, "Eb");
+        assert_eq!(sound.song.sections[0].lines[0].chords[1].symbol, "C");
+        assert_eq!(sound.song.sections[0].lines[0].chords[1].sounding, "Ab");
+    }
+
+    #[test]
     fn imported_capo_directive_enters_capo_mode() {
         let services = AppServices::new();
         let session = services
@@ -2147,6 +2287,7 @@ mod tests {
             last_modified_at: None,
             transpose_mode: TransposeMode::Chords,
             capo_fret: None,
+            shapes_key: None,
         })
         .unwrap();
 
