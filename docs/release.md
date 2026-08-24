@@ -71,7 +71,7 @@ rustup target add aarch64-linux-android armv7-linux-androideabi i686-linux-andro
 npm run android:init
 ```
 
-`android:init` also runs `npm run icons` afterward. That matters because `tauri android init` seeds the default Tauri launcher icon into `gen/android`; `tauri icon` only writes into that project once it exists. Without the second step, Settings can show the correct web icon while the home-screen launcher stays the Tauri template.
+`android:init` also runs `npm run icons` and `npm run android:immersive` afterward. That matters because `tauri android init` seeds the default Tauri launcher icon into `gen/android`; `tauri icon` only writes into that project once it exists. Without the icon step, Settings can show the correct web icon while the home-screen launcher stays the Tauri template. The immersive step patches `MainActivity` so the status and navigation bars stay hidden until you swipe from the edge.
 
 ### Android signing (one-time setup)
 

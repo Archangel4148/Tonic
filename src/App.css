@@ -296,7 +296,11 @@ body {
 .app-shell {
   max-width: 88rem;
   margin: 0 auto;
-  padding: 1.25rem 1.25rem 2rem;
+  padding:
+    max(1.25rem, env(safe-area-inset-top, 0px))
+    max(1.25rem, env(safe-area-inset-right, 0px))
+    2rem
+    max(1.25rem, env(safe-area-inset-left, 0px));
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
@@ -1184,7 +1188,11 @@ button:disabled {
 .live-scroller {
   height: 100vh;
   overflow: auto;
-  padding: 2.4rem 1.4rem 7.5rem;
+  padding:
+    max(2.4rem, calc(env(safe-area-inset-top, 0px) + 1.2rem))
+    max(1.4rem, env(safe-area-inset-right, 0px))
+    max(7.5rem, calc(env(safe-area-inset-bottom, 0px) + 6rem))
+    max(1.4rem, env(safe-area-inset-left, 0px));
   -webkit-overflow-scrolling: touch;
   touch-action: manipulation;
 }
@@ -1266,9 +1274,9 @@ button:disabled {
 
 .live-chrome-bar--top {
   position: absolute;
-  top: 8px;
-  left: 8px;
-  right: 8px;
+  top: max(8px, env(safe-area-inset-top, 0px));
+  left: max(8px, env(safe-area-inset-left, 0px));
+  right: max(8px, env(safe-area-inset-right, 0px));
   border-radius: 14px;
   justify-content: flex-end;
 }
@@ -1279,9 +1287,9 @@ button:disabled {
 
 .live-chrome-bar--bottom {
   position: absolute;
-  bottom: 8px;
-  left: 8px;
-  right: 8px;
+  bottom: max(8px, env(safe-area-inset-bottom, 0px));
+  left: max(8px, env(safe-area-inset-left, 0px));
+  right: max(8px, env(safe-area-inset-right, 0px));
   border-radius: 14px;
 }
 
@@ -1404,7 +1412,7 @@ button:disabled {
 
 @media (max-width: 900px) {
   .app-shell {
-    padding-bottom: 5.25rem;
+    padding-bottom: max(5.25rem, calc(env(safe-area-inset-bottom, 0px) + 4.25rem));
   }
 
   .app-workspace {

@@ -65,6 +65,8 @@ jobs:
           # `tauri android init` seeds default Tauri launcher icons into gen/android.
           # Re-run the icon generator so mipmaps land in the Android project res/.
           npm run icons
+          # Hide status/nav bars until swipe (immersive sticky).
+          npm run android:immersive
         env:
           ANDROID_HOME: ${{ env.ANDROID_HOME }}
           NDK_HOME: ${{ env.ANDROID_HOME }}/ndk/${{ env.NDK_VERSION }}
