@@ -198,6 +198,17 @@ export type LibraryInfo = {
   persistenceHealthy: boolean;
 };
 
+export type OpenLibraryFolderResult = {
+  path: string;
+  opened: boolean;
+  message: string;
+};
+
+export type LibraryReloadResult = {
+  session: SongSession | null;
+  editor: EditorSession | null;
+};
+
 export type ThemePreference = "dark" | "light" | "system";
 
 export type TypeScale = {

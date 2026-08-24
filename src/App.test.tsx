@@ -133,6 +133,7 @@ function mockIpc(
     const handler = {
       setlist_list: [],
       library_info: emptyLibraryInfo,
+      library_reload: { session: null, editor: null },
       ...handlers,
     }[String(cmd)];
     if (typeof handler === "function") {
@@ -175,6 +176,12 @@ describe("App", () => {
     fireEvent.click(screen.getByRole("button", { name: "Settings" }));
     expect(await screen.findByText(/tonic-domain v1\.0\.0/i)).toBeInTheDocument();
     expect(screen.getByText(/library healthy/i)).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Open save folder" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Rescan folder" }),
+    ).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Import chart" }));
     expect(screen.getByLabelText(/chart text/i)).toBeInTheDocument();

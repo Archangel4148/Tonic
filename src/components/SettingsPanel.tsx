@@ -31,6 +31,8 @@ type Props = {
   typeScale: TypeScale;
   onTypeScaleChange: (scale: TypeScale) => void;
   onClearLibrary: () => void;
+  onOpenSaveFolder: () => Promise<void> | void;
+  onRescanLibrary: () => Promise<void> | void;
   busy?: boolean;
 };
 
@@ -44,6 +46,8 @@ export function SettingsPanel({
   typeScale,
   onTypeScaleChange,
   onClearLibrary,
+  onOpenSaveFolder,
+  onRescanLibrary,
   busy = false,
 }: Props) {
   const dialogRef = useRef<HTMLDialogElement>(null);
@@ -212,28 +216,51 @@ export function SettingsPanel({
           ) : (
             <p className="settings-hint">Loading library info…</p>
           )}
-          <button
-            type="button"
-            className="text-button text-button--danger"
-            disabled={busy || !libraryInfo}
-            onClick={() => {
-              const songCount = libraryInfo?.songCount ?? 0;
-              const setlistCount = libraryInfo?.setlistCount ?? 0;
-              const total = songCount + setlistCount;
-              if (total === 0) {
-                window.alert("Your library is already empty.");
-                return;
-              }
-              const confirmed = window.confirm(
-                `Clear local library?\n\nThis will permanently delete ${songCount} song(s) and ${setlistCount} setlist(s).\n\nThis cannot be undone.`,
-              );
-              if (confirmed) {
-                onClearLibrary();
-              }
-            }}
-          >
-            Clear local library
-          </button>
+          <p className="settings-hint">
+            This folder is the live library. Copy it to Google Drive to back up,
+            or paste a backup into it. Tonic rereads the folder when you return
+            to the app, or when you tap Rescan folder.
+          </p>
+          <div className="editor-toolbar">
+            <button
+              type="button"
+              className="text-button"
+              disabled={busy || !libraryInfo?.libraryPath}
+              onClick={() => void onOpenSaveFolder()}
+            >
+              Open save folder
+            </button>
+            <button
+              type="button"
+              className="text-button"
+              disabled={busy || !libraryInfo?.libraryPath}
+              onClick={() => void onRescanLibrary()}
+            >
+              Rescan folder
+            </button>
+            <button
+              type="button"
+              className="text-button text-button--danger"
+              disabled={busy || !libraryInfo}
+              onClick={() => {
+                const songCount = libraryInfo?.songCount ?? 0;
+                const setlistCount = libraryInfo?.setlistCount ?? 0;
+                const total = songCount + setlistCount;
+                if (total === 0) {
+                  window.alert("Your library is already empty.");
+                  return;
+                }
+                const confirmed = window.confirm(
+                  `Clear local library?\n\nThis will permanently delete ${songCount} song(s) and ${setlistCount} setlist(s).\n\nThis cannot be undone.`,
+                );
+                if (confirmed) {
+                  onClearLibrary();
+                }
+              }}
+            >
+              Clear local library
+            </button>
+          </div>
         </section>
 
         <section className="settings-section">

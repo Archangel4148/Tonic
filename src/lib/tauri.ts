@@ -8,7 +8,9 @@ import type {
   LibraryInfo,
   LibraryList,
   LibraryQuery,
+  LibraryReloadResult,
   MetadataUpdate,
+  OpenLibraryFolderResult,
   Setlist,
   SetlistMetaUpdate,
   SetlistSummary,
@@ -21,6 +23,14 @@ export async function getAppInfo(): Promise<AppInfo> {
 
 export async function getLibraryInfo(): Promise<LibraryInfo> {
   return invoke<LibraryInfo>("library_info");
+}
+
+export async function openLibraryFolder(): Promise<OpenLibraryFolderResult> {
+  return invoke<OpenLibraryFolderResult>("library_open_folder");
+}
+
+export async function reloadLibrary(): Promise<LibraryReloadResult> {
+  return invoke<LibraryReloadResult>("library_reload");
 }
 
 export async function clearLibrary(): Promise<void> {

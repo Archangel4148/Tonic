@@ -50,7 +50,7 @@ ChordPro, plain-text, MusicXML/MXL, and website URL adapters (Ultimate Guitar fi
 
 ### `tonic-persist`
 
-Local library storage. `FileLibrary` writes JSON under the app data directory; `MemoryLibrary` is for tests. Import parsers live in `tonic-import`, not here. See [`persist.md`](./persist.md).
+Local library storage. `FileLibrary` writes JSON under a user-visible Tonic folder (Documents, with a private app-data fallback); `MemoryLibrary` is for tests. Import parsers live in `tonic-import`, not here. See [`persist.md`](./persist.md).
 
 ### `tonic` (`src-tauri`)
 

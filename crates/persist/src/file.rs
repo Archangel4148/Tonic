@@ -229,3 +229,92 @@ fn safe_id(id: &str) -> Result<&str, PersistError> {
     }
     Ok(id)
 }
+
+/// True when `root` already has a library index or song JSON files.
+#[must_use]
+pub fn library_has_data(root: &Path) -> bool {
+    if root.join("index.json").is_file() {
+        return true;
+    }
+    let songs = root.join("songs");
+    let Ok(entries) = fs::read_dir(songs) else {
+        return false;
+    };
+    entries
+        .filter_map(Result::ok)
+        .any(|entry| entry.path().extension().and_then(|ext| ext.to_str()) == Some("json"))
+}
+
+/// Copy `index.json`, `songs/`, and `setlists/` from `from` into `to`.
+///
+/// # Errors
+///
+/// Returns [`PersistError`] when directories or files cannot be copied.
+pub fn copy_library_tree(from: &Path, to: &Path) -> Result<(), PersistError> {
+    if from == to {
+        return Ok(());
+    }
+    if !from.exists() {
+        return Err(PersistError::new(format!(
+            "Nothing to copy from {}.",
+            from.display()
+        )));
+    }
+    fs::create_dir_all(to).map_err(|error| {
+        PersistError::new(format!(
+            "Could not create save folder {}: {error}",
+            to.display()
+        ))
+    })?;
+    copy_if_present(&from.join("index.json"), &to.join("index.json"))?;
+    copy_dir_json(&from.join("songs"), &to.join("songs"))?;
+    copy_dir_json(&from.join("setlists"), &to.join("setlists"))?;
+    Ok(())
+}
+
+fn copy_if_present(from: &Path, to: &Path) -> Result<(), PersistError> {
+    if !from.is_file() {
+        return Ok(());
+    }
+    fs::copy(from, to).map_err(|error| {
+        PersistError::new(format!(
+            "Could not copy {} to {}: {error}",
+            from.display(),
+            to.display()
+        ))
+    })?;
+    Ok(())
+}
+
+fn copy_dir_json(from: &Path, to: &Path) -> Result<(), PersistError> {
+    if !from.is_dir() {
+        return Ok(());
+    }
+    fs::create_dir_all(to).map_err(|error| {
+        PersistError::new(format!("Could not create {}: {error}", to.display()))
+    })?;
+    let entries = fs::read_dir(from).map_err(|error| {
+        PersistError::new(format!("Could not read {}: {error}", from.display()))
+    })?;
+    for entry in entries {
+        let entry = entry.map_err(|error| {
+            PersistError::new(format!("Could not read {}: {error}", from.display()))
+        })?;
+        let path = entry.path();
+        if path.extension().and_then(|ext| ext.to_str()) != Some("json") {
+            continue;
+        }
+        let Some(name) = path.file_name() else {
+            continue;
+        };
+        let dest = to.join(name);
+        fs::copy(&path, &dest).map_err(|error| {
+            PersistError::new(format!(
+                "Could not copy {} to {}: {error}",
+                path.display(),
+                dest.display()
+            ))
+        })?;
+    }
+    Ok(())
+}

@@ -28,7 +28,7 @@ pub use tonic_persist::{PersistError, TransposeMode};
 
 use editor::{apply_meta, editor_view, refresh_chord_warnings, EditorSession};
 
-pub use editor::{EditorMetaUpdate, EditorSaveResult, EditorSessionView};
+pub use editor::{EditorMetaUpdate, EditorSaveResult, EditorSessionView, LibraryReloadView};
 pub use library::{
     LibraryInfoView, LibraryListView, LibraryQuery, LibrarySongSummary, MetadataUpdate,
 };
@@ -196,6 +196,71 @@ impl AppServices {
             setlist_count: state.setlists.len(),
             persistence_healthy: self.persistence_healthy(),
         }
+    }
+
+    /// Reread song and setlist JSON from the save folder into memory.
+    ///
+    /// Use after files were added, edited, or deleted outside the app (Drive copy,
+    /// Files app, Explorer). A dirty editor draft is kept; the open song is closed
+    /// if its file disappeared.
+    ///
+    /// # Errors
+    ///
+    /// Persistence read failure, or persist failure updating id counters.
+    pub fn reload_from_disk(&self) -> Result<LibraryReloadView, String> {
+        let (next_id, records) = self.library.load_all().map_err(|error| error.to_string())?;
+        let snapshot = self
+            .library
+            .load_setlists()
+            .map_err(|error| error.to_string())?;
+        let songs: HashMap<String, StoredSong> = records
+            .into_iter()
+            .map(|record| (record.song.id().as_str().to_string(), record))
+            .collect();
+        let setlists: HashMap<String, StoredSetlist> = snapshot
+            .setlists
+            .into_iter()
+            .map(|setlist| (setlist.id.clone(), setlist))
+            .collect();
+
+        let mut state = self.lock();
+        let close_clean_editor = state
+            .editor
+            .as_ref()
+            .is_some_and(|editor| !editor.dirty && !songs.contains_key(editor.draft.id().as_str()));
+        if close_clean_editor {
+            state.editor = None;
+        } else if let Some(editor) = state.editor.as_mut() {
+            if !editor.dirty {
+                if let Some(record) = songs.get(editor.draft.id().as_str()) {
+                    *editor = EditorSession::from_library(
+                        record.song.clone(),
+                        record.tags.clone(),
+                        record.favorite,
+                    );
+                    refresh_chord_warnings(editor);
+                }
+            }
+        }
+        state.songs = songs;
+        state.setlists = setlists;
+        state.next_id = next_id.max(1);
+        state.next_setlist_id = snapshot.next_setlist_id.max(1);
+        state.next_entry_id = snapshot.next_entry_id.max(1);
+        reconcile_session_after_reload(&mut state);
+        let next_id = state.next_id;
+        let next_setlist_id = state.next_setlist_id;
+        let next_entry_id = state.next_entry_id;
+        self.library
+            .save_next_id(next_id)
+            .map_err(|error| error.to_string())?;
+        self.library
+            .save_next_setlist_ids(next_setlist_id, next_entry_id)
+            .map_err(|error| error.to_string())?;
+        Ok(LibraryReloadView {
+            session: state.session_id.as_ref().map(|_| session_view(&state)),
+            editor: state.editor.as_ref().map(editor_view),
+        })
     }
 
     /// Remove every song and setlist from the library.
@@ -1391,6 +1456,40 @@ fn clear_setlist_session(state: &mut AppState) {
     state.session_entry_id = None;
 }
 
+fn reconcile_session_after_reload(state: &mut AppState) {
+    let session_id = state.session_id.clone();
+    let Some(id) = session_id else {
+        return;
+    };
+    if let Some(record) = state.songs.get(&id).cloned() {
+        state.steps = steps_from_song(&record.song);
+        if record.transpose_mode == TransposeMode::Capo {
+            state.steps = i32::from(record.capo_fret.unwrap_or(0));
+        }
+    } else {
+        state.session_id = None;
+        state.warnings.clear();
+        state.steps = 0;
+        clear_setlist_session(state);
+        return;
+    }
+
+    let setlist_valid = match (
+        state.session_setlist_id.as_deref(),
+        state.session_entry_id.as_deref(),
+    ) {
+        (None, None) => true,
+        (Some(setlist_id), Some(entry_id)) => state
+            .setlists
+            .get(setlist_id)
+            .is_some_and(|setlist| setlist.entries.iter().any(|entry| entry.id == entry_id)),
+        _ => false,
+    };
+    if !setlist_valid {
+        clear_setlist_session(state);
+    }
+}
+
 fn parse_transpose_mode(value: &str) -> Result<TransposeMode, String> {
     match value.trim().to_ascii_lowercase().as_str() {
         "chords" | "chord" => Ok(TransposeMode::Chords),
@@ -2019,6 +2118,55 @@ mod tests {
         });
         assert!(miss.songs.is_empty());
 
+        let _ = std::fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn reload_from_disk_picks_up_added_and_deleted_song_files() {
+        let root = temp_root();
+        let services = AppServices::open(&root).unwrap();
+        services
+            .import_text("{title: Keep}\n{key: C}\n[C]Hi", ImportMode::ChordPro)
+            .unwrap();
+        assert_eq!(
+            services.list_library(LibraryQuery::default()).songs.len(),
+            1
+        );
+
+        let disk = FileLibrary::open(&root).unwrap();
+        disk.save(&StoredSong {
+            song: Song::builder("song-2", "From Drive")
+                .section(Section::new(
+                    tonic_domain::SectionLabel::Verse { number: None },
+                    vec![Line::lyrics("Pasted backup")],
+                ))
+                .build(),
+            favorite: false,
+            tags: vec![],
+            last_opened_at: None,
+            last_modified_at: None,
+            transpose_mode: TransposeMode::Chords,
+            capo_fret: None,
+        })
+        .unwrap();
+
+        let reloaded = services.reload_from_disk().unwrap();
+        assert_eq!(reloaded.session.as_ref().unwrap().song.id, "song-1");
+        let list = services.list_library(LibraryQuery::default());
+        assert_eq!(list.songs.len(), 2);
+        assert!(list.songs.iter().any(|song| song.title == "From Drive"));
+
+        std::fs::remove_file(root.join("songs").join("song-1.json")).unwrap();
+        let after_delete = services.reload_from_disk().unwrap();
+        assert!(after_delete.session.is_none());
+        assert_eq!(
+            services.list_library(LibraryQuery::default()).songs.len(),
+            1
+        );
+        assert_eq!(
+            services.list_library(LibraryQuery::default()).songs[0].title,
+            "From Drive"
+        );
         let _ = std::fs::remove_dir_all(root);
     }
 

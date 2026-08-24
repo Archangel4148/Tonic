@@ -3,12 +3,17 @@
 //! This crate is an IPC and windowing boundary. It must not contain music-theory
 //! algorithms or become the owner of song data.
 
+mod library_folder;
+
 use serde::Serialize;
+use tauri::Manager;
 use tonic_app::{
     performance_key_choices, AppServices, EditorMetaUpdate, EditorSaveResult, EditorSessionView,
-    ImportMode, LibraryInfoView, LibraryListView, LibraryQuery, MetadataUpdate, SetlistMetaUpdate,
-    SetlistSummaryView, SetlistView, SongSessionView,
+    ImportMode, LibraryInfoView, LibraryListView, LibraryQuery, LibraryReloadView, MetadataUpdate,
+    SetlistMetaUpdate, SetlistSummaryView, SetlistView, SongSessionView,
 };
+
+use library_folder::OpenLibraryFolderResult;
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -44,6 +49,18 @@ fn library_info(services: tauri::State<'_, AppServices>) -> LibraryInfoView {
 #[tauri::command]
 fn library_clear(services: tauri::State<'_, AppServices>) -> Result<(), String> {
     services.clear_library()
+}
+
+#[tauri::command]
+fn library_open_folder(
+    app: tauri::AppHandle,
+    services: tauri::State<'_, AppServices>,
+) -> Result<OpenLibraryFolderResult, String> {
+    let path = services
+        .library_info()
+        .library_path
+        .ok_or_else(|| "The library folder is not available.".to_string())?;
+    library_folder::open_save_folder(&app, std::path::Path::new(&path))
 }
 
 #[tauri::command]
@@ -120,6 +137,11 @@ fn library_list(
     query: Option<LibraryQuery>,
 ) -> LibraryListView {
     services.list_library(query.unwrap_or_default())
+}
+
+#[tauri::command]
+fn library_reload(services: tauri::State<'_, AppServices>) -> Result<LibraryReloadView, String> {
+    services.reload_from_disk()
 }
 
 #[tauri::command]
@@ -308,8 +330,8 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .setup(|app| {
-            use tauri::Manager;
-            let root = app.path().app_data_dir()?.join("library");
+            let root = library_folder::resolve_library_root(&app.handle())
+                .map_err(|message| std::io::Error::new(std::io::ErrorKind::Other, message))?;
             app.manage(AppServices::open(&root)?);
             Ok(())
         })
@@ -317,6 +339,7 @@ pub fn run() {
             app_info,
             library_info,
             library_clear,
+            library_open_folder,
             import_song,
             import_binary,
             import_url,
@@ -327,6 +350,7 @@ pub fn run() {
             set_transpose_mode,
             clear_song,
             library_list,
+            library_reload,
             library_open,
             library_delete,
             library_duplicate,

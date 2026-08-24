@@ -11,7 +11,7 @@ mod setlist;
 use std::fmt;
 use std::path::Path;
 
-pub use file::FileLibrary;
+pub use file::{copy_library_tree, library_has_data, FileLibrary};
 pub use memory::MemoryLibrary;
 pub use record::{StoredSong, TransposeMode};
 pub use setlist::{SetlistEntry, SetlistSnapshot, StoredSetlist};
@@ -157,6 +157,39 @@ mod tests {
         assert_eq!(snapshot.setlists[0].entries[0].song_id, "song-1");
         library.delete_setlist("setlist-1").unwrap();
         assert!(library.load_setlists().unwrap().setlists.is_empty());
+        let _ = std::fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn copy_library_tree_duplicates_json_files() {
+        let root = std::env::temp_dir().join(format!(
+            "tonic-persist-copy-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        let library = FileLibrary::open(&root).unwrap();
+        library
+            .save(&StoredSong {
+                song: demo_song("song-1", "Demo"),
+                favorite: false,
+                tags: vec![],
+                last_opened_at: None,
+                last_modified_at: None,
+                transpose_mode: crate::TransposeMode::Chords,
+                capo_fret: None,
+            })
+            .unwrap();
+        library.save_next_id(2).unwrap();
+        assert!(library_has_data(&root));
+
+        let dest = root.join("visible-copy");
+        copy_library_tree(&root, &dest).unwrap();
+        assert!(library_has_data(&dest));
+        assert!(dest.join("index.json").is_file());
+        assert!(dest.join("songs").join("song-1.json").is_file());
         let _ = std::fs::remove_dir_all(root);
     }
 

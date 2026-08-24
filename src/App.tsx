@@ -32,9 +32,11 @@ import {
   listLibrary,
   listSetlists,
   moveSetlistEntry,
+  openLibraryFolder,
   openLibrarySong,
   openSetlistEntry,
   openSetlistNeighbor,
+  reloadLibrary,
   removeSetlistEntry,
   resetPerformanceKey,
   saveEdit,
@@ -160,6 +162,29 @@ function App() {
     setOpenSetlist(next);
     return next;
   }
+
+  const rescanFromDisk = useCallback(async (): Promise<void> => {
+    const result = await reloadLibrary();
+    setEditor(result.editor);
+    setSession(result.session);
+    if (!result.session) {
+      setLive(false);
+    }
+    if (result.session?.setlist) {
+      try {
+        setOpenSetlist(await getSetlist(result.session.setlist.setlistId));
+      } catch {
+        setOpenSetlist(null);
+      }
+    }
+    setLibrary(await listLibrary(query));
+    setSetlists(await listSetlists());
+    try {
+      setLibraryInfo(await getLibraryInfo());
+    } catch {
+      setLibraryInfo(null);
+    }
+  }, [query]);
 
   useEffect(() => {
     let cancelled = false;
@@ -304,6 +329,22 @@ function App() {
     window.addEventListener("beforeunload", onBeforeUnload);
     return () => window.removeEventListener("beforeunload", onBeforeUnload);
   }, [hasUnsavedWork]);
+
+  useEffect(() => {
+    if (boot.status !== "ready") {
+      return;
+    }
+    function onVisible() {
+      if (document.visibilityState !== "visible" || live) {
+        return;
+      }
+      void rescanFromDisk().catch(() => {
+        /* keep the last in-memory library */
+      });
+    }
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [boot.status, live, rescanFromDisk]);
 
   const onDetailsDirtyChange = useCallback((dirty: boolean) => {
     setDetailsDirty(dirty);
@@ -453,6 +494,43 @@ function App() {
           typeScale={typeScale}
           onTypeScaleChange={setTypeScale}
           busy={busy}
+          onOpenSaveFolder={() =>
+            void (async () => {
+              setBusy(true);
+              setActionError(null);
+              try {
+                const result = await openLibraryFolder();
+                if (!result.opened) {
+                  window.alert(result.message);
+                }
+              } catch (error: unknown) {
+                setActionError(
+                  error instanceof Error
+                    ? error.message
+                    : "Could not open the save folder.",
+                );
+              } finally {
+                setBusy(false);
+              }
+            })()
+          }
+          onRescanLibrary={() =>
+            void (async () => {
+              setBusy(true);
+              setActionError(null);
+              try {
+                await rescanFromDisk();
+              } catch (error: unknown) {
+                setActionError(
+                  error instanceof Error
+                    ? error.message
+                    : "Could not rescan the save folder.",
+                );
+              } finally {
+                setBusy(false);
+              }
+            })()
+          }
           onClearLibrary={() =>
             void (async () => {
               if (!(await confirmLeaveEditor())) {

@@ -1,11 +1,16 @@
 # Persistence (Phase 6–8)
 
-Tonic stores the song library and setlists as JSON files under the Tauri app data directory (`…/library/`). Application services keep the live copy in memory and write through on every change.
+Tonic stores the song library and setlists as JSON files in a **user-visible folder** so they can be copied to Google Drive or a file manager.
+
+Desktop uses `Documents/Tonic/`. Android prefers `Documents/Tonic` (then `Download/Tonic`) under shared storage. Older installs in the private app-data `library/` folder are copied forward on first launch.
+
+Settings → **Open save folder** reveals that directory. Tonic rereads the folder when you return to the app, or from **Rescan folder**, so Drive copies and deleted files show up without restarting.
 
 ## Layout
 
 ```text
-{app_data}/library/
+{Documents}/Tonic/   (or Download/Tonic on some phones)
+├── HOW_TO_BACKUP.txt
 ├── index.json          { "nextId", "nextSetlistId", "nextEntryId" }
 ├── songs/
 │   ├── song-1.json
@@ -26,11 +31,11 @@ Each song file is a `StoredSong`:
 
 | Layer           | Role                                             |
 | --------------- | ------------------------------------------------ |
-| `tonic-persist` | Read/write files. Not the live source of truth.  |
-| `tonic-app`     | In-memory library + open session. Authoritative. |
-| React           | Renders list/session DTOs. Does not parse songs. |
+| `tonic-persist` | Read/write files. Disk is the durable library.                 |
+| `tonic-app`     | In-memory cache + open session. Refreshed from disk on rescan. |
+| React           | Renders list/session DTOs. Does not parse songs.               |
 
-On startup, `AppServices::open` loads every song and setlist into memory. While running, memory wins until a successful save. Import, transpose, metadata, favorite, duplicate, delete, and setlist edits all persist immediately.
+On startup, `AppServices::open` loads every song and setlist into memory. Edits in the app write through immediately. External folder changes (paste from Drive, delete a JSON file) are picked up by `reload_from_disk`.
 
 ## Why filesystem JSON
 

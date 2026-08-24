@@ -4183,6 +4183,7 @@ dependencies = [
  "tauri-build",
  "tauri-plugin-opener",
  "tonic-app",
+ "tonic-persist",
 ]
 
 [[package]]

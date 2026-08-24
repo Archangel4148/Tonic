@@ -21,6 +21,13 @@ pub struct EditorSaveResult {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
+pub struct LibraryReloadView {
+    pub session: Option<SongSessionView>,
+    pub editor: Option<EditorSessionView>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct EditorSessionView {
     pub song_id: String,
     pub dirty: bool,
