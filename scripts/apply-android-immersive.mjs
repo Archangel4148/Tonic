@@ -1,9 +1,16 @@
 /**
  * Copies immersive MainActivity into the generated Android project.
  * Safe to re-run after `tauri android init`.
+ *
+ * Finds the existing MainActivity.kt (do not invent a second package path).
  */
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import {
+  existsSync,
+  readdirSync,
+  readFileSync,
+  writeFileSync,
+} from "node:fs";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = join(fileURLToPath(new URL(".", import.meta.url)), "..");
@@ -28,21 +35,34 @@ if (typeof identifier !== "string" || !identifier.includes(".")) {
   process.exit(1);
 }
 
-const packagePath = identifier.split(".").join("/");
-const targetPath = join(
-  androidRoot,
-  "app",
-  "src",
-  "main",
-  "java",
-  packagePath,
-  "MainActivity.kt",
-);
+function findMainActivity(dir) {
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const path = join(dir, entry.name);
+    if (entry.isDirectory()) {
+      if (entry.name === "build" || entry.name === ".gradle") {
+        continue;
+      }
+      const found = findMainActivity(path);
+      if (found) {
+        return found;
+      }
+    } else if (entry.name === "MainActivity.kt") {
+      return path;
+    }
+  }
+  return null;
+}
 
-mkdirSync(dirname(targetPath), { recursive: true });
+const targetPath = findMainActivity(androidRoot);
+if (!targetPath) {
+  console.error(
+    "Could not find MainActivity.kt under src-tauri/gen/android. Run android:init first.",
+  );
+  process.exit(1);
+}
 
 let source = readFileSync(templatePath, "utf8");
-source = source.replace(/^package\s+[\w.]+/m, `package ${identifier}`);
+source = source.replace(/^package\s+[\w.`]+/m, `package ${identifier}`);
 
 writeFileSync(targetPath, source, "utf8");
 console.log(`Applied immersive MainActivity → ${targetPath}`);

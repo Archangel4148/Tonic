@@ -11,7 +11,16 @@ type WakeLockSentinelLike = {
 
 let wakeLock: WakeLockSentinelLike | null = null;
 
+function isAndroidWebView(): boolean {
+  return /Android/i.test(navigator.userAgent);
+}
+
 export async function setStageFullscreen(enabled: boolean): Promise<void> {
+  // Android immersive mode is handled natively in MainActivity; window
+  // fullscreen APIs are desktop-oriented and can be unstable on mobile.
+  if (isAndroidWebView()) {
+    return;
+  }
   try {
     const { getCurrentWindow } = await import("@tauri-apps/api/window");
     await getCurrentWindow().setFullscreen(enabled);
@@ -33,6 +42,9 @@ export async function setStageFullscreen(enabled: boolean): Promise<void> {
 }
 
 export async function getStageFullscreen(): Promise<boolean> {
+  if (isAndroidWebView()) {
+    return false;
+  }
   try {
     const { getCurrentWindow } = await import("@tauri-apps/api/window");
     return await getCurrentWindow().isFullscreen();
