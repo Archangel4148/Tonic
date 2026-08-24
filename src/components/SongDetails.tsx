@@ -53,8 +53,13 @@ export function SongDetails({
   }, [dirty, onDirtyChange]);
 
   return (
-    <details className="song-details panel">
-      <summary>Details{dirty ? " (unsaved)" : ""}</summary>
+    <section
+      className="song-details panel"
+      aria-labelledby="song-details-heading"
+    >
+      <h2 id="song-details-heading">
+        Details{dirty ? " (unsaved)" : ""}
+      </h2>
       <form
         className="details-form"
         onSubmit={(event) => {
@@ -127,6 +132,6 @@ export function SongDetails({
           </button>
         </div>
       </form>
-    </details>
+    </section>
   );
 }

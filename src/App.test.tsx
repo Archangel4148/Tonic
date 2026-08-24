@@ -389,6 +389,24 @@ describe("App", () => {
     expect(mockedInvoke).toHaveBeenCalledWith("library_open", {
       id: "session-1",
     });
+    await waitFor(() => {
+      expect(document.querySelector(".app-workspace")).toHaveAttribute(
+        "data-mobile-focus",
+        "main",
+      );
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: "Library", hidden: true }),
+    );
+    expect(document.querySelector(".app-workspace")).toHaveAttribute(
+      "data-mobile-focus",
+      "library",
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Song", hidden: true }));
+    expect(document.querySelector(".app-workspace")).toHaveAttribute(
+      "data-mobile-focus",
+      "main",
+    );
   });
 
   it("opens the editor for a new song", async () => {

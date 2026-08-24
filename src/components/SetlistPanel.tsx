@@ -7,6 +7,7 @@ type Props = {
   keys: string[];
   activeEntryId: string | null;
   disabled?: boolean;
+  embedded?: boolean;
   onRename: (name: string, notes: string, eventDate: string) => void;
   onAddSong: (songId: string) => void;
   onRemoveEntry: (entryId: string) => void;
@@ -29,6 +30,7 @@ export function SetlistPanel({
   keys,
   activeEntryId,
   disabled,
+  embedded = false,
   onRename,
   onAddSong,
   onRemoveEntry,
@@ -57,7 +59,11 @@ export function SetlistPanel({
   }, [songs, addSongId]);
 
   return (
-    <article className="setlist-panel panel">
+    <article
+      className={
+        embedded ? "setlist-panel setlist-panel--embedded" : "setlist-panel panel"
+      }
+    >
       <header className="setlist-header">
         <h2>Setlist</h2>
         <div className="editor-toolbar">

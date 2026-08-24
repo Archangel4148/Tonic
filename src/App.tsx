@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { SettingsPanel } from "./components/SettingsPanel";
 import { ImportPanel } from "./components/ImportPanel";
 import { LibrarySidebar, type LibraryTab } from "./components/LibrarySidebar";
@@ -8,6 +8,11 @@ import { SongDetails } from "./components/SongDetails";
 import { SongEditor } from "./components/SongEditor";
 import { SongViewer } from "./components/SongViewer";
 import { TransposeBar } from "./components/TransposeBar";
+import {
+  IconFullscreen,
+  IconSettings,
+  IconWindowed,
+} from "./components/icons";
 import { debounce } from "./lib/debounce";
 import {
   addSetlistSong,
@@ -99,6 +104,10 @@ function App() {
   const [importText, setImportText] = useState("");
   const [importFormat, setImportFormat] = useState<ImportFormat>("auto");
   const [importOpen, setImportOpen] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [mobileFocus, setMobileFocus] = useState<"library" | "main">(
+    "library",
+  );
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [libraryInfo, setLibraryInfo] = useState<LibraryInfo | null>(null);
   const [busy, setBusy] = useState(false);
@@ -135,6 +144,32 @@ function App() {
 
   const hasUnsavedWork =
     Boolean(editor?.dirty) || detailsDirty || editorBodyDirty;
+
+  const mobileMainAvailable = Boolean(
+    session || editor || importOpen || openSetlist,
+  );
+
+  const mobileMainLabel = editor
+    ? "Editor"
+    : importOpen
+      ? "Import"
+      : session
+        ? "Song"
+        : openSetlist
+          ? "Setlist"
+          : "Song";
+
+  useEffect(() => {
+    if (session || editor || importOpen || openSetlist) {
+      setMobileFocus("main");
+    }
+  }, [session?.song.id, editor?.songId, importOpen, openSetlist?.id]);
+
+  useEffect(() => {
+    if (!session && !editor && !importOpen && !openSetlist) {
+      setMobileFocus("library");
+    }
+  }, [session, editor, importOpen, openSetlist]);
 
   const scheduleSearch = useMemo(
     () =>
@@ -356,6 +391,10 @@ function App() {
     }
   }, [editor]);
 
+  useEffect(() => {
+    setDetailsOpen(false);
+  }, [session?.song.id]);
+
   async function confirmLeaveDetails(): Promise<boolean> {
     if (!detailsDirty) {
       return true;
@@ -406,6 +445,7 @@ function App() {
     try {
       const next = await action();
       setSession(next);
+      setMobileFocus("main");
       await refreshLibrary();
       await refreshSetlists();
       const setlistId = next.setlist?.setlistId ?? openSetlist?.id;
@@ -459,16 +499,24 @@ function App() {
         <div className="header-tools">
           <button
             type="button"
-            className={settingsOpen ? "chip chip--active" : "chip"}
+            className={
+              settingsOpen
+                ? "header-icon header-icon--active"
+                : "header-icon"
+            }
+            aria-label="Settings"
             aria-pressed={settingsOpen}
             aria-haspopup="dialog"
+            title="Settings"
             onClick={() => setSettingsOpen(true)}
           >
-            Settings
+            <IconSettings />
           </button>
           <button
             type="button"
-            className={fullscreen ? "chip chip--active" : "chip"}
+            className={
+              fullscreen ? "header-icon header-icon--active" : "header-icon"
+            }
             aria-pressed={fullscreen}
             aria-label={fullscreen ? "Exit fullscreen" : "Enter fullscreen"}
             title={
@@ -478,7 +526,7 @@ function App() {
             }
             onClick={() => void toggleStageFullscreen().then(setFullscreen)}
           >
-            {fullscreen ? "Exit full" : "Fullscreen"}
+            {fullscreen ? <IconWindowed /> : <IconFullscreen />}
           </button>
         </div>
       </header>
@@ -563,7 +611,10 @@ function App() {
         />
       )}
 
-      <div className="app-workspace">
+      <div
+        className="app-workspace"
+        data-mobile-focus={mobileFocus}
+      >
         {boot.status === "ready" && (
           <LibrarySidebar
             library={library}
@@ -608,8 +659,14 @@ function App() {
               })()
             }
             onImport={() => {
-              setImportOpen(true);
-              setLibraryTab("songs");
+              void (async () => {
+                if (!(await confirmLeaveDetails())) {
+                  return;
+                }
+                setDetailsOpen(false);
+                setImportOpen(true);
+                setLibraryTab("songs");
+              })();
             }}
             onNewSetlist={() =>
               void (async () => {
@@ -723,74 +780,115 @@ function App() {
             <>
               <div className="toolbar">
                 <div className="toolbar-actions">
-                  <button
-                    type="button"
-                    className={importOpen ? "text-button text-button--active" : "text-button"}
-                    aria-expanded={importOpen}
-                    aria-controls="import-panel"
-                    onClick={() => setImportOpen((open) => !open)}
-                  >
-                    {importOpen ? "Hide import" : "Import"}
-                  </button>
-                  {session && !editor && (
+                  {importOpen && !editor ? (
                     <button
                       type="button"
                       className="text-button"
-                      onClick={() => void enterLive()}
+                      onClick={() => setImportOpen(false)}
                     >
-                      Live
+                      {session ? "Back to song" : "Cancel"}
                     </button>
-                  )}
-                  {session && !editor && (
-                    <button
-                      type="button"
-                      className="text-button"
-                      aria-label="Edit song"
-                      onClick={() =>
-                        void (async () => {
-                          setBusy(true);
-                          setActionError(null);
-                          try {
-                            const next = await beginEdit(session.song.id);
-                            setEditor(next);
-                            setImportOpen(false);
-                          } catch (error: unknown) {
-                            setActionError(
-                              error instanceof Error
-                                ? error.message
-                                : "Something went wrong.",
-                            );
-                          } finally {
-                            setBusy(false);
+                  ) : (
+                    <>
+                      {!session && !editor && (
+                        <button
+                          type="button"
+                          className="text-button"
+                          aria-expanded={importOpen}
+                          aria-controls="import-panel"
+                          onClick={() => setImportOpen(true)}
+                        >
+                          Import
+                        </button>
+                      )}
+                      {session && !editor && (
+                        <button
+                          type="button"
+                          className="text-button"
+                          onClick={() => void enterLive()}
+                        >
+                          Live
+                        </button>
+                      )}
+                      {session && !editor && (
+                        <button
+                          type="button"
+                          className="text-button"
+                          aria-label="Edit song"
+                          onClick={() =>
+                            void (async () => {
+                              setBusy(true);
+                              setActionError(null);
+                              try {
+                                const next = await beginEdit(session.song.id);
+                                setEditor(next);
+                                setImportOpen(false);
+                                setDetailsOpen(false);
+                              } catch (error: unknown) {
+                                setActionError(
+                                  error instanceof Error
+                                    ? error.message
+                                    : "Something went wrong.",
+                                );
+                              } finally {
+                                setBusy(false);
+                              }
+                            })()
                           }
-                        })()
-                      }
-                    >
-                      Edit
-                    </button>
-                  )}
-                  {(session || editor) && (
-                    <button
-                      type="button"
-                      className="text-button"
-                      aria-label="Close song"
-                      onClick={async () => {
-                        if (!(await confirmLeaveEditor())) {
-                          return;
-                        }
-                        await clearSong();
-                        setSession(null);
-                        setEditor(null);
-                        setDetailsDirty(false);
-                        setImportOpen(false);
-                        setActionError(null);
-                      }}
-                    >
-                      Close
-                    </button>
+                        >
+                          Edit
+                        </button>
+                      )}
+                      {session && !editor && (
+                        <button
+                          type="button"
+                          className={
+                            detailsOpen
+                              ? "text-button text-button--active"
+                              : "text-button"
+                          }
+                          aria-pressed={detailsOpen}
+                          onClick={() =>
+                            void (async () => {
+                              if (detailsOpen) {
+                                if (!(await confirmLeaveDetails())) {
+                                  return;
+                                }
+                                setDetailsOpen(false);
+                                return;
+                              }
+                              setDetailsOpen(true);
+                            })()
+                          }
+                        >
+                          Details
+                        </button>
+                      )}
+                      {(session || editor) && (
+                        <button
+                          type="button"
+                          className="text-button"
+                          aria-label="Close song"
+                          onClick={async () => {
+                            if (!(await confirmLeaveEditor())) {
+                              return;
+                            }
+                            await clearSong();
+                            setSession(null);
+                            setEditor(null);
+                            setDetailsDirty(false);
+                            setDetailsOpen(false);
+                            setImportOpen(false);
+                            setActionError(null);
+                          }}
+                        >
+                          Close
+                        </button>
+                      )}
+                    </>
                   )}
                 </div>
-                {session && !editor && (
+                {session && !editor && !importOpen && (
                   <TransposeBar
                     displayKey={session.song.displayKey}
                     semitoneOffset={session.semitoneOffset}
@@ -825,6 +923,7 @@ function App() {
                   busy={busy}
                   onTextChange={setImportText}
                   onFormatChange={setImportFormat}
+                  onCancel={() => setImportOpen(false)}
                   onImport={(text, format) =>
                     void (async () => {
                       if (!(await confirmLeaveEditor())) {
@@ -836,6 +935,7 @@ function App() {
                         const next = await importSong(text, format);
                         setEditor(null);
                         setImportOpen(false);
+                        setDetailsOpen(false);
                         return next;
                       });
                     })()
@@ -849,6 +949,7 @@ function App() {
                         const next = await importBinary(bytes, fileName);
                         setEditor(null);
                         setImportOpen(false);
+                        setDetailsOpen(false);
                         return next;
                       });
                     })()
@@ -862,6 +963,7 @@ function App() {
                         const next = await importUrl(url);
                         setEditor(null);
                         setImportOpen(false);
+                        setDetailsOpen(false);
                         return next;
                       });
                     })()
@@ -909,7 +1011,7 @@ function App() {
                   }
                   onBodyDirtyChange={setEditorBodyDirty}
                 />
-              ) : session ? (
+              ) : importOpen ? null : session ? (
                 <>
                   <div key={session.song.id} className="song-stage">
                     <SongViewer
@@ -954,68 +1056,70 @@ function App() {
                       }
                     />
                   </div>
-                  <SongDetails
-                    session={session}
-                    disabled={busy}
-                    onDirtyChange={onDetailsDirtyChange}
-                    onSave={(values) =>
-                      void runAction(async () => {
-                        const next = await updateMetadata({
-                          title: values.title,
-                          artist: values.artist || null,
-                          album: values.album || null,
-                          notes: values.notes || null,
-                          tags: values.tags
-                            .split(",")
-                            .map((tag) => tag.trim())
-                            .filter(Boolean),
-                        });
-                        setDetailsDirty(false);
-                        return next;
-                      })
-                    }
-                    onDuplicate={() =>
-                      void (async () => {
-                        if (!(await confirmLeaveEditor())) {
+                  {detailsOpen && (
+                    <SongDetails
+                      session={session}
+                      disabled={busy}
+                      onDirtyChange={onDetailsDirtyChange}
+                      onSave={(values) =>
+                        void runAction(async () => {
+                          const next = await updateMetadata({
+                            title: values.title,
+                            artist: values.artist || null,
+                            album: values.album || null,
+                            notes: values.notes || null,
+                            tags: values.tags
+                              .split(",")
+                              .map((tag) => tag.trim())
+                              .filter(Boolean),
+                          });
+                          setDetailsDirty(false);
+                          return next;
+                        })
+                      }
+                      onDuplicate={() =>
+                        void (async () => {
+                          if (!(await confirmLeaveEditor())) {
+                            return;
+                          }
+                          await runAction(() =>
+                            duplicateLibrarySong(session.song.id),
+                          );
+                        })()
+                      }
+                      onDelete={() => {
+                        if (
+                          !window.confirm(
+                            `Delete “${session.song.title}” from this library?`,
+                          )
+                        ) {
                           return;
                         }
-                        await runAction(() =>
-                          duplicateLibrarySong(session.song.id),
-                        );
-                      })()
-                    }
-                    onDelete={() => {
-                      if (
-                        !window.confirm(
-                          `Delete “${session.song.title}” from this library?`,
-                        )
-                      ) {
-                        return;
-                      }
-                      void (async () => {
-                        setBusy(true);
-                        setActionError(null);
-                        try {
-                          const remaining = await deleteLibrarySong(
-                            session.song.id,
-                          );
-                          setSession(remaining);
-                          await refreshLibrary();
-                        } catch (error: unknown) {
-                          setActionError(
-                            error instanceof Error
-                              ? error.message
-                              : "Something went wrong.",
-                          );
-                        } finally {
-                          setBusy(false);
-                        }
-                      })();
-                    }}
-                  />
+                        void (async () => {
+                          setBusy(true);
+                          setActionError(null);
+                          try {
+                            const remaining = await deleteLibrarySong(
+                              session.song.id,
+                            );
+                            setSession(remaining);
+                            setDetailsOpen(false);
+                            await refreshLibrary();
+                          } catch (error: unknown) {
+                            setActionError(
+                              error instanceof Error
+                                ? error.message
+                                : "Something went wrong.",
+                            );
+                          } finally {
+                            setBusy(false);
+                          }
+                        })();
+                      }}
+                    />
+                  )}
                 </>
               ) : (
-                !importOpen &&
                 !openSetlist && (
                   <div className="empty-state">
                     <p className="hint empty-hint">
@@ -1033,14 +1137,26 @@ function App() {
                 )
               )}
 
-              {boot.status === "ready" && openSetlist && !editor && (
-                <SetlistPanel
-                  key={openSetlist.id}
-                  setlist={openSetlist}
-                  songs={library?.songs ?? []}
-                  keys={keys}
-                  activeEntryId={session?.setlist?.entryId ?? null}
-                  disabled={busy}
+              {boot.status === "ready" &&
+                openSetlist &&
+                !editor &&
+                !importOpen && (
+                  <SetlistDrawer
+                    collapsed={Boolean(session)}
+                    label={
+                      openSetlist.entries.length > 0
+                        ? `Setlist · ${openSetlist.name} · ${openSetlist.entries.length} songs`
+                        : `Setlist · ${openSetlist.name}`
+                    }
+                  >
+                    <SetlistPanel
+                      key={openSetlist.id}
+                      embedded={Boolean(session)}
+                      setlist={openSetlist}
+                      songs={library?.songs ?? []}
+                      keys={keys}
+                      activeEntryId={session?.setlist?.entryId ?? null}
+                      disabled={busy}
                   onRename={(name, notes, eventDate) =>
                     void (async () => {
                       setBusy(true);
@@ -1274,11 +1390,42 @@ function App() {
                     })()
                   }
                 />
-              )}
+                  </SetlistDrawer>
+                )}
             </>
           )}
         </main>
       </div>
+
+      {boot.status === "ready" && (
+        <nav className="mobile-nav" aria-label="Primary">
+          <button
+            type="button"
+            className={
+              mobileFocus === "library"
+                ? "mobile-nav__item mobile-nav__item--active"
+                : "mobile-nav__item"
+            }
+            aria-current={mobileFocus === "library" ? "page" : undefined}
+            onClick={() => setMobileFocus("library")}
+          >
+            Library
+          </button>
+          <button
+            type="button"
+            className={
+              mobileFocus === "main"
+                ? "mobile-nav__item mobile-nav__item--active"
+                : "mobile-nav__item"
+            }
+            aria-current={mobileFocus === "main" ? "page" : undefined}
+            disabled={!mobileMainAvailable}
+            onClick={() => setMobileFocus("main")}
+          >
+            {mobileMainLabel}
+          </button>
+        </nav>
+      )}
 
       <footer>
         <p>
@@ -1287,6 +1434,26 @@ function App() {
         </p>
       </footer>
     </div>
+  );
+}
+
+function SetlistDrawer({
+  collapsed,
+  label,
+  children,
+}: {
+  collapsed: boolean;
+  label: string;
+  children: ReactNode;
+}) {
+  if (!collapsed) {
+    return children;
+  }
+  return (
+    <details className="setlist-drawer panel">
+      <summary>{label}</summary>
+      {children}
+    </details>
   );
 }
 

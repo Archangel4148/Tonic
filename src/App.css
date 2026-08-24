@@ -347,6 +347,48 @@ body {
   align-items: center;
 }
 
+.header-tools {
+  gap: 0.15rem;
+}
+
+.header-icon {
+  width: 2.75rem;
+  height: 2.75rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font: inherit;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease,
+    transform 0.12s ease;
+}
+
+.header-icon svg {
+  display: block;
+  width: 1.35rem;
+  height: 1.35rem;
+}
+
+.header-icon:hover,
+.header-icon:focus-visible {
+  color: var(--text);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.header-icon--active {
+  color: var(--accent);
+}
+
+.header-icon:active:not(:disabled) {
+  transform: scale(0.96);
+}
+
 .toolbar {
   display: flex;
   flex-direction: column;
@@ -416,6 +458,19 @@ h2 {
 .import-panel-header h2,
 .song-header h2 {
   font-size: clamp(1.35rem, 3vw, 1.8rem);
+}
+
+.import-panel-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem 1rem;
+  margin-bottom: 0.85rem;
+}
+
+.import-panel-header .hint {
+  margin: 0.35rem 0 0;
 }
 
 .song-title-row {
@@ -1008,8 +1063,26 @@ button:disabled {
   flex: 1;
 }
 
-.song-details summary {
+.setlist-drawer > summary {
   cursor: pointer;
+  font-weight: 650;
+  list-style-position: outside;
+}
+
+.setlist-drawer .setlist-panel--embedded {
+  margin-top: 0.85rem;
+}
+
+.setlist-panel--embedded {
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 0;
+}
+
+.song-details h2 {
+  margin: 0;
+  font-size: 1.05rem;
   font-weight: 600;
 }
 
@@ -1310,9 +1383,66 @@ button:disabled {
   animation: tonic-backdrop-in 0.18s ease;
 }
 
+.mobile-nav {
+  display: none;
+}
+
 @media (max-width: 900px) {
+  .app-shell {
+    padding-bottom: 5.25rem;
+  }
+
   .app-workspace {
     grid-template-columns: 1fr;
+  }
+
+  .app-workspace[data-mobile-focus="main"] > .library-sidebar {
+    display: none;
+  }
+
+  .app-workspace[data-mobile-focus="library"] > main {
+    display: none;
+  }
+
+  .app-shell > footer {
+    display: none;
+  }
+
+  .mobile-nav {
+    display: flex;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 8;
+    gap: 0.35rem;
+    padding: 0.45rem 0.75rem calc(0.45rem + env(safe-area-inset-bottom, 0px));
+    background: color-mix(in srgb, var(--surface) 92%, var(--bg));
+    border-top: 1px solid var(--border);
+    backdrop-filter: blur(10px);
+  }
+
+  .mobile-nav__item {
+    flex: 1;
+    min-height: 2.75rem;
+    border: 1px solid transparent;
+    border-radius: 12px;
+    background: transparent;
+    color: var(--muted);
+    font: inherit;
+    font-weight: 650;
+    cursor: pointer;
+  }
+
+  .mobile-nav__item--active {
+    color: var(--text);
+    background: color-mix(in srgb, var(--accent) 18%, var(--surface));
+    border-color: color-mix(in srgb, var(--accent) 35%, var(--border));
+  }
+
+  .mobile-nav__item:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
   }
 }
 

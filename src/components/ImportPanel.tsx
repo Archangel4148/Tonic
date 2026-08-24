@@ -10,6 +10,7 @@ type Props = {
   onImport: (text: string, format: ImportFormat) => void;
   onImportBinary: (bytes: Uint8Array, fileName: string) => void;
   onImportUrl: (url: string) => void;
+  onCancel?: () => void;
 };
 
 const CHART_EXTENSIONS = ["cho", "crd", "chopro", "chordpro", "pro"];
@@ -23,6 +24,7 @@ export function ImportPanel({
   onImport,
   onImportBinary,
   onImportUrl,
+  onCancel,
 }: Props) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [url, setUrl] = useState("");
@@ -34,11 +36,23 @@ export function ImportPanel({
       aria-labelledby="import-heading"
     >
       <div className="import-panel-header">
-        <h2 id="import-heading">Import</h2>
-        <p className="hint">
-          Paste an Ultimate Guitar chords URL, paste chart text, or open a file.
-          Imported songs stay on this device offline.
-        </p>
+        <div>
+          <h2 id="import-heading">Import</h2>
+          <p className="hint">
+            Paste an Ultimate Guitar chords URL, paste chart text, or open a
+            file. Imported songs stay on this device offline.
+          </p>
+        </div>
+        {onCancel && (
+          <button
+            type="button"
+            className="text-button"
+            onClick={onCancel}
+            disabled={busy}
+          >
+            Cancel
+          </button>
+        )}
       </div>
 
       <label className="field-label" htmlFor="import-url">
