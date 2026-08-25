@@ -1,4 +1,8 @@
-//! User-visible library folder: Documents/Tonic (or Download/Tonic on Android).
+//! Library folder resolution: user-visible on desktop; private app-data on Android.
+//!
+//! Android shared paths like Documents/Tonic need storage permissions that sideloaded
+//! APKs do not have by default. Preferring them caused an immediate SIGABRT on startup
+//! when setup returned an error (see logcat: MediaProvider permission denied + tonic_lib abort).
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -6,7 +10,9 @@ use std::path::{Path, PathBuf};
 use serde::Serialize;
 use tauri::{AppHandle, Manager, Runtime};
 use tauri_plugin_opener::OpenerExt;
-use tonic_persist::{copy_library_tree, library_has_data, FileLibrary, SongLibrary};
+#[cfg(not(target_os = "android"))]
+use tonic_persist::{copy_library_tree, library_has_data};
+use tonic_persist::{FileLibrary, SongLibrary};
 
 const BACKUP_README: &str = "\
 Tonic song library
@@ -19,7 +25,8 @@ rereads this folder when you come back.
 - setlists/  setlist JSON files
 - index.json library counters
 
-On a phone: Files app → Internal storage → Documents → Tonic
+Desktop: Documents → Tonic
+Android: app-private storage (use Open save folder in Settings); shared Documents is not used without storage permission.
 ";
 
 #[derive(Debug, Serialize)]
@@ -30,41 +37,58 @@ pub struct OpenLibraryFolderResult {
     pub message: String,
 }
 
-/// Prefer a folder the Files app / Explorer can see; migrate from the old app-data path.
+/// Resolve a writable library root. Never prefers an unreadable Android shared folder.
 pub fn resolve_library_root<R: Runtime>(app: &AppHandle<R>) -> Result<PathBuf, String> {
     let legacy = app
         .path()
         .app_data_dir()
         .map_err(|error| error.to_string())?
         .join("library");
-    let mut candidates = visible_roots(app);
-    if !candidates.iter().any(|path| path == &legacy) {
-        candidates.push(legacy.clone());
+
+    // Android: private app data only. Shared Documents/Download needs permissions we
+    // do not request yet; using them aborts Tauri setup when open fails.
+    #[cfg(target_os = "android")]
+    {
+        FileLibrary::open(&legacy).map_err(|error| error.to_string())?;
+        let _ = write_backup_readme(&legacy);
+        return Ok(legacy);
     }
 
-    for path in &candidates {
-        if library_has_data(path) {
-            FileLibrary::open(path).map_err(|error| error.to_string())?;
-            let _ = write_backup_readme(path);
-            return Ok(path.clone());
+    #[cfg(not(target_os = "android"))]
+    {
+        let mut candidates = visible_roots(app);
+        if !candidates.iter().any(|path| path == &legacy) {
+            candidates.push(legacy.clone());
         }
-    }
 
-    for path in candidates.iter().filter(|path| *path != &legacy) {
-        if FileLibrary::open(path)
-            .and_then(|library| library.health_check())
-            .is_ok()
-        {
-            if library_has_data(&legacy) {
-                copy_library_tree(&legacy, path).map_err(|error| error.to_string())?;
+        for path in &candidates {
+            if library_has_data(path) {
+                match FileLibrary::open(path) {
+                    Ok(_) => {
+                        let _ = write_backup_readme(path);
+                        return Ok(path.clone());
+                    }
+                    Err(_) => continue,
+                }
             }
-            let _ = write_backup_readme(path);
-            return Ok(path.clone());
         }
-    }
 
-    FileLibrary::open(&legacy).map_err(|error| error.to_string())?;
-    Ok(legacy)
+        for path in candidates.iter().filter(|path| *path != &legacy) {
+            if probe_writable_library(path) {
+                if library_has_data(&legacy) {
+                    if let Err(error) = copy_library_tree(&legacy, path) {
+                        eprintln!("library migration skipped: {error}");
+                    }
+                }
+                let _ = write_backup_readme(path);
+                return Ok(path.clone());
+            }
+        }
+
+        FileLibrary::open(&legacy).map_err(|error| error.to_string())?;
+        let _ = write_backup_readme(&legacy);
+        Ok(legacy)
+    }
 }
 
 /// Open the live save folder in the system file manager.
@@ -79,7 +103,7 @@ pub fn open_save_folder<R: Runtime>(
         format!("Opened the save folder:\n{path}")
     } else {
         format!(
-            "This is the live song folder:\n{path}\n\nOpen the Files app and go to Documents → Tonic (or Download → Tonic). Copy that folder to Google Drive, or paste a backup here, then return to Tonic."
+            "This is the live song folder:\n{path}\n\nOn desktop, look under Documents → Tonic. On Android the library is in app-private storage — use a file manager that can open app data, or copy files via USB after enabling access."
         )
     };
     Ok(OpenLibraryFolderResult {
@@ -89,19 +113,26 @@ pub fn open_save_folder<R: Runtime>(
     })
 }
 
+#[cfg(not(target_os = "android"))]
 fn visible_roots<R: Runtime>(app: &AppHandle<R>) -> Vec<PathBuf> {
     let mut roots = Vec::new();
-    #[cfg(target_os = "android")]
-    if let Ok(home) = app.path().home_dir() {
-        roots.push(home.join("Documents").join("Tonic"));
-        roots.push(home.join("Download").join("Tonic"));
-        roots.push(home.join("Downloads").join("Tonic"));
-    }
-    #[cfg(not(target_os = "android"))]
     if let Ok(docs) = app.path().document_dir() {
         roots.push(docs.join("Tonic"));
     }
     roots
+}
+
+#[cfg(not(target_os = "android"))]
+fn probe_writable_library(path: &Path) -> bool {
+    if FileLibrary::open(path)
+        .and_then(|library| library.health_check())
+        .is_err()
+    {
+        return false;
+    }
+    let probe = path.join(".tonic_write_probe");
+    let ok = fs::write(&probe, b"ok").is_ok() && fs::remove_file(&probe).is_ok();
+    ok
 }
 
 fn write_backup_readme(root: &Path) -> std::io::Result<()> {

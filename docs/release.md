@@ -17,7 +17,7 @@ Version numbers in filenames follow the release version in `package.json` / `src
 
 1. Download the new installer or APK for the same platform.
 2. Install over the previous build (Windows/macOS) or install the new APK (Android may ask to update/replace).
-3. Library data lives in **Documents/Tonic** (or the app data `library/` folder on older installs). Do not delete those files when upgrading.
+3. Library data lives in **Documents/Tonic** on desktop, or the app-private `library/` folder on Android. Do not delete those files when upgrading.
 
 There is no in-app auto-update. Reinstall is the update strategy.
 

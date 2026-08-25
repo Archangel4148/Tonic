@@ -338,10 +338,42 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .setup(|app| {
-            let root = library_folder::resolve_library_root(&app.handle())
-                .map_err(|message| std::io::Error::new(std::io::ErrorKind::Other, message))?;
-            app.manage(AppServices::open(&root)?);
-            Ok(())
+            let root = match library_folder::resolve_library_root(&app.handle()) {
+                Ok(path) => path,
+                Err(message) => {
+                    let fallback = app
+                        .path()
+                        .app_data_dir()
+                        .map_err(|error| {
+                            Box::<dyn std::error::Error>::from(format!(
+                                "library unavailable ({message}); app data also failed: {error}"
+                            ))
+                        })?
+                        .join("library");
+                    eprintln!("library resolve failed ({message}); using {fallback:?}");
+                    fallback
+                }
+            };
+            match AppServices::open(&root) {
+                Ok(services) => {
+                    app.manage(services);
+                    Ok(())
+                }
+                Err(error) => {
+                    // Last resort: private app-data path so Android never SIGABRTs on setup.
+                    let fallback = app
+                        .path()
+                        .app_data_dir()
+                        .map_err(|io| Box::<dyn std::error::Error>::from(io.to_string()))?
+                        .join("library");
+                    if fallback == root {
+                        return Err(Box::new(error));
+                    }
+                    eprintln!("library open failed on {root:?} ({error}); retrying {fallback:?}");
+                    app.manage(AppServices::open(&fallback)?);
+                    Ok(())
+                }
+            }
         })
         .invoke_handler(tauri::generate_handler![
             app_info,

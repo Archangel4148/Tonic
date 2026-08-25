@@ -1,15 +1,20 @@
 # Persistence (Phase 6–8)
 
-Tonic stores the song library and setlists as JSON files in a **user-visible folder** so they can be copied to Google Drive or a file manager.
+Tonic stores the song library and setlists as JSON files.
 
-Desktop uses `Documents/Tonic/`. Android prefers `Documents/Tonic` (then `Download/Tonic`) under shared storage. Older installs in the private app-data `library/` folder are copied forward on first launch.
+**Desktop** uses a user-visible `Documents/Tonic/` folder so charts can be copied to Google Drive or a file manager.
 
-Settings → **Open save folder** reveals that directory. Tonic rereads the folder when you return to the app, or from **Rescan folder**, so Drive copies and deleted files show up without restarting.
+**Android** uses the app-private data `library/` folder. Shared `Documents/Tonic` is not used at launch — without storage permission Android denies access and the old path aborted the whole app on startup. Settings → **Open save folder** still shows the live path.
+
+Older desktop installs that lived only under private app-data `library/` are copied forward into Documents on first launch when that folder is writable.
+
+Settings → **Open save folder** reveals the live directory. Tonic rereads the folder when you return to the app, or from **Rescan folder**, so Drive copies and deleted files show up without restarting.
 
 ## Layout
 
 ```text
-{Documents}/Tonic/   (or Download/Tonic on some phones)
+{Documents}/Tonic/     (desktop)
+{app_data}/library/    (Android; also desktop fallback)
 ├── HOW_TO_BACKUP.txt
 ├── index.json          { "nextId", "nextSetlistId", "nextEntryId" }
 ├── songs/
