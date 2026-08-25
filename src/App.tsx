@@ -886,6 +886,29 @@ function App() {
                           Details
                         </button>
                       )}
+                      {session && !editor && !importOpen && (
+                        <button
+                          type="button"
+                          className="text-button"
+                          disabled={
+                            busy ||
+                            (session.transposeMode === "capo"
+                              ? (session.capoFret ?? 0) === 0 &&
+                                !(
+                                  session.song.originalKey != null &&
+                                  (session.playedKey ??
+                                    session.song.originalKey) !==
+                                    session.song.originalKey
+                                )
+                              : session.semitoneOffset === 0)
+                          }
+                          onClick={() =>
+                            void runAction(() => resetPerformanceKey())
+                          }
+                        >
+                          Reset
+                        </button>
+                      )}
                       {(session || editor) && (
                         <button
                           type="button"
@@ -915,10 +938,8 @@ function App() {
                     displayKey={session.song.displayKey}
                     originalKey={session.song.originalKey}
                     playedKey={session.playedKey}
-                    semitoneOffset={session.semitoneOffset}
                     keys={keys}
                     mode={session.transposeMode}
-                    capoFret={session.capoFret}
                     disabled={busy}
                     onTranspose={(semitones) =>
                       void runAction(() => transposeSong(semitones))
@@ -929,7 +950,6 @@ function App() {
                     onSelectShapesKey={(key) =>
                       void runAction(() => setShapesKey(key))
                     }
-                    onReset={() => void runAction(() => resetPerformanceKey())}
                     onModeChange={(mode) =>
                       void runAction(() => setTransposeMode(mode))
                     }

@@ -4175,7 +4175,7 @@ checksum = "7d56353a2a665ad0f41a421187180aab746c8c325620617ad883a99a1cbe66d2"
 
 [[package]]
 name = "tonic"
-version = "1.0.0"
+version = "1.0.1"
 dependencies = [
  "serde",
  "serde_json",
@@ -4188,7 +4188,7 @@ dependencies = [
 
 [[package]]
 name = "tonic-app"
-version = "1.0.0"
+version = "1.0.1"
 dependencies = [
  "reqwest 0.12.28",
  "serde",
@@ -4199,7 +4199,7 @@ dependencies = [
 
 [[package]]
 name = "tonic-domain"
-version = "1.0.0"
+version = "1.0.1"
 dependencies = [
  "serde",
  "serde_json",
@@ -4207,7 +4207,7 @@ dependencies = [
 
 [[package]]
 name = "tonic-import"
-version = "1.0.0"
+version = "1.0.1"
 dependencies = [
  "html-escape",
  "roxmltree",
@@ -4219,7 +4219,7 @@ dependencies = [
 
 [[package]]
 name = "tonic-persist"
-version = "1.0.0"
+version = "1.0.1"
 dependencies = [
  "serde",
  "serde_json",

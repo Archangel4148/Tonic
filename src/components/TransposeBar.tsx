@@ -4,15 +4,12 @@ type Props = {
   displayKey: string | null;
   originalKey?: string | null;
   playedKey?: string | null;
-  semitoneOffset: number;
   keys: string[];
   mode: TransposeMode;
-  capoFret: number | null;
   disabled?: boolean;
   onTranspose: (semitones: number) => void;
   onSelectKey: (key: string) => void;
   onSelectShapesKey?: (key: string) => void;
-  onReset: () => void;
   onModeChange: (mode: TransposeMode) => void;
 };
 
@@ -90,28 +87,17 @@ export function TransposeBar({
   displayKey,
   originalKey = null,
   playedKey = null,
-  semitoneOffset,
   keys,
   mode,
-  capoFret,
   disabled = false,
   onTranspose,
   onSelectKey,
   onSelectShapesKey,
-  onReset,
   onModeChange,
 }: Props) {
   const selectValue = displayKey ?? "";
   const shapesValue = playedKey ?? originalKey ?? "";
-  const fret = capoFret ?? 0;
   const showPlayAndSound = mode === "capo" && Boolean(onSelectShapesKey);
-  const shapesCustom =
-    mode === "capo" &&
-    shapesValue.length > 0 &&
-    originalKey != null &&
-    shapesValue !== originalKey;
-  const resetBlocked =
-    mode === "capo" ? fret === 0 && !shapesCustom : semitoneOffset === 0;
 
   return (
     <div className="transpose-bar" role="group" aria-label="Transpose">
@@ -158,14 +144,6 @@ export function TransposeBar({
           +
         </button>
       )}
-      <button
-        type="button"
-        className="text-button"
-        onClick={onReset}
-        disabled={disabled || resetBlocked}
-      >
-        Reset
-      </button>
     </div>
   );
 }
