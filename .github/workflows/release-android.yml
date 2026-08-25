@@ -16,7 +16,7 @@ on:
         type: string
 
 permissions:
-  contents: read
+  contents: write
 
 env:
   NDK_VERSION: "27.0.11902837"
@@ -132,3 +132,24 @@ jobs:
           name: tonic-android-apk
           path: release-artifacts/*.apk
           if-no-files-found: error
+
+      # Desktop release workflow usually creates the GitHub Release; attach the APK to it.
+      # If Android finishes first, create a draft release so the APK is still on the tag.
+      - name: Attach APK to GitHub Release
+        if: github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${{ github.ref_name }}"
+          for _ in $(seq 1 36); do
+            if gh release view "$TAG" >/dev/null 2>&1; then
+              break
+            fi
+            sleep 5
+          done
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            gh release create "$TAG" --draft \
+              --title "Tonic $TAG" \
+              --notes "Desktop installers and Android APK for this release. See docs/release.md."
+          fi
+          gh release upload "$TAG" release-artifacts/*.apk --clobber

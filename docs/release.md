@@ -125,11 +125,11 @@ Do not distribute debug APKs to users; they will not upgrade each other reliably
 
 GitHub Actions workflows under `.github/workflows/`:
 
-- `release-desktop.yml` — builds Windows NSIS, macOS DMG, Linux AppImage on tag `v*` or manual dispatch
+- `release-desktop.yml` — builds Windows NSIS, macOS DMG, Linux AppImage on tag `v*` or manual dispatch; attaches installers to the GitHub Release
 - `build-android-debug.yml` — **manual only**: universal **debug** APK, no keystore or version tag needed (for dev testing on a phone)
-- `release-android.yml` — tag `v*` or manual: universal **release** APK signed with the upload keystore from GitHub secrets (for distribution / in-place updates)
+- `release-android.yml` — tag `v*` or manual: universal **release** APK signed with the upload keystore from GitHub secrets; on tag pushes, also attaches `Tonic_<version>_universal.apk` to the same GitHub Release
 
-Upload artifacts from the Actions run, or attach release artifacts to a GitHub Release.
+Workflow artifacts remain available on the Actions run as a backup.
 
 ### Which Android workflow to use
 
