@@ -67,6 +67,8 @@ jobs:
           npm run icons
           # Hide status/nav bars until swipe (immersive sticky).
           npm run android:immersive
+          # All-files permission declaration for optional Documents/Tonic.
+          npm run android:storage
         env:
           ANDROID_HOME: ${{ env.ANDROID_HOME }}
           NDK_HOME: ${{ env.ANDROID_HOME }}/ndk/${{ env.NDK_VERSION }}

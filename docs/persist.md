@@ -4,17 +4,21 @@ Tonic stores the song library and setlists as JSON files.
 
 **Desktop** uses a user-visible `Documents/Tonic/` folder so charts can be copied to Google Drive or a file manager.
 
-**Android** uses the app-private data `library/` folder. Shared `Documents/Tonic` is not used at launch — without storage permission Android denies access and the old path aborted the whole app on startup. Settings → **Open save folder** still shows the live path.
+**Android**
 
-Older desktop installs that lived only under private app-data `library/` are copied forward into Documents on first launch when that folder is writable.
+1. **Default:** `Android/data/com.tonic.songbook/files/Tonic` — no special permission; reachable over USB and many file managers.
+2. **Optional Documents/Tonic:** Settings → **Use Documents folder** opens Android’s “All files access” screen. After you grant it and **restart Tonic**, the live library moves to `Documents/Tonic` (easy Files app / Drive backups).
 
-Settings → **Open save folder** reveals the live directory. Tonic rereads the folder when you return to the app, or from **Rescan folder**, so Drive copies and deleted files show up without restarting.
+Startup never requires Documents access; missing permission no longer crashes the app.
+
+Settings → **Open save folder** reveals the live directory. Tonic rereads the folder when you return to the app, or from **Rescan folder**.
 
 ## Layout
 
 ```text
-{Documents}/Tonic/     (desktop)
-{app_data}/library/    (Android; also desktop fallback)
+{Documents}/Tonic/                              (desktop; Android with All files access)
+{primary}/Android/data/<id>/files/Tonic/        (Android default)
+{app_data}/library/                             (last-resort private fallback)
 ├── HOW_TO_BACKUP.txt
 ├── index.json          { "nextId", "nextSetlistId", "nextEntryId" }
 ├── songs/
@@ -34,8 +38,8 @@ Each song file is a `StoredSong`:
 
 ## Ownership
 
-| Layer           | Role                                             |
-| --------------- | ------------------------------------------------ |
+| Layer           | Role                                                           |
+| --------------- | -------------------------------------------------------------- |
 | `tonic-persist` | Read/write files. Disk is the durable library.                 |
 | `tonic-app`     | In-memory cache + open session. Refreshed from disk on rescan. |
 | React           | Renders list/session DTOs. Does not parse songs.               |

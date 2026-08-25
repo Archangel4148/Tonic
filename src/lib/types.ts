@@ -204,6 +204,16 @@ export type OpenLibraryFolderResult = {
   message: string;
 };
 
+export type LibraryStorageStatus = {
+  libraryPath: string | null;
+  kind: string;
+  documentsPath: string | null;
+  documentsWritable: boolean;
+  hasAllFilesAccess: boolean;
+  canUseDocuments: boolean;
+  hint: string;
+};
+
 export type LibraryReloadResult = {
   session: SongSession | null;
   editor: EditorSession | null;

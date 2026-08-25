@@ -1,4 +1,10 @@
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 import { SettingsPanel } from "./components/SettingsPanel";
 import { ImportPanel } from "./components/ImportPanel";
 import { LibrarySidebar, type LibraryTab } from "./components/LibrarySidebar";
@@ -8,11 +14,7 @@ import { SongDetails } from "./components/SongDetails";
 import { SongEditor } from "./components/SongEditor";
 import { SongViewer } from "./components/SongViewer";
 import { TransposeBar } from "./components/TransposeBar";
-import {
-  IconFullscreen,
-  IconSettings,
-  IconWindowed,
-} from "./components/icons";
+import { IconFullscreen, IconSettings, IconWindowed } from "./components/icons";
 import { debounce } from "./lib/debounce";
 import {
   addSetlistSong,
@@ -30,6 +32,7 @@ import {
   getCurrentSong,
   getEditorState,
   getLibraryInfo,
+  getLibraryStorageStatus,
   getSetlist,
   importBinary,
   importSong,
@@ -42,6 +45,7 @@ import {
   openSetlistEntry,
   openSetlistNeighbor,
   reloadLibrary,
+  requestDocumentsAccess,
   removeSetlistEntry,
   resetPerformanceKey,
   saveEdit,
@@ -106,9 +110,7 @@ function App() {
   const [importFormat, setImportFormat] = useState<ImportFormat>("auto");
   const [importOpen, setImportOpen] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
-  const [mobileFocus, setMobileFocus] = useState<"library" | "main">(
-    "library",
-  );
+  const [mobileFocus, setMobileFocus] = useState<"library" | "main">("library");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [libraryInfo, setLibraryInfo] = useState<LibraryInfo | null>(null);
   const [busy, setBusy] = useState(false);
@@ -502,9 +504,7 @@ function App() {
           <button
             type="button"
             className={
-              settingsOpen
-                ? "header-icon header-icon--active"
-                : "header-icon"
+              settingsOpen ? "header-icon header-icon--active" : "header-icon"
             }
             aria-label="Settings"
             aria-pressed={settingsOpen}
@@ -564,6 +564,30 @@ function App() {
               }
             })()
           }
+          onRequestDocumentsAccess={() =>
+            void (async () => {
+              setBusy(true);
+              setActionError(null);
+              try {
+                const status = await requestDocumentsAccess();
+                window.alert(status.hint);
+                try {
+                  setLibraryInfo(await getLibraryInfo());
+                  await getLibraryStorageStatus();
+                } catch {
+                  /* desktop / unavailable */
+                }
+              } catch (error: unknown) {
+                setActionError(
+                  error instanceof Error
+                    ? error.message
+                    : "Could not open storage settings.",
+                );
+              } finally {
+                setBusy(false);
+              }
+            })()
+          }
           onRescanLibrary={() =>
             void (async () => {
               setBusy(true);
@@ -613,10 +637,7 @@ function App() {
         />
       )}
 
-      <div
-        className="app-workspace"
-        data-mobile-focus={mobileFocus}
-      >
+      <div className="app-workspace" data-mobile-focus={mobileFocus}>
         {boot.status === "ready" && (
           <LibrarySidebar
             library={library}
@@ -1164,239 +1185,249 @@ function App() {
                       keys={keys}
                       activeEntryId={session?.setlist?.entryId ?? null}
                       disabled={busy}
-                  onRename={(name, notes, eventDate) =>
-                    void (async () => {
-                      setBusy(true);
-                      setActionError(null);
-                      try {
-                        const next = await updateSetlistMeta(openSetlist.id, {
-                          name,
-                          notes: notes || null,
-                          eventDate: eventDate || null,
-                        });
-                        setOpenSetlist(next);
-                        await refreshSetlists();
-                        if (session?.setlist?.setlistId === next.id) {
-                          const current = await getCurrentSong();
-                          if (current) {
-                            setSession(current);
+                      onRename={(name, notes, eventDate) =>
+                        void (async () => {
+                          setBusy(true);
+                          setActionError(null);
+                          try {
+                            const next = await updateSetlistMeta(
+                              openSetlist.id,
+                              {
+                                name,
+                                notes: notes || null,
+                                eventDate: eventDate || null,
+                              },
+                            );
+                            setOpenSetlist(next);
+                            await refreshSetlists();
+                            if (session?.setlist?.setlistId === next.id) {
+                              const current = await getCurrentSong();
+                              if (current) {
+                                setSession(current);
+                              }
+                            }
+                          } catch (error: unknown) {
+                            setActionError(
+                              error instanceof Error
+                                ? error.message
+                                : "Something went wrong.",
+                            );
+                          } finally {
+                            setBusy(false);
                           }
-                        }
-                      } catch (error: unknown) {
-                        setActionError(
-                          error instanceof Error
-                            ? error.message
-                            : "Something went wrong.",
-                        );
-                      } finally {
-                        setBusy(false);
+                        })()
                       }
-                    })()
-                  }
-                  onAddSong={(songId) =>
-                    void (async () => {
-                      setBusy(true);
-                      setActionError(null);
-                      try {
-                        setOpenSetlist(
-                          await addSetlistSong(openSetlist.id, songId),
-                        );
-                        await refreshSetlists();
-                      } catch (error: unknown) {
-                        setActionError(
-                          error instanceof Error
-                            ? error.message
-                            : "Something went wrong.",
-                        );
-                      } finally {
-                        setBusy(false);
-                      }
-                    })()
-                  }
-                  onRemoveEntry={(entryId) =>
-                    void (async () => {
-                      setBusy(true);
-                      setActionError(null);
-                      try {
-                        setOpenSetlist(
-                          await removeSetlistEntry(openSetlist.id, entryId),
-                        );
-                        await refreshSetlists();
-                        const current = await getCurrentSong();
-                        setSession(current);
-                      } catch (error: unknown) {
-                        setActionError(
-                          error instanceof Error
-                            ? error.message
-                            : "Something went wrong.",
-                        );
-                      } finally {
-                        setBusy(false);
-                      }
-                    })()
-                  }
-                  onMoveEntry={(from, to) =>
-                    void (async () => {
-                      setBusy(true);
-                      setActionError(null);
-                      try {
-                        setOpenSetlist(
-                          await moveSetlistEntry(openSetlist.id, from, to),
-                        );
-                        if (session?.setlist?.setlistId === openSetlist.id) {
-                          const current = await getCurrentSong();
-                          if (current) {
-                            setSession(current);
+                      onAddSong={(songId) =>
+                        void (async () => {
+                          setBusy(true);
+                          setActionError(null);
+                          try {
+                            setOpenSetlist(
+                              await addSetlistSong(openSetlist.id, songId),
+                            );
+                            await refreshSetlists();
+                          } catch (error: unknown) {
+                            setActionError(
+                              error instanceof Error
+                                ? error.message
+                                : "Something went wrong.",
+                            );
+                          } finally {
+                            setBusy(false);
                           }
-                        }
-                      } catch (error: unknown) {
-                        setActionError(
-                          error instanceof Error
-                            ? error.message
-                            : "Something went wrong.",
-                        );
-                      } finally {
-                        setBusy(false);
+                        })()
                       }
-                    })()
-                  }
-                  onOpenEntry={(entryId) =>
-                    void (async () => {
-                      if (!(await confirmLeaveEditor())) {
-                        return;
-                      }
-                      await runAction(async () => {
-                        const next = await openSetlistEntry(
-                          openSetlist.id,
-                          entryId,
-                        );
-                        setEditor(null);
-                        setImportOpen(false);
-                        return next;
-                      });
-                    })()
-                  }
-                  onUpdateEntry={(entryId, performanceKey, capoFret, notes) =>
-                    void (async () => {
-                      setBusy(true);
-                      setActionError(null);
-                      try {
-                        setOpenSetlist(
-                          await updateSetlistEntry(
-                            openSetlist.id,
-                            entryId,
-                            performanceKey,
-                            capoFret,
-                            notes,
-                          ),
-                        );
-                        await refreshSetlists();
-                        if (session?.setlist?.entryId === entryId) {
-                          const current = await getCurrentSong();
-                          if (current) {
+                      onRemoveEntry={(entryId) =>
+                        void (async () => {
+                          setBusy(true);
+                          setActionError(null);
+                          try {
+                            setOpenSetlist(
+                              await removeSetlistEntry(openSetlist.id, entryId),
+                            );
+                            await refreshSetlists();
+                            const current = await getCurrentSong();
                             setSession(current);
+                          } catch (error: unknown) {
+                            setActionError(
+                              error instanceof Error
+                                ? error.message
+                                : "Something went wrong.",
+                            );
+                          } finally {
+                            setBusy(false);
                           }
+                        })()
+                      }
+                      onMoveEntry={(from, to) =>
+                        void (async () => {
+                          setBusy(true);
+                          setActionError(null);
+                          try {
+                            setOpenSetlist(
+                              await moveSetlistEntry(openSetlist.id, from, to),
+                            );
+                            if (
+                              session?.setlist?.setlistId === openSetlist.id
+                            ) {
+                              const current = await getCurrentSong();
+                              if (current) {
+                                setSession(current);
+                              }
+                            }
+                          } catch (error: unknown) {
+                            setActionError(
+                              error instanceof Error
+                                ? error.message
+                                : "Something went wrong.",
+                            );
+                          } finally {
+                            setBusy(false);
+                          }
+                        })()
+                      }
+                      onOpenEntry={(entryId) =>
+                        void (async () => {
+                          if (!(await confirmLeaveEditor())) {
+                            return;
+                          }
+                          await runAction(async () => {
+                            const next = await openSetlistEntry(
+                              openSetlist.id,
+                              entryId,
+                            );
+                            setEditor(null);
+                            setImportOpen(false);
+                            return next;
+                          });
+                        })()
+                      }
+                      onUpdateEntry={(
+                        entryId,
+                        performanceKey,
+                        capoFret,
+                        notes,
+                      ) =>
+                        void (async () => {
+                          setBusy(true);
+                          setActionError(null);
+                          try {
+                            setOpenSetlist(
+                              await updateSetlistEntry(
+                                openSetlist.id,
+                                entryId,
+                                performanceKey,
+                                capoFret,
+                                notes,
+                              ),
+                            );
+                            await refreshSetlists();
+                            if (session?.setlist?.entryId === entryId) {
+                              const current = await getCurrentSong();
+                              if (current) {
+                                setSession(current);
+                              }
+                            }
+                          } catch (error: unknown) {
+                            setActionError(
+                              error instanceof Error
+                                ? error.message
+                                : "Something went wrong.",
+                            );
+                          } finally {
+                            setBusy(false);
+                          }
+                        })()
+                      }
+                      onDuplicate={() =>
+                        void (async () => {
+                          setBusy(true);
+                          setActionError(null);
+                          try {
+                            const copy = await duplicateSetlist(openSetlist.id);
+                            setOpenSetlist(copy);
+                            setLibraryTab("setlists");
+                            await refreshSetlists();
+                          } catch (error: unknown) {
+                            setActionError(
+                              error instanceof Error
+                                ? error.message
+                                : "Something went wrong.",
+                            );
+                          } finally {
+                            setBusy(false);
+                          }
+                        })()
+                      }
+                      onDelete={() => {
+                        if (
+                          !window.confirm(
+                            `Delete setlist “${openSetlist.name}”? Songs stay in the library.`,
+                          )
+                        ) {
+                          return;
                         }
-                      } catch (error: unknown) {
-                        setActionError(
-                          error instanceof Error
-                            ? error.message
-                            : "Something went wrong.",
-                        );
-                      } finally {
-                        setBusy(false);
+                        void (async () => {
+                          setBusy(true);
+                          setActionError(null);
+                          try {
+                            await deleteSetlist(openSetlist.id);
+                            setOpenSetlist(null);
+                            await refreshSetlists();
+                            const current = await getCurrentSong();
+                            setSession(current);
+                          } catch (error: unknown) {
+                            setActionError(
+                              error instanceof Error
+                                ? error.message
+                                : "Something went wrong.",
+                            );
+                          } finally {
+                            setBusy(false);
+                          }
+                        })();
+                      }}
+                      onPerform={() =>
+                        void (async () => {
+                          if (
+                            session?.setlist?.setlistId === openSetlist.id &&
+                            session
+                          ) {
+                            await enterLive(session);
+                            return;
+                          }
+                          const first = openSetlist.entries.find(
+                            (entry) => !entry.missing,
+                          );
+                          if (!first) {
+                            return;
+                          }
+                          if (!(await confirmLeaveEditor())) {
+                            return;
+                          }
+                          setBusy(true);
+                          setActionError(null);
+                          try {
+                            const next = await openSetlistEntry(
+                              openSetlist.id,
+                              first.id,
+                            );
+                            setEditor(null);
+                            await refreshLibrary();
+                            await refreshSetlists();
+                            await enterLive(next);
+                          } catch (error: unknown) {
+                            setActionError(
+                              error instanceof Error
+                                ? error.message
+                                : "Something went wrong.",
+                            );
+                          } finally {
+                            setBusy(false);
+                          }
+                        })()
                       }
-                    })()
-                  }
-                  onDuplicate={() =>
-                    void (async () => {
-                      setBusy(true);
-                      setActionError(null);
-                      try {
-                        const copy = await duplicateSetlist(openSetlist.id);
-                        setOpenSetlist(copy);
-                        setLibraryTab("setlists");
-                        await refreshSetlists();
-                      } catch (error: unknown) {
-                        setActionError(
-                          error instanceof Error
-                            ? error.message
-                            : "Something went wrong.",
-                        );
-                      } finally {
-                        setBusy(false);
-                      }
-                    })()
-                  }
-                  onDelete={() => {
-                    if (
-                      !window.confirm(
-                        `Delete setlist “${openSetlist.name}”? Songs stay in the library.`,
-                      )
-                    ) {
-                      return;
-                    }
-                    void (async () => {
-                      setBusy(true);
-                      setActionError(null);
-                      try {
-                        await deleteSetlist(openSetlist.id);
-                        setOpenSetlist(null);
-                        await refreshSetlists();
-                        const current = await getCurrentSong();
-                        setSession(current);
-                      } catch (error: unknown) {
-                        setActionError(
-                          error instanceof Error
-                            ? error.message
-                            : "Something went wrong.",
-                        );
-                      } finally {
-                        setBusy(false);
-                      }
-                    })();
-                  }}
-                  onPerform={() =>
-                    void (async () => {
-                      if (
-                        session?.setlist?.setlistId === openSetlist.id &&
-                        session
-                      ) {
-                        await enterLive(session);
-                        return;
-                      }
-                      const first = openSetlist.entries.find(
-                        (entry) => !entry.missing,
-                      );
-                      if (!first) {
-                        return;
-                      }
-                      if (!(await confirmLeaveEditor())) {
-                        return;
-                      }
-                      setBusy(true);
-                      setActionError(null);
-                      try {
-                        const next = await openSetlistEntry(
-                          openSetlist.id,
-                          first.id,
-                        );
-                        setEditor(null);
-                        await refreshLibrary();
-                        await refreshSetlists();
-                        await enterLive(next);
-                      } catch (error: unknown) {
-                        setActionError(
-                          error instanceof Error
-                            ? error.message
-                            : "Something went wrong.",
-                        );
-                      } finally {
-                        setBusy(false);
-                      }
-                    })()
-                  }
-                />
+                    />
                   </SetlistDrawer>
                 )}
             </>

@@ -32,6 +32,7 @@ type Props = {
   onTypeScaleChange: (scale: TypeScale) => void;
   onClearLibrary: () => void;
   onOpenSaveFolder: () => Promise<void> | void;
+  onRequestDocumentsAccess?: () => Promise<void> | void;
   onRescanLibrary: () => Promise<void> | void;
   busy?: boolean;
 };
@@ -47,6 +48,7 @@ export function SettingsPanel({
   onTypeScaleChange,
   onClearLibrary,
   onOpenSaveFolder,
+  onRequestDocumentsAccess,
   onRescanLibrary,
   busy = false,
 }: Props) {
@@ -132,9 +134,7 @@ export function SettingsPanel({
                         onClick={() => onThemeChange(option.id)}
                       >
                         <span className="palette-swatch" aria-hidden="true">
-                          <span
-                            style={{ backgroundColor: option.swatch.bg }}
-                          />
+                          <span style={{ backgroundColor: option.swatch.bg }} />
                           <span
                             style={{ backgroundColor: option.swatch.accent }}
                           />
@@ -255,6 +255,11 @@ export function SettingsPanel({
             or paste a backup into it. Tonic rereads the folder when you return
             to the app, or when you tap Rescan folder.
           </p>
+          <p className="settings-hint">
+            On Android, the default save folder is under Android/data (visible
+            over USB). For Documents/Tonic in the Files app, grant All files
+            access, then fully restart Tonic.
+          </p>
           <div className="editor-toolbar">
             <button
               type="button"
@@ -264,6 +269,16 @@ export function SettingsPanel({
             >
               Open save folder
             </button>
+            {onRequestDocumentsAccess && (
+              <button
+                type="button"
+                className="text-button"
+                disabled={busy}
+                onClick={() => void onRequestDocumentsAccess()}
+              >
+                Use Documents folder
+              </button>
+            )}
             <button
               type="button"
               className="text-button"

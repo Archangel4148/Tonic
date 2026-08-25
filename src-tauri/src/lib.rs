@@ -3,6 +3,8 @@
 //! This crate is an IPC and windowing boundary. It must not contain music-theory
 //! algorithms or become the owner of song data.
 
+#[cfg(target_os = "android")]
+mod android_storage;
 mod library_folder;
 
 use serde::Serialize;
@@ -13,7 +15,7 @@ use tonic_app::{
     SetlistMetaUpdate, SetlistSummaryView, SetlistView, SongSessionView,
 };
 
-use library_folder::OpenLibraryFolderResult;
+use library_folder::{LibraryStorageStatus, OpenLibraryFolderResult};
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -61,6 +63,20 @@ fn library_open_folder(
         .library_path
         .ok_or_else(|| "The library folder is not available.".to_string())?;
     library_folder::open_save_folder(&app, std::path::Path::new(&path))
+}
+
+#[tauri::command]
+fn library_storage_status(
+    app: tauri::AppHandle,
+    services: tauri::State<'_, AppServices>,
+) -> LibraryStorageStatus {
+    let live = services.library_info().library_path;
+    library_folder::storage_status(&app, live.as_deref().map(std::path::Path::new))
+}
+
+#[tauri::command]
+fn library_request_documents_access() -> Result<LibraryStorageStatus, String> {
+    library_folder::request_documents_access()
 }
 
 #[tauri::command]
@@ -380,6 +396,8 @@ pub fn run() {
             library_info,
             library_clear,
             library_open_folder,
+            library_storage_status,
+            library_request_documents_access,
             import_song,
             import_binary,
             import_url,

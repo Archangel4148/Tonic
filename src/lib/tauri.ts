@@ -11,6 +11,7 @@ import type {
   LibraryReloadResult,
   MetadataUpdate,
   OpenLibraryFolderResult,
+  LibraryStorageStatus,
   Setlist,
   SetlistMetaUpdate,
   SetlistSummary,
@@ -27,6 +28,14 @@ export async function getLibraryInfo(): Promise<LibraryInfo> {
 
 export async function openLibraryFolder(): Promise<OpenLibraryFolderResult> {
   return invoke<OpenLibraryFolderResult>("library_open_folder");
+}
+
+export async function getLibraryStorageStatus(): Promise<LibraryStorageStatus> {
+  return invoke<LibraryStorageStatus>("library_storage_status");
+}
+
+export async function requestDocumentsAccess(): Promise<LibraryStorageStatus> {
+  return invoke<LibraryStorageStatus>("library_request_documents_access");
 }
 
 export async function reloadLibrary(): Promise<LibraryReloadResult> {
