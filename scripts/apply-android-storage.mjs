@@ -1,6 +1,6 @@
 /**
- * Declares Android storage permissions so Documents/Tonic can work after the
- * user grants “All files access” (sideload-friendly).
+ * Declares Android storage permissions and a deep link so “Use Documents folder”
+ * can open the All-files settings screen from MainActivity (no Rust JNI).
  */
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -60,9 +60,65 @@ if (!/requestLegacyExternalStorage\s*=\s*"true"/.test(manifest)) {
   }
 }
 
+// Ensure MainActivity can receive tonic://request-all-files while running.
+if (!/android:launchMode\s*=\s*"singleTop"/.test(manifest)) {
+  const next = manifest.replace(
+    /<activity\b([^>]*android:name\s*=\s*"\.MainActivity"[^>]*)>/,
+    (full, attrs) => {
+      if (/android:launchMode/.test(attrs)) {
+        return full;
+      }
+      return `<activity${attrs} android:launchMode="singleTop">`;
+    },
+  );
+  if (next !== manifest) {
+    manifest = next;
+    changed = true;
+  }
+}
+
+if (
+  !manifest.includes("tonic://request-all-files") &&
+  !manifest.includes('android:host="request-all-files"')
+) {
+  const filter = `
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="tonic" android:host="request-all-files" />
+            </intent-filter>`;
+  // Insert before the closing </activity> that belongs to MainActivity when possible.
+  const mainActivityClose = manifest.search(
+    /android:name\s*=\s*"\.MainActivity"[\s\S]*?<\/activity>/,
+  );
+  if (mainActivityClose >= 0) {
+    const closeIdx = manifest.indexOf("</activity>", mainActivityClose);
+    if (closeIdx >= 0) {
+      manifest =
+        manifest.slice(0, closeIdx) +
+        filter +
+        "\n        " +
+        manifest.slice(closeIdx);
+      changed = true;
+    }
+  } else {
+    // Fallback: first </activity>
+    const closeIdx = manifest.indexOf("</activity>");
+    if (closeIdx >= 0) {
+      manifest =
+        manifest.slice(0, closeIdx) +
+        filter +
+        "\n        " +
+        manifest.slice(closeIdx);
+      changed = true;
+    }
+  }
+}
+
 if (changed) {
   writeFileSync(manifestPath, manifest, "utf8");
-  console.log(`Patched storage permissions → ${manifestPath}`);
+  console.log(`Patched storage permissions / deep link → ${manifestPath}`);
 } else {
   console.log("Android storage permissions already present");
 }

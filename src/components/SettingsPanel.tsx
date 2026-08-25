@@ -256,9 +256,10 @@ export function SettingsPanel({
             to the app, or when you tap Rescan folder.
           </p>
           <p className="settings-hint">
-            On Android, the default save folder is under Android/data (visible
-            over USB). For Documents/Tonic in the Files app, grant All files
-            access, then fully restart Tonic.
+            On Android, the default save folder is under Android/data (USB). For
+            Documents/Tonic in the Files app, tap Use Documents folder — Android
+            will open the All files access screen (there is no in-app popup for
+            that permission). Grant it, then restart Tonic once.
           </p>
           <div className="editor-toolbar">
             <button

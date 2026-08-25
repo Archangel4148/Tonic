@@ -284,27 +284,35 @@ body,
 #root {
   margin: 0;
   min-height: 100%;
+  max-width: 100%;
+  overflow-x: clip;
 }
 
 body {
   min-height: 100vh;
+  min-height: 100dvh;
+  width: 100%;
+  overflow-x: clip;
   background:
     radial-gradient(circle at top, var(--bg-accent) 0%, var(--bg) 55%),
     var(--bg);
 }
 
 .app-shell {
-  max-width: 88rem;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: min(88rem, 100%);
   margin: 0 auto;
-  padding:
-    max(1.25rem, env(safe-area-inset-top, 0px))
-    max(1.25rem, env(safe-area-inset-right, 0px))
-    2rem
+  padding: max(1.25rem, env(safe-area-inset-top, 0px))
+    max(1.25rem, env(safe-area-inset-right, 0px)) 2rem
     max(1.25rem, env(safe-area-inset-left, 0px));
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
   min-height: 100vh;
+  min-height: 100dvh;
+  overflow-x: clip;
+  min-width: 0;
 }
 
 .app-workspace {
@@ -313,6 +321,8 @@ body {
   gap: 1.25rem;
   align-items: start;
   flex: 1;
+  min-width: 0;
+  width: 100%;
 }
 
 .app-header {
@@ -321,6 +331,13 @@ body {
   align-items: flex-start;
   gap: 1rem;
   flex-wrap: wrap;
+  min-width: 0;
+  width: 100%;
+}
+
+.brand {
+  min-width: 0;
+  flex: 1 1 auto;
 }
 
 .brand h1 {
@@ -1188,8 +1205,7 @@ button:disabled {
 .live-scroller {
   height: 100vh;
   overflow: auto;
-  padding:
-    max(2.4rem, calc(env(safe-area-inset-top, 0px) + 1.2rem))
+  padding: max(2.4rem, calc(env(safe-area-inset-top, 0px) + 1.2rem))
     max(1.4rem, env(safe-area-inset-right, 0px))
     max(7.5rem, calc(env(safe-area-inset-bottom, 0px) + 6rem))
     max(1.4rem, env(safe-area-inset-left, 0px));
@@ -1410,13 +1426,16 @@ button:disabled {
   display: none;
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1024px), (max-height: 520px) and (orientation: landscape) {
   .app-shell {
-    padding-bottom: max(5.25rem, calc(env(safe-area-inset-bottom, 0px) + 4.25rem));
+    padding-bottom: max(
+      5.25rem,
+      calc(env(safe-area-inset-bottom, 0px) + 4.25rem)
+    );
   }
 
   .app-workspace {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .app-workspace[data-mobile-focus="main"] > .library-sidebar {
@@ -1471,7 +1490,10 @@ button:disabled {
 
 @media (max-width: 640px) {
   .app-shell {
-    padding: 1rem 0.85rem 1.5rem;
+    padding: max(0.85rem, env(safe-area-inset-top, 0px))
+      max(0.85rem, env(safe-area-inset-right, 0px))
+      max(1.5rem, calc(env(safe-area-inset-bottom, 0px) + 1.25rem))
+      max(0.85rem, env(safe-area-inset-left, 0px));
   }
 
   .app-header {
@@ -1479,12 +1501,12 @@ button:disabled {
   }
 
   .header-tools {
-    flex-wrap: nowrap;
-    flex-shrink: 0;
+    flex-wrap: wrap;
+    justify-content: flex-end;
   }
 
   .library-heading-actions {
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
   }
 
   .import-actions {

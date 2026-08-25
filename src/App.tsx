@@ -32,7 +32,6 @@ import {
   getCurrentSong,
   getEditorState,
   getLibraryInfo,
-  getLibraryStorageStatus,
   getSetlist,
   importBinary,
   importSong,
@@ -566,17 +565,17 @@ function App() {
           }
           onRequestDocumentsAccess={() =>
             void (async () => {
+              const proceed = window.confirm(
+                "To use Documents/Tonic (easy Files app + Drive backups), Android will open the All files access screen for Tonic.\n\nTurn the permission on, then come back and restart Tonic once.",
+              );
+              if (!proceed) {
+                return;
+              }
               setBusy(true);
               setActionError(null);
               try {
-                const status = await requestDocumentsAccess();
-                window.alert(status.hint);
-                try {
-                  setLibraryInfo(await getLibraryInfo());
-                  await getLibraryStorageStatus();
-                } catch {
-                  /* desktop / unavailable */
-                }
+                await requestDocumentsAccess();
+                // Settings UI should open from MainActivity; no second alert.
               } catch (error: unknown) {
                 setActionError(
                   error instanceof Error

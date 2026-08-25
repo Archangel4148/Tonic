@@ -114,13 +114,17 @@ pub fn request_documents_access<R: Runtime>(
 ) -> Result<LibraryStorageStatus, String> {
     #[cfg(target_os = "android")]
     {
-        let id = app.config().identifier.clone();
-        // Opens the system “All files access” screen for this package (no JNI / unsafe).
-        let intent = format!(
-            "intent:#Intent;action=android.settings.MANAGE_APP_ALL_FILES_ACCESS_PERMISSION;data=package:{id};end"
-        );
-        if app.opener().open_url(intent, None::<&str>).is_err() {
-            let _ = app.opener().open_url(format!("package:{id}"), None::<&str>);
+        // Deep link handled in MainActivity → opens All-files settings immediately.
+        let opened = app
+            .opener()
+            .open_url("tonic://request-all-files", None::<&str>)
+            .is_ok();
+        if !opened {
+            let id = app.config().identifier.clone();
+            let intent = format!(
+                "intent:#Intent;action=android.settings.MANAGE_APP_ALL_FILES_ACCESS_PERMISSION;data=package:{id};end"
+            );
+            let _ = app.opener().open_url(intent, None::<&str>);
         }
         Ok(LibraryStorageStatus {
             library_path: None,
@@ -129,7 +133,7 @@ pub fn request_documents_access<R: Runtime>(
             documents_writable: false,
             has_all_files_access: false,
             can_use_documents: false,
-            hint: "Grant “Allow access to manage all files” for Tonic, then fully restart the app so it can use Documents/Tonic.".to_string(),
+            hint: "Turn on “Allow access to manage all files” for Tonic, then return and restart Tonic once so it can use Documents/Tonic.".to_string(),
         })
     }
     #[cfg(not(target_os = "android"))]
