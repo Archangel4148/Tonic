@@ -20,9 +20,5 @@ serde_json = { workspace = true }
 tonic-app = { workspace = true }
 tonic-persist = { workspace = true }
 
-[target.'cfg(target_os = "android")'.dependencies]
-jni = "0.21"
-ndk-context = "0.1"
-
 [lints]
 workspace = true

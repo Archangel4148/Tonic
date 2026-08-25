@@ -3,8 +3,6 @@
 //! This crate is an IPC and windowing boundary. It must not contain music-theory
 //! algorithms or become the owner of song data.
 
-#[cfg(target_os = "android")]
-mod android_storage;
 mod library_folder;
 
 use serde::Serialize;
@@ -75,8 +73,8 @@ fn library_storage_status(
 }
 
 #[tauri::command]
-fn library_request_documents_access() -> Result<LibraryStorageStatus, String> {
-    library_folder::request_documents_access()
+fn library_request_documents_access(app: tauri::AppHandle) -> Result<LibraryStorageStatus, String> {
+    library_folder::request_documents_access(&app)
 }
 
 #[tauri::command]

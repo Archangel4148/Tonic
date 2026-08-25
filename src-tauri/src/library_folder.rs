@@ -75,24 +75,21 @@ pub fn storage_status<R: Runtime>(
     #[cfg(target_os = "android")]
     {
         let documents = android_documents_tonic(app);
-        let has_access = crate::android_storage::has_all_files_access();
         let documents_writable = documents
             .as_ref()
             .is_some_and(|path| probe_writable_library(path));
         let kind = classify_android_path(live_root);
         let hint = if documents_writable {
-            "Library can use Documents/Tonic (visible in the Files app). Restart Tonic after granting access if the location has not switched yet.".to_string()
-        } else if has_access {
-            "All files access is on, but Documents/Tonic is not writable yet. Try Rescan or restart.".to_string()
+            "Library can use Documents/Tonic (visible in the Files app). Restart Tonic if the location has not switched yet.".to_string()
         } else {
-            "Default location is Android/data/…/files/Tonic (USB-friendly). Tap “Use Documents folder” to grant All files access for Files-app / Drive backups.".to_string()
+            "Default location is Android/data/…/files/Tonic (USB-friendly). Tap “Use Documents folder” to open All files access, grant it, then restart Tonic.".to_string()
         };
         LibraryStorageStatus {
             library_path: live_root.map(|path| path.display().to_string()),
             kind,
             documents_path: documents.map(|path| path.display().to_string()),
             documents_writable,
-            has_all_files_access: has_access,
+            has_all_files_access: documents_writable,
             can_use_documents: documents_writable,
             hint,
         }
@@ -112,22 +109,32 @@ pub fn storage_status<R: Runtime>(
     }
 }
 
-pub fn request_documents_access() -> Result<LibraryStorageStatus, String> {
+pub fn request_documents_access<R: Runtime>(
+    app: &AppHandle<R>,
+) -> Result<LibraryStorageStatus, String> {
     #[cfg(target_os = "android")]
     {
-        crate::android_storage::request_all_files_access()?;
+        let id = app.config().identifier.clone();
+        // Opens the system “All files access” screen for this package (no JNI / unsafe).
+        let intent = format!(
+            "intent:#Intent;action=android.settings.MANAGE_APP_ALL_FILES_ACCESS_PERMISSION;data=package:{id};end"
+        );
+        if app.opener().open_url(intent, None::<&str>).is_err() {
+            let _ = app.opener().open_url(format!("package:{id}"), None::<&str>);
+        }
         Ok(LibraryStorageStatus {
             library_path: None,
             kind: "pending".to_string(),
             documents_path: None,
             documents_writable: false,
-            has_all_files_access: crate::android_storage::has_all_files_access(),
+            has_all_files_access: false,
             can_use_documents: false,
-            hint: "Grant “Allow access to manage all files” for Tonic, then return here and restart the app (or tap Rescan after relaunch).".to_string(),
+            hint: "Grant “Allow access to manage all files” for Tonic, then fully restart the app so it can use Documents/Tonic.".to_string(),
         })
     }
     #[cfg(not(target_os = "android"))]
     {
+        let _ = app;
         Err("Documents access is only required on Android.".to_string())
     }
 }
@@ -158,8 +165,8 @@ pub fn open_save_folder<R: Runtime>(
 fn resolve_android<R: Runtime>(app: &AppHandle<R>, legacy: PathBuf) -> Result<PathBuf, String> {
     let mut candidates: Vec<PathBuf> = Vec::new();
     if let Some(documents) = android_documents_tonic(app) {
-        // Only try Documents when permission/probe allows — never crash on denial.
-        if crate::android_storage::has_all_files_access() || probe_writable_library(&documents) {
+        // Only try Documents when a real write probe succeeds — never crash on denial.
+        if probe_writable_library(&documents) {
             candidates.push(documents);
         }
     }
