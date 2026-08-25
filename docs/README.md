@@ -2,12 +2,13 @@
 
 Tonic is a local-first musician's songbook: import, edit, transpose, organize, and perform chord charts offline.
 
-This folder is the project documentation. The product requirements live in [`spec.md`](./spec.md).
+This folder is the project documentation. The product requirements live in [`spec.md`](./spec.md). End users looking for installers should start at the [GitHub Releases page](https://github.com/Archangel4148/Tonic/releases/latest) or [`release.md`](./release.md).
 
 ## Start here
 
 | Document                                      | What it covers                                   |
 | --------------------------------------------- | ------------------------------------------------ |
+| [Release](./release.md)                       | Installers, APK, versioning, update strategy     |
 | [Development](./development.md)               | Install, run, test, lint, and build              |
 | [Technology choices](./technology-choices.md) | Why Tauri, Rust, React, and the supporting tools |
 | [Architecture](./architecture.md)             | Layer boundaries and dependency rules            |
@@ -25,20 +26,10 @@ This folder is the project documentation. The product requirements live in [`spe
 | [Live mode](./live-mode.md)                   | Stage view, auto-scroll, setlist navigation      |
 | [MusicXML](./musicxml.md)                     | Score import, MXL, OSMD sheet rendering          |
 | [Accessibility](./accessibility.md)           | Focus, SR labels, contrast, data-loss guards     |
-| [Release](./release.md)                       | Installers, APK, versioning, update strategy     |
-| [Phase 1 report](./phases/phase-1.md)         | Foundation checkpoint                            |
-| [Phase 2 report](./phases/phase-2.md)         | Music-engine checkpoint                          |
-| [Phase 3 report](./phases/phase-3.md)         | Song-model checkpoint                            |
-| [Phase 4 report](./phases/phase-4.md)         | Import checkpoint                                |
-| [Phase 5 report](./phases/phase-5.md)         | Viewer checkpoint                                |
-| [Phase 6 report](./phases/phase-6.md)         | Library checkpoint                               |
-| [Phase 7 report](./phases/phase-7.md)         | Editor checkpoint                                |
-| [Phase 8 report](./phases/phase-8.md)         | Setlists checkpoint                              |
-| [Phase 9 report](./phases/phase-9.md)         | Live mode checkpoint                             |
-| [Phase 10 report](./phases/phase-10.md)       | MusicXML / sheet music checkpoint                |
-| [Phase 11 report](./phases/phase-11.md)       | Accessibility & polish checkpoint                |
-| [Phase 12 report](./phases/phase-12.md)       | Packaging & release checkpoint                   |
 
 ## Source of truth
 
-[`spec.md`](./spec.md) is the current product and engineering specification. Implement only the requested phase, then stop at that phase's review checkpoint.
+[`spec.md`](./spec.md) is the product and engineering specification.
+
+Historical build checkpoints (phases 1–12) live under [`phases/`](./phases/).
+

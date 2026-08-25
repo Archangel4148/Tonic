@@ -1,64 +1,42 @@
 # Tonic
 
-A local-first musician's songbook for importing, editing, transposing, and performing chord charts.
+A local-first musician’s songbook for importing, editing, transposing, and performing chord charts — offline, on your own device.
 
-Tonic is built with **Tauri 2**, a **Rust** domain layer, and a **React + TypeScript** UI. It targets Android (sideloaded APK) and desktop (Windows, macOS, Linux). iOS is out of scope.
+Works on **Windows**, **macOS**, **Linux**, and **Android** (sideloaded APK). No account, no cloud, no app store required.
 
-## Current phase
+## Download
 
-**Phase 12 — Packaging & Release**
+Get the latest installers and APK from the GitHub Releases page:
 
-Version **1.0.0**. One desktop installer per OS; one Android APK for sideload. See [`docs/release.md`](./docs/release.md).
+**→ [Latest release](https://github.com/Archangel4148/Tonic/releases/latest)**
 
-## Quick start
+| Platform | File to download                         | How to install                                                                 |
+| -------- | ---------------------------------------- | ------------------------------------------------------------------------------ |
+| Windows  | `Tonic_*_x64-setup.exe`                  | Double-click. No admin needed. Works on PCs without Edge/WebView2.             |
+| macOS    | `Tonic_*_*.dmg`                          | Open the DMG and drag Tonic to Applications.                                   |
+| Linux    | `Tonic_*_*.AppImage`                     | Make it executable (`chmod +x …`) and run it.                                  |
+| Android  | `Tonic_*_universal.apk`                  | Allow “Install unknown apps,” then open the APK.                               |
+
+Updating: download the new build for the same platform and install over the previous one. Your song library stays on the device (Documents/Tonic on desktop; app storage or Documents/Tonic on Android).
+
+More detail: [`docs/release.md`](./docs/release.md).
+
+## Features (short)
+
+- Import ChordPro, plain text, Ultimate Guitar URLs, and MusicXML
+- Edit charts, transpose by key or capo, organize setlists
+- Live/stage mode with auto-scroll and setlist navigation
+- Everything stored locally — you own the files
+
+## For developers
 
 ```bash
 npm install
 npm run tauri dev
 ```
 
-```bash
-npm test
-npm run lint
-```
-
-## Install packaged builds
-
-- Windows: run the NSIS `*-setup.exe` (embeds WebView2 for blank PCs)
-- Android: sideload the universal `.apk`
-- Details: [`docs/release.md`](./docs/release.md)
-
-## Documentation
-
-All project documentation lives in [`docs/`](./docs/README.md).
-
-- [Product spec](./docs/spec.md)
-- [Architecture](./docs/architecture.md)
-- [Development](./docs/development.md)
-- [Release & installation](./docs/release.md)
-- [Music theory](./docs/music-theory.md)
-- [Song model](./docs/song-model.md)
-- [Import](./docs/import.md)
-- [Viewer](./docs/viewer.md)
-- [Persistence](./docs/persist.md)
-- [Editor](./docs/editor.md)
-- [Setlists](./docs/setlists.md)
-- [Live mode](./docs/live-mode.md)
-- [MusicXML](./docs/musicxml.md)
-- [Accessibility](./docs/accessibility.md)
-- [Phase 1 report](./docs/phases/phase-1.md)
-- [Phase 2 report](./docs/phases/phase-2.md)
-- [Phase 3 report](./docs/phases/phase-3.md)
-- [Phase 4 report](./docs/phases/phase-4.md)
-- [Phase 5 report](./docs/phases/phase-5.md)
-- [Phase 6 report](./docs/phases/phase-6.md)
-- [Phase 7 report](./docs/phases/phase-7.md)
-- [Phase 8 report](./docs/phases/phase-8.md)
-- [Phase 9 report](./docs/phases/phase-9.md)
-- [Phase 10 report](./docs/phases/phase-10.md)
-- [Phase 11 report](./docs/phases/phase-11.md)
-- [Phase 12 report](./docs/phases/phase-12.md)
+See [`docs/development.md`](./docs/development.md) for setup, tests, and packaging. Product and engineering docs live under [`docs/`](./docs/README.md).
 
 ## License
 
-MIT (see `docs/assumptions.md` if this should change before release)
+MIT
