@@ -1,13 +1,19 @@
 name: Release Android APK
 
 # Signed release builds for sideload distribution. Requires Android signing secrets.
+# Prefer tagging vX.Y.Z — CI syncs that version into the project before building.
 # Use build-android-debug.yml for everyday dev testing without a keystore.
 
 on:
-    push:
-        tags:
-            - "v*"
-    workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to build (e.g. 1.0.2). Required when not running from a tag."
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -22,6 +28,22 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Resolve version
+        id: ver
+        run: |
+          if [ "${{ github.ref_type }}" = "tag" ]; then
+            RAW="${{ github.ref_name }}"
+          else
+            RAW="${{ inputs.version }}"
+          fi
+          if [ -z "$RAW" ]; then
+            echo "::error::No version. Push a tag like v1.0.2, or pass workflow_dispatch input 'version'."
+            exit 1
+          fi
+          VERSION="${RAW#v}"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Using version $VERSION"
+
       - name: Require Android signing secrets
         run: |
           if [ -z "${{ secrets.ANDROID_KEY_BASE64 }}" ] || [ -z "${{ secrets.ANDROID_KEY_PASSWORD }}" ] || [ -z "${{ secrets.ANDROID_KEY_ALIAS }}" ]; then
@@ -35,6 +57,9 @@ jobs:
         with:
           node-version: "24"
           cache: npm
+
+      - name: Apply version from tag/input
+        run: node scripts/set-version.mjs "${{ steps.ver.outputs.version }}"
 
       - uses: actions/setup-java@v4
         with:
@@ -62,12 +87,8 @@ jobs:
           if [ ! -d src-tauri/gen/android ]; then
             npx tauri android init --ci --skip-targets-install
           fi
-          # `tauri android init` seeds default Tauri launcher icons into gen/android.
-          # Re-run the icon generator so mipmaps land in the Android project res/.
           npm run icons
-          # Hide status/nav bars until swipe (immersive sticky).
           npm run android:immersive
-          # All-files permission declaration for optional Documents/Tonic.
           npm run android:storage
         env:
           ANDROID_HOME: ${{ env.ANDROID_HOME }}
@@ -88,7 +109,7 @@ jobs:
             find src-tauri/gen/android -name "*.apk"
             exit 1
           fi
-          VERSION="$(node -p "require('./package.json').version")"
+          VERSION="${{ steps.ver.outputs.version }}"
           mkdir -p release-artifacts
           ALIGNED="$RUNNER_TEMP/tonic-aligned.apk"
           SIGNED="release-artifacts/Tonic_${VERSION}_universal.apk"

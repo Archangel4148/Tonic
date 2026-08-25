@@ -11,7 +11,7 @@ Tonic ships as **one desktop installer per OS** and **one Android APK**. No app 
 | Linux    | `Tonic_1.0.0_*.AppImage`           | Make executable and run (`chmod +x … && ./…`).                                                                                                           |
 | Android  | `Tonic-*.apk` (universal)          | Enable “Install unknown apps” for your file manager/browser, then open the APK.                                                                          |
 
-Version numbers in filenames follow the release version in `package.json` / `src-tauri/tauri.conf.json` / workspace `Cargo.toml` (currently **1.0.0**).
+Version numbers in filenames follow the release tag (e.g. `v1.0.2` → `1.0.2`). CI syncs that into the project files before building.
 
 ## Updates
 
@@ -93,11 +93,11 @@ keytool -genkey -v -keystore tonic-release.jks -keyalg RSA -keysize 2048 -validi
 
 3. In the GitHub repo, add **Settings → Secrets and variables → Actions**:
 
-| Secret | Value |
-| ------ | ----- |
-| `ANDROID_KEY_BASE64` | Base64 output from step 2 |
-| `ANDROID_KEY_PASSWORD` | Keystore password |
-| `ANDROID_KEY_ALIAS` | `upload` (or the alias you chose) |
+| Secret                 | Value                             |
+| ---------------------- | --------------------------------- |
+| `ANDROID_KEY_BASE64`   | Base64 output from step 2         |
+| `ANDROID_KEY_PASSWORD` | Keystore password                 |
+| `ANDROID_KEY_ALIAS`    | `upload` (or the alias you chose) |
 
 4. **Back up `tonic-release.jks` somewhere safe.** If you lose it, future APKs cannot upgrade existing installs; users would have to uninstall (losing local library data unless exported).
 
@@ -133,17 +133,40 @@ Upload artifacts from the Actions run, or attach release artifacts to a GitHub R
 
 ### Which Android workflow to use
 
-| Goal | Workflow | Notes |
-| ---- | -------- | ----- |
+| Goal                                       | Workflow                      | Notes                                                                                                                   |
+| ------------------------------------------ | ----------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
 | Try the app on your phone while developing | **Build Android APK (debug)** | Run manually from Actions. Uninstall old build first if install fails. Debug builds do not upgrade each other reliably. |
-| Ship a version users can update in place | **Release Android APK** | Tag `vX.Y.Z` (bump version first) or manual dispatch after signing secrets are configured. |
+| Ship a version users can update in place   | **Release Android APK**       | Tag `vX.Y.Z` (bump version first) or manual dispatch after signing secrets are configured.                              |
 
 Do not mix debug and release installs when testing updates — they use different signing keys. Pick one track per device until you move to release signing for good.
 
+## Versioning
+
+Versions are normally taken from a **git tag**. You do **not** have to hand-edit `package.json` / `Cargo.toml` / `tauri.conf.json` for CI releases.
+
+### Release from a tag (recommended)
+
+```bash
+git tag v1.0.2
+git push origin v1.0.2
+```
+
+That triggers desktop + Android release workflows. CI runs `scripts/set-version.mjs` so the build uses `1.0.2` even if `main` still says `1.0.1`.
+
+### Manual workflow dispatch
+
+In Actions, run **Release Android APK** / **Release desktop** and fill the **version** input (e.g. `1.0.2`).
+
+### Local sync (optional)
+
+To update the repo files yourself:
+
+```bash
+npm run version:set -- 1.0.2
+```
+
 ## Version bump checklist
 
-1. Set the same version in `package.json`, workspace `Cargo.toml`, and `src-tauri/tauri.conf.json`.
-2. Run `npm install` so `package-lock.json` matches.
-3. Run `npm run release:check`.
-4. Tag `vX.Y.Z` and let CI produce installers/APK (or build locally).
-5. Publish the **one** installer/APK per platform you support for that release.
+1. Decide the next version (e.g. `1.0.2`).
+2. Tag `v1.0.2` and push (or dispatch the release workflows with that version).
+3. Install the new signed APK / desktop installer over the previous release.

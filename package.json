@@ -13,6 +13,7 @@
     "package:desktop:windows": "tauri build --bundles nsis",
     "android:immersive": "node scripts/apply-android-immersive.mjs",
     "android:storage": "node scripts/apply-android-storage.mjs",
+    "version:set": "node scripts/set-version.mjs",
     "android:init": "tauri android init --ci && npm run icons && npm run android:immersive && npm run android:storage",
     "package:android": "npm run icons && npm run android:immersive && npm run android:storage && tauri android build --apk",
     "release:check": "npm run check && cargo test --workspace",
