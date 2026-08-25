@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { openUrl } from "@tauri-apps/plugin-opener";
 import {
   clampScrollSpeed,
   DEFAULT_LIVE_SCALE,
@@ -20,6 +21,16 @@ import type {
   TypeScale,
 } from "../lib/types";
 import { TypeScaleControls } from "./TypeScaleControls";
+
+const REPO_URL = "https://github.com/Archangel4148/Tonic";
+
+async function openRepository(): Promise<void> {
+  try {
+    await openUrl(REPO_URL);
+  } catch {
+    window.open(REPO_URL, "_blank", "noopener,noreferrer");
+  }
+}
 
 type Props = {
   open: boolean;
@@ -347,6 +358,15 @@ export function SettingsPanel({
               <dd>{appInfo.phase}</dd>
             </div>
           </dl>
+          <div className="editor-toolbar">
+            <button
+              type="button"
+              className="text-button"
+              onClick={() => void openRepository()}
+            >
+              Open GitHub
+            </button>
+          </div>
         </section>
       </form>
     </dialog>

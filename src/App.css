@@ -1490,10 +1490,10 @@ button:disabled {
 
 @media (max-width: 640px) {
   .app-shell {
-    padding: max(0.85rem, env(safe-area-inset-top, 0px))
-      max(0.85rem, env(safe-area-inset-right, 0px))
-      max(1.5rem, calc(env(safe-area-inset-bottom, 0px) + 1.25rem))
-      max(0.85rem, env(safe-area-inset-left, 0px));
+    padding-top: max(0.85rem, env(safe-area-inset-top, 0px));
+    padding-right: max(0.85rem, env(safe-area-inset-right, 0px));
+    padding-left: max(0.85rem, env(safe-area-inset-left, 0px));
+    /* Keep bottom padding from the mobile-nav rule (≥5.25rem) so content clears the bar. */
   }
 
   .app-header {
